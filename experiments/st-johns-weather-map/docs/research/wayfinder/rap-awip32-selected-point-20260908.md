@@ -49,3 +49,16 @@ Verification: offline Linux `python -m pytest api/tests/test_rap_query.py
 `python /proof/replay.py` in the same locked image
 `astraeus-lightning-proof:c88ff83`, with network disabled and actual bounded
 child decoding. `specctl validate` and `git diff --check` passed.
+
+## Boundary-cell review correction
+
+Independent review found that masking provider cells outside the requested box
+changed nearest-cell selection at the southeast corner. The crop now retains
+one native-cell halo and all original values/bitmap masks; requested coordinates
+remain restricted to the evidence box separately. For query45,-46, the actual
+bounded decoder now selects44.95328150414761,-46.012876176115185, matching a
+fresh nearest-cell calculation over the entire retained native GRIB grid.
+The retained native values are100m visibility and100% cloud. No new provider
+request was made; `/private/tmp/rap271-awip32-proof/corner-proof.json` records
+the check. Seven focused Linux tests pass, including the boundary regression,
+null preservation and refusal of an out-of-box query. Specctl and diff checks pass.

@@ -97,3 +97,28 @@ def test_decoder_other_model_never_enters_cache(tmp_path):
     with pytest.raises(RAPUnavailable):
         reader.query(RUN)
     assert not reader.entries
+
+
+def test_query_boundary_keeps_the_nearest_native_cell_outside_box(tmp_path):
+    import numpy as np
+    from weather_api.rap_query_worker import native_crop
+    # Coordinates of the reported native corner regression. The geographically
+    # eligible query must not be moved to the farther in-box provider cell.
+    lat = np.array([[44.953282, 45.1], [45.164669, 45.3]])
+    lon = np.array([[-46.012876, -45.95], [-46.295763, -46.1]])
+    crop = native_crop(lat, lon)
+    def decoded(request):
+        return {**result(request), "latitude": lat[crop].tolist(), "longitude": lon[crop].tolist(),
+            "fields": {"visibility": np.array([[1234., 2000.], [3000., 4000.]])[crop].tolist(),
+                       "total_cloud_geometric": [[None, 20.], [30., 40.]]}}
+    http = Transport()
+    reader = RAPQueryCoordinator(now=lambda: RUN, transport_factory=lambda: http,
+                                 decoder=decoded, workspace=tmp_path)
+    point = reader.point_native(45., -46., RUN)
+    assert point["sampled_latitude"] == 44.953282
+    assert point["sampled_longitude"] == pytest.approx(-46.012876)
+    assert point["fields"]["visibility"]["value"] == 1234.
+    assert point["fields"]["total_cloud_geometric"]["value"] is None
+    with pytest.raises(RAPUnavailable):
+        reader.point_native(44.953282, -46.012876, RUN)
+    assert len(http.calls) == 3

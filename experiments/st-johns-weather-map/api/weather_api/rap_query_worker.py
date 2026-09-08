@@ -5,6 +5,23 @@ from pathlib import Path
 import sys
 
 
+def native_crop(latitude, longitude):
+    """Keep a one-cell native halo for nearest-cell reads at box boundaries.
+
+    Request eligibility is checked by the coordinator. It must not become a
+    mask on provider cells: the nearest cell can be just outside that box.
+    """
+    import numpy as np
+    from .rap_query import BOUNDS
+    inside = ((latitude >= BOUNDS["south"]) & (latitude <= BOUNDS["north"])
+              & (longitude >= BOUNDS["west"]) & (longitude <= BOUNDS["east"]))
+    if not inside.any():
+        raise ValueError("RAP native grid excludes evidence box")
+    yy, xx = np.where(inside)
+    return np.s_[max(0, yy.min()-1):min(latitude.shape[0], yy.max()+2),
+                 max(0, xx.min()-1):min(latitude.shape[1], xx.max()+2)]
+
+
 def decode(request):
     import eccodes as e
     import numpy as np
@@ -66,20 +83,13 @@ def decode(request):
         if reference is not None and not (np.array_equal(lat, reference[0]) and np.array_equal(lon, reference[1])):
             raise ValueError("RAP fields use different native grids")
         reference = lat, lon
-        inside = ((lat >= BOUNDS["south"]) & (lat <= BOUNDS["north"])
-                  & (lon >= BOUNDS["west"]) & (lon <= BOUNDS["east"]))
-        if not inside.any():
-            raise ValueError("RAP native grid excludes evidence box")
-        yy, xx = np.where(inside)
-        crop = np.s_[yy.min():yy.max()+1, xx.min():xx.max()+1]
-        keep = inside[crop]
+        crop = native_crop(lat, lon)
         def clean(array):
             return np.where(np.isfinite(array), array, None).tolist()
-        fields[name] = clean(np.where(keep, values[crop], np.nan))
+        fields[name] = clean(values[crop])
     return dict(source_id="noaa-rap", product="awip32", run_time=run.isoformat(),
         valid_time=valid.isoformat(), grid_type="lambert", native_shape=[277, 349],
-        latitude=clean(np.where(keep, lat[crop], np.nan)),
-        longitude=clean(np.where(keep, lon[crop], np.nan)), fields=fields)
+        latitude=clean(lat[crop]), longitude=clean(lon[crop]), fields=fields)
 
 
 if __name__ == "__main__":
