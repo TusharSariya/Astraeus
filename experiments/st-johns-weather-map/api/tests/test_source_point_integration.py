@@ -101,13 +101,15 @@ def test_swob_selected_point_uses_exact_station_report(monkeypatch, data_mode):
     assert client.get(f"{app.PREFIX}/point", params=params).json()["fields"] == []
 
 
-def test_oisst_http_uses_native_analysis_and_reuses_crop(monkeypatch, data_mode, tmp_path):
+@pytest.mark.parametrize("analysis_age_hours", [0, 36, 96])
+def test_oisst_http_uses_native_analysis_and_reuses_crop(monkeypatch, data_mode, tmp_path, analysis_age_hours):
     from test_oisst_query import DAY, service
     import weather_api.oisst_query as module
     app = importlib.import_module("weather_api.app")
     query, calls, _clock = service(tmp_path)
+    _clock[0] = analysis_age_hours * 3600
     monkeypatch.setattr(module, "oisst_query_service", lambda: query)
-    monkeypatch.setattr(app, "now", lambda: DAY)
+    monkeypatch.setattr(app, "now", lambda: DAY + timedelta(hours=analysis_age_hours))
     data_mode("live")
     client = TestClient(app.app)
     params = {"latitude": 47.5, "longitude": -52.0, "valid_time": DAY.isoformat(), "product": "OISST SST"}
@@ -118,6 +120,9 @@ def test_oisst_http_uses_native_analysis_and_reuses_crop(monkeypatch, data_mode,
     assert all(f["provenance"]["valid_time"] == DAY.isoformat().replace("+00:00", "Z") and f["provenance"]["run_time"] is None for f in body["fields"])
     assert all(f["provenance"]["original_units"] == "Celsius" for f in body["fields"])
     assert client.get(f"{app.PREFIX}/point", params=params).json()["fields"] == body["fields"]
+    assert len(calls) == 2
+    params["valid_time"] = (DAY - timedelta(days=5)).isoformat()
+    assert client.get(f"{app.PREFIX}/point", params=params).status_code == 422
     assert len(calls) == 2
     params["valid_time"] = DAY.replace(hour=13).isoformat()
     assert client.get(f"{app.PREFIX}/point", params=params).json()["fields"] == []

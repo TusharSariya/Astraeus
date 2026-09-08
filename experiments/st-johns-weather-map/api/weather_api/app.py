@@ -2424,7 +2424,17 @@ def get_point(
         raise HTTPException(status_code=422, detail=f"unknown statistic: {statistic}; the registered entries are {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}")
     if comparison is not None and comparison not in THRESHOLD_COMPARISONS:
         raise HTTPException(status_code=422, detail=f"unknown comparison: {comparison}; the accepted comparisons are {', '.join(THRESHOLD_COMPARISONS)}")
-    time = requested_time(valid_time)
+    if product and product.upper() == "OISST SST" and valid_time is not None:
+        if valid_time.tzinfo is None:
+            raise HTTPException(status_code=422, detail="valid_time must include a UTC offset")
+        time = valid_time.astimezone(timezone.utc)
+        # Daily analyses routinely arrive beyond the forecast UI's 24-hour
+        # lookback. Match the source's five UTC calendar dates; exact native
+        # 12Z availability is still decided by the OISST reader.
+        if not 0 <= (now().astimezone(timezone.utc).date() - time.date()).days < 5:
+            raise HTTPException(status_code=422, detail="OISST valid_time is outside its current five-day analysis window")
+    else:
+        time = requested_time(valid_time)
     mode = configured_mode()
     if mode == FIXTURE_MODE:
         return _fixture_point(
