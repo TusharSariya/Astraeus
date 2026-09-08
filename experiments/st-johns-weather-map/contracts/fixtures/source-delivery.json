@@ -5093,6 +5093,30 @@
                 "threshold": null
               }
             ]
+          },
+          {
+            "coverage_description": "Internal experimental forecast; one pinned native temperature mean cell, no latest-run or freshness promise",
+            "field": "temperature_2m",
+            "levels": [
+              "2 m"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "WeatherNext 3 local",
+            "product_id": "weathernext_3_0_0_statistics",
+            "run_selection": "not_applicable",
+            "source_id": "google-weathernext-3-statistics",
+            "time_semantics": "Exact selected native hourly time in the explicitly configured run; initialization must not be in the future",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "provider_statistic",
+                "member": null,
+                "quantile": null,
+                "statistic": "ensemble_mean",
+                "threshold": null
+              }
+            ]
           }
         ],
         "category": "research_comparison",
@@ -6401,7 +6425,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 14.7
+        "value": 15.2
       },
       {
         "absence_state": null,
@@ -6622,7 +6646,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 14.7
+        "value": 15.2
       }
     ],
     "latitude": 47.56,
@@ -8576,7 +8600,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 14.7
+            "value": 15.2
           },
           {
             "absence_state": null,
@@ -8666,7 +8690,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 14.7
+            "value": 15.2
           }
         ],
         "selectable_runs": [],
@@ -8760,7 +8784,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 99.2
+            "value": 100.0
           },
           {
             "absence_state": null,
@@ -8832,7 +8856,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 99.2
+            "value": 100.0
           }
         ],
         "selectable_runs": [],
@@ -9179,8 +9203,9 @@
       {
         "configuration": {
           "checked_at": null,
-          "reason": "Select an explicit historical root generation and existing gcloud profile in the bounded nonsecret configuration JSON",
+          "reason": "Configure the selected local forecast or historical path with its pinned root and existing Google profile; these are alternative paths",
           "required_environment": [
+            "WEATHER_WEATHERNEXT_LOCAL_CONFIG",
             "WEATHER_WEATHERNEXT_HISTORICAL_CONFIG"
           ],
           "state": "missing_configuration"

@@ -56,14 +56,34 @@ def load_local_experimental_configuration():
                                LocalExperimentalConfigurationUnavailable, 'local experimental')
 
 
+def _runtime_auth_configuration():
+    # Read metadata only; token contents enter only the bounded transport child.
+    from .weathernext_gcs import ACCESS_TOKEN_FILE_ENV
+    if ACCESS_TOKEN_FILE_ENV in os.environ:
+        try:
+            path = Path(os.environ[ACCESS_TOKEN_FILE_ENV])
+            info = path.lstat()
+            import stat
+            if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o077 or not 0 < info.st_size <= 16384 or info.st_uid != os.getuid():
+                raise ValueError("private token file required")
+        except (OSError, ValueError):
+            return SourceConfiguration(state='missing_configuration',required_environment=[ACCESS_TOKEN_FILE_ENV],
+                reason='The explicitly configured short-lived OAuth token file is missing or invalid; no alternate identity is selected')
+        return None
+    if shutil.which('gcloud') is None:
+        return SourceConfiguration(state='product_unavailable',reason='Configure a private short-lived OAuth token file or the existing gcloud runtime; configuration alone does not establish authentication')
+    return None
+
+
 def historical_configuration_status():
     try:
         load_historical_configuration()
     except HistoricalConfigurationUnavailable:
         return SourceConfiguration(state='missing_configuration',required_environment=[CONFIG_ENV],
             reason='Select an explicit historical root generation and existing gcloud profile in the bounded nonsecret configuration JSON')
-    if shutil.which('gcloud') is None:
-        return SourceConfiguration(state='product_unavailable',reason='The historical runtime requires the gcloud executable; configuration does not establish authentication or ADC')
+    auth = _runtime_auth_configuration()
+    if auth is not None:
+        return auth
     if sys.platform!='linux' and shutil.which('docker') is None:
         return SourceConfiguration(state='missing_compute',reason='The historical decoder requires the existing bounded Linux worker runtime')
     return SourceConfiguration(state='ready',reason='Historical root and runtime tools are configured; authentication, exact-object access and sampled coverage are established only on read')
@@ -85,8 +105,9 @@ def local_experimental_configuration_status():
     except HistoricalConfigurationUnavailable:
         return SourceConfiguration(state='missing_configuration',required_environment=[LOCAL_CONFIG_ENV],
             reason='Select an explicit local experimental root generation and existing gcloud profile in the bounded nonsecret configuration JSON')
-    if shutil.which('gcloud') is None:
-        return SourceConfiguration(state='product_unavailable',reason='The local experimental runtime requires the gcloud executable; configuration does not establish authentication or ADC')
+    auth = _runtime_auth_configuration()
+    if auth is not None:
+        return auth
     if sys.platform!='linux' and shutil.which('docker') is None:
         return SourceConfiguration(state='missing_compute',reason='The local experimental decoder requires the existing bounded Linux worker runtime')
     return SourceConfiguration(state='ready',reason='Local experimental root and runtime tools are configured; authentication, exact-object access and sampled coverage are established only on read')

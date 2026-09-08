@@ -18,7 +18,7 @@ from ingest.adapters.weathernext3_statistics import PRODUCT, SOURCE_ID
 from ingest.derive.registry import ENSEMBLE_MEAN
 from .models import Coverage, EnsembleProvenance, EvidenceField, Freshness, Provenance, Quality
 from .source_contract import SourceAcquisition, SourceCapability, SourceConfiguration, SourceTransferReceipt, SourceVariant
-from .weathernext_gcs import GcloudProfileToken
+from .weathernext_gcs import GcloudProfileToken, runtime_token_provider
 from .weathernext_gcs_bridge import AccountedGCSTransport, read_historical_point
 from .weathernext_native import BUCKET, ObjectIdentity
 from .weathernext_query import HISTORICAL_DELAY, WeatherNextSelection
@@ -160,7 +160,7 @@ class WeatherNextHistoricalDelivery:
         self._failures=OrderedDict()
 
     def _native_acquire(self,selection):
-        transport=AccountedGCSTransport(token_provider=GcloudProfileToken(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES)
+        transport=AccountedGCSTransport(token_provider=runtime_token_provider(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES)
         return read_historical_point(selection,root_identity=self.config.root_identity,now=self._utcnow(),transport=transport,
                                      max_received_bytes=MAX_ACQUISITION_BYTES)
 
@@ -259,7 +259,7 @@ class WeatherNextLocalExperimentalDelivery(WeatherNextHistoricalDelivery):
     def _native_acquire(self, selection):
         # Lazy import leaves the historical path independent of this bridge.
         from .weathernext_gcs_bridge import read_local_experimental_point
-        transport=AccountedGCSTransport(token_provider=GcloudProfileToken(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES)
+        transport=AccountedGCSTransport(token_provider=runtime_token_provider(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES)
         return read_local_experimental_point(selection,root_identity=self.config.root_identity,
             now=self._utcnow(),transport=transport,max_received_bytes=MAX_ACQUISITION_BYTES)
 

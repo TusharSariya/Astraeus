@@ -1,5 +1,29 @@
 # API-first source delivery - September 7, 2026
 
+## WeatherNext forward-forecast correction, September 8
+
+WeatherNext 3 is forward-looking: the published statistics product provides
+hourly leads to 360 hours for six-hour initializations and 48 hours for interim
+hourly initializations. Our merged historical-only temperature path and its
+strictly-greater-than-48-hour age guard are implementation limits, not evidence
+that Google supplies only historical data.
+
+The [current September 3 terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)
+section 2(a) permits internal use of real-time experimental data. Consequently,
+unresolved public redistribution rights must not be treated as a blanket blocker
+for the owner's local experimental map. Current-run discovery, future-valid
+native reads and the running API's Google runtime configuration remain actual
+implementation/verification work. Public redistribution remains a separate
+scope decision; no new access, future retrieval or completion is claimed here.
+The statistics bucket remains the selected Requester-Pays-off access path.
+
+PR #304 merged the truthful pending-point status at `90905f8`; 93 App tests,
+production build and specctl passed. The rebuilt web container was verified in
+Chrome showing "Loading point evidence" at localhost:5173. This is a wording
+fix, not a fix to the GEFS acquisition delay or unexplained earlier timeout.
+PR #303 merged the source handoff at `40d79f8`. Two clean released worktrees
+(historical-point-frontend and goes-phase-shared) were removed; branches retained.
+
 ## Merged source completion checkpoint, September 8
 
 PR #300 merged draft RAP/GOES contract reconciliation and the current GDPS-GEML

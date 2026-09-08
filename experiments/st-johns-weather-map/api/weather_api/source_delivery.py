@@ -255,20 +255,21 @@ class WeatherNextHistoricalSource:
 
     def descriptors(self):
         # Descriptor construction neither loads configuration nor authenticates.
-        from .weathernext_delivery import WeatherNextHistoricalDelivery
-        return WeatherNextHistoricalDelivery.descriptors(self)
+        from .weathernext_delivery import WeatherNextHistoricalDelivery, WeatherNextLocalExperimentalDelivery
+        return (*WeatherNextHistoricalDelivery.descriptors(self), *WeatherNextLocalExperimentalDelivery.descriptors(self))
 
     @observed_read
-    def read_point(self, latitude, longitude, selected, *, run="latest", refresh=False):
-        from .weathernext_configuration import weathernext_historical_service
+    def read_point(self, latitude, longitude, selected, *, run="latest", refresh=False, internal_forecast=False):
+        from .weathernext_configuration import weathernext_historical_service, weathernext_local_experimental_service
         try:
-            return weathernext_historical_service().read_point(latitude, longitude, selected, run=run, refresh=refresh)
+            service = weathernext_local_experimental_service if internal_forecast else weathernext_historical_service
+            return service().read_point(latitude, longitude, selected, run=run, refresh=refresh)
         except Exception as error:
             status = getattr(error, "http_status", None)
             if status in (401, 403):
                 import httpx
                 request = httpx.Request("GET", "https://storage.googleapis.com/")
-                raise httpx.HTTPStatusError("WeatherNext historical access was denied", request=request,
+                raise httpx.HTTPStatusError("WeatherNext access was denied", request=request,
                     response=httpx.Response(status, request=request)) from None
             raise
 
@@ -326,8 +327,14 @@ def source_capabilities(source_id: str) -> list[SourceCapability]:
 
 def source_configuration(source_id: str) -> SourceConfiguration:
     if source_id == "google-weathernext-3-statistics":
-        from .weathernext_configuration import historical_configuration_status
-        configuration = historical_configuration_status()
+        from .weathernext_configuration import historical_configuration_status, local_experimental_configuration_status
+        local = local_experimental_configuration_status()
+        historical = historical_configuration_status()
+        configuration = local if local.state != "missing_configuration" else historical
+        if local.state == historical.state == "missing_configuration":
+            configuration = SourceConfiguration(state="missing_configuration",
+                required_environment=["WEATHER_WEATHERNEXT_LOCAL_CONFIG", "WEATHER_WEATHERNEXT_HISTORICAL_CONFIG"],
+                reason="Configure the selected local forecast or historical path with its pinned root and existing Google profile; these are alternative paths")
         return (latest_configuration(source_id) or configuration) if configuration.state == "ready" else configuration
     reported = latest_configuration(source_id)
     if reported is not None:

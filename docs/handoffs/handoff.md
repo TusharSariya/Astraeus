@@ -1,5 +1,16 @@
 # Autonomous execution handoff: deliver the working desktop evidence app
 
+## WeatherNext current forecast follow-up, September 8
+
+The current source batch proves a real future-valid WeatherNext3 temperature
+mean using the existing Astraeus Google profile. The model is forward-looking;
+the earlier 48-hour limit belongs to our historical implementation. Internal
+experimental use is permitted by the current provider terms; public redistribution
+remains separate. See [the current delivery record](api-first-restart-20260907.md)
+and [local forecast runtime instructions](../../experiments/st-johns-weather-map/docs/weathernext-local-forecast.md).
+Current-run rollover, additional fields, native Series and automatic token renewal
+remain unfinished. #70 and #140 remain open.
+
 ## Merged source completion checkpoint, September 8
 
 PR #300 merged draft RAP/GOES contract reconciliation and the current GDPS-GEML
