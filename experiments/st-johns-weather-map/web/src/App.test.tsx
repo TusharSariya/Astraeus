@@ -273,7 +273,7 @@ describe('weather workbench fail-closed behavior', () => {
 
   it('shows unavailable unknown evidence on API outage instead of fixtures', async () => {
     render(<App initialLayout="legacy" />)
-    expect(screen.getByText('Checking API')).toBeInTheDocument()
+    expect(screen.getByText('Loading point evidence')).toBeInTheDocument()
     expect(screen.getByText('Forecast unavailable · evidence only')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('Unavailable')).toBeInTheDocument())
     expect(screen.queryByText('Experimental consensus')).not.toBeInTheDocument()
@@ -312,7 +312,7 @@ describe('weather workbench fail-closed behavior', () => {
     render(<App initialLayout="legacy" />)
     await screen.findByText('16')
     await userEvent.click(screen.getByRole('button', { name: 'Choose map point' }))
-    await waitFor(() => expect(screen.getByText('Checking API')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Loading point evidence')).toBeInTheDocument())
     expect(screen.queryByText('16')).not.toBeInTheDocument()
     resolveSecond(response(apiPoint()))
   })
@@ -2025,4 +2025,27 @@ it('requires explicit declared GEPS reduction and sends quantile without substit
   const count = gepsRequests().length
   await waitFor(() => expect(screen.getAllByText(/Choose a provider statistic before requesting/).length).toBeGreaterThan(0))
   expect(gepsRequests()).toHaveLength(count)
+})
+
+
+it('keeps point loading distinct from completed catalogue and layers until the point request settles', async () => {
+  window.history.replaceState(null, '', '/')
+  const pending: Array<(response: Response) => void> = []
+  const other = routedFetch({ catalog: { sources: [] }, layers: { layers: [] } })
+  const fetchMock = vi.fn((url: string) => url.includes('/point?') ? new Promise<Response>(resolve => pending.push(resolve)) : other(url))
+  vi.stubGlobal('fetch', fetchMock)
+  render(<App />)
+  await waitFor(() => expect(other.mock.calls.some(([url]) => url.includes('/catalog'))).toBe(true))
+  await waitFor(() => expect(other.mock.calls.some(([url]) => url.includes('/layers'))).toBe(true))
+  await waitFor(() => expect(pending.length).toBeGreaterThan(0))
+  expect(screen.getByText('Loading point evidence')).toBeInTheDocument()
+  expect(screen.getByText(/Waiting for the point response at the selected location and time/)).toBeInTheDocument()
+  expect(screen.queryByText('Checking API')).not.toBeInTheDocument()
+  expect(screen.queryByText(/0 returned values/)).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Existing evidence panels' })).toBeEnabled()
+  await act(async () => pending.forEach(resolve => resolve(response(apiPoint([], undefined, 'unavailable')))))
+  await waitFor(() => expect(screen.getByText('Unavailable')).toBeInTheDocument())
+  expect(screen.queryByText('Loading point evidence')).not.toBeInTheDocument()
+  expect(screen.getByText(/0 returned values/)).toBeInTheDocument()
+  expect(fetchMock.mock.calls.some(([url]) => url.includes('/health'))).toBe(false)
 })
