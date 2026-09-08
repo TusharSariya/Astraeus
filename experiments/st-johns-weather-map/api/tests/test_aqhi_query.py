@@ -270,6 +270,8 @@ def test_default_point_and_layer_bridge_use_fixed_query_without_legacy_store_or_
     app_module = importlib.import_module("weather_api.app")
     import weather_api.aqhi_query as aqhi_module
 
+    monkeypatch.setattr(app_module, "now", lambda: SELECTED)
+
     requests = []
     service = AQHIQueryService(
         client=mock_client(lambda request: (requests.append(request) or httpx.Response(
@@ -323,6 +325,8 @@ def test_default_api_serializes_expired_receipt_without_values_when_every_demand
 ):
     app_module = importlib.import_module("weather_api.app")
     import weather_api.aqhi_query as aqhi_module
+
+    monkeypatch.setattr(app_module, "now", lambda: SELECTED)
 
     clock = Clock()
     responses = [
