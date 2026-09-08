@@ -152,3 +152,18 @@ def test_concurrent_failure_is_shared_without_serial_retries(monkeypatch, refres
     assert all(error is errors[0] for error in errors)
     if refresh:
         assert query.read_images().cache_status == "hit"
+
+
+@pytest.mark.parametrize("padding_bytes,available", [(128 * 1024, True), (512 * 1024 + 1, False)])
+def test_daily_listing_capacity_is_finite_and_exceeds_old_ceiling(padding_bytes, available):
+    from ingest.experimental.holyrood_radar import MAX_LISTING_BYTES
+    assert MAX_LISTING_BYTES == 512 * 1024
+    query, requests, _, responses = service()
+    responses[BASE_URL + "/"] = b" " * padding_bytes + listing(RAIN, SNOW)
+    if available:
+        assert query.read_images().images[0].body == GIF
+        assert len(requests) == 3
+    else:
+        with pytest.raises(HolyroodUnavailable, match="byte ceiling"):
+            query.read_images()
+        assert len(requests) == 1 and query._cached is None
