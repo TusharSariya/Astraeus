@@ -183,3 +183,19 @@ def test_plain_degrees_requires_true_longitude_before_chunk_acquisition(transpor
     with pytest.raises(NativeUnavailable):
         NativeStatisticsReader(transport).read_point(selection(), now=NOW)
     assert not any(path.startswith(("lon_0p1/", FIELD)) for _, path in transport.calls)
+
+
+def test_explicit_internal_scope_reads_future_native_time(transport):
+    result = NativeStatisticsReader(transport).read_point(selection(), now=INIT,
+        acquisition_scope='internal_experimental_forecast')
+    assert result.valid_time > INIT
+    assert result.values[0].value == pytest.approx(.35)
+    assert result.values[0].statistic == 'p90'
+    assert result.member is None
+
+
+@pytest.mark.parametrize('scope,now', [('unknown', NOW), ('internal_experimental_forecast', datetime(2026,7,31,tzinfo=UTC)), ('internal_experimental_forecast', datetime(2026,8,1))])
+def test_scope_rejects_invalid_clock_or_mode_before_io(transport, scope, now):
+    with pytest.raises(NativeUnavailable):
+        NativeStatisticsReader(transport).read_point(selection(), now=now, acquisition_scope=scope)
+    assert transport.calls == []

@@ -113,3 +113,23 @@ def test_owned_docker_container_is_explicitly_removed(monkeypatch,transport):
         read_historical_point(selection(),root_identity=root(transport),now=NOW,transport=transport)
     assert names[0].startswith('weathernext-')
     assert cleanup==[['docker','rm','--force',names[0]]]
+
+
+def test_internal_future_scope_reaches_real_isolated_decoder(transport):
+    if sys.platform != 'linux': pytest.skip('Linux resource-limited worker')
+    from weather_api.weathernext_gcs_bridge import read_local_experimental_point
+    result = read_local_experimental_point(selection(), root_identity=root(transport),
+        now=selection().initialization, transport=transport)
+    assert result['reading']['valid_time'] == selection().valid_time.isoformat()
+    assert result['reading']['values'][0]['value'] == pytest.approx(.35)
+    assert result['receipt']['worker_operations'] == 12
+    assert result['receipt']['acquisition_scope'] == 'internal_experimental_forecast'
+
+
+def test_internal_future_initialization_refused_before_process(transport):
+    from datetime import timedelta
+    from weather_api.weathernext_gcs_bridge import read_local_experimental_point
+    with pytest.raises(BridgeUnavailable, match='initialization'):
+        read_local_experimental_point(selection(), root_identity=root(transport),
+            now=selection().initialization-timedelta(seconds=1), transport=transport, command=['does-not-exist'])
+    assert transport.calls == []

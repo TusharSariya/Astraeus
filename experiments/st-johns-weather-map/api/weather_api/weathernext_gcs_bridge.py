@@ -18,7 +18,7 @@ import uuid
 
 from weather_api.weathernext_gcs import GcloudProfileToken, WeatherNextGCSTransport
 from weather_api.weathernext_native import BUCKET, ObjectIdentity
-from weather_api.weathernext_query import HISTORICAL_DELAY, WeatherNextSelection
+from weather_api.weathernext_query import WeatherNextSelection
 
 CAP = 16 * 1024**2
 MAX_CAP = 64 * 1024**2
@@ -87,8 +87,21 @@ def worker_command(container_name=None):
             'python','-m','weather_api.weathernext_gcs_worker']
 
 
-def read_historical_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentity,
-                          now: datetime | None = None, transport=None, command=None, timeout=90, max_received_bytes=CAP):
+from .weathernext_scope import HISTORICAL, INTERNAL_FORECAST, validate_scope
+
+
+def read_historical_point(selection: WeatherNextSelection, **kwargs):
+    """Retained strict historical path; no caller scope override."""
+    return _read_point(selection, acquisition_scope=HISTORICAL, **kwargs)
+
+
+def read_local_experimental_point(selection: WeatherNextSelection, **kwargs):
+    """Explicit internal-use forecast experiment; no registration or publication."""
+    return _read_point(selection, acquisition_scope=INTERNAL_FORECAST, **kwargs)
+
+
+def _read_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentity,
+                          acquisition_scope: str, now: datetime | None = None, transport=None, command=None, timeout=90, max_received_bytes=CAP):
     """Root identity must be explicitly supplied; no listing or current-run guess.
 
     No source registration/cache. Caller gets native reading plus response hashes.
@@ -96,8 +109,10 @@ def read_historical_point(selection: WeatherNextSelection, *, root_identity: Obj
     if type(max_received_bytes) is not int or not 0 < max_received_bytes <= MAX_CAP:
         raise BridgeUnavailable("WeatherNext received-byte cap")
     now=now or datetime.now(UTC)
-    if now.tzinfo is None or selection.valid_time >= now-HISTORICAL_DELAY:
-        raise BridgeUnavailable('WeatherNext historical permission boundary')
+    try:
+        validate_scope(selection, now, acquisition_scope)
+    except ValueError as error:
+        raise BridgeUnavailable(str(error)) from None
     expected_prefix=f'weathernext_3_0_0_statistics/zarr/2026_to_present/{selection.initialization:%Y%m%d_%H}hr_01_preds/predictions.zarr/'
     if (root_identity.bucket != BUCKET or root_identity.name != expected_prefix+'zarr.json'
             or not root_identity.generation.isdecimal() or not root_identity.etag or not 0<root_identity.size<=256*1024
@@ -118,7 +133,7 @@ def read_historical_point(selection: WeatherNextSelection, *, root_identity: Obj
                                  stderr=subprocess.DEVNULL,start_new_session=True)
         selector.register(process.stdout,selectors.EVENT_READ)
         request={'initialization':selection.initialization.isoformat(),'valid_time':selection.valid_time.isoformat(),
-                 'latitude':selection.latitude,'longitude':selection.longitude,'fields':selection.fields,'now':now.isoformat(),'max_received_bytes':max_received_bytes}
+                 'latitude':selection.latitude,'longitude':selection.longitude,'fields':selection.fields,'now':now.isoformat(),'max_received_bytes':max_received_bytes,'acquisition_scope':acquisition_scope}
         os.set_blocking(process.stdin.fileno(),False)
         def send(value):
             body=memoryview(json.dumps(value,allow_nan=False).encode()+b'\n')
@@ -151,7 +166,7 @@ def read_historical_point(selection: WeatherNextSelection, *, root_identity: Obj
                         or [v['field'] for v in reading['values']]!=list(selection.fields)
                         or reading['received_bytes']!=payload_bytes):
                     raise BridgeUnavailable('WeatherNext result identity')
-                return {'reading':reading,'receipt':{'evidence_class':'bounded_native_gcs_point','completed_at':datetime.now(UTC).isoformat(),
+                return {'reading':reading,'receipt':{'evidence_class':'bounded_native_gcs_point','acquisition_scope':acquisition_scope,'completed_at':datetime.now(UTC).isoformat(),
                         'elapsed_seconds':time.monotonic()-started,'worker_operations':calls,'payload_bytes':payload_bytes,
                         'http_response_bytes':getattr(transport,'received_bytes',None),'http_objects':getattr(transport,'operations',[])}}
             calls+=1

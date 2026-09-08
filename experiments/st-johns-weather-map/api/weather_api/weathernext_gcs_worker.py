@@ -38,7 +38,8 @@ def main():
                                          request['latitude'],request['longitude'],tuple(request['fields']))
         result = NativeStatisticsReader(Transport(),limits=NativeLimits(metadata_bytes=256*1024,received_bytes=cap,
                                          decoded_chunk_bytes=128*1024**2,operations=30,seconds=85)).read_point(
-                                         selection,now=datetime.fromisoformat(request['now']))
+                                         selection,now=datetime.fromisoformat(request['now']),
+                                         acquisition_scope=request.get('acquisition_scope','historical'))
         output=asdict(result)
         output['initialization']=result.initialization.isoformat()
         output['valid_time']=result.valid_time.isoformat()
