@@ -250,6 +250,32 @@ class OISSTSource:
         return None
 
 
+class WeatherNextHistoricalSource:
+    source_id, product_id = "google-weathernext-3-statistics", "weathernext_3_0_0_statistics"
+
+    def descriptors(self):
+        # Descriptor construction neither loads configuration nor authenticates.
+        from .weathernext_delivery import WeatherNextHistoricalDelivery
+        return WeatherNextHistoricalDelivery.descriptors(self)
+
+    @observed_read
+    def read_point(self, latitude, longitude, selected, *, run="latest", refresh=False):
+        from .weathernext_configuration import weathernext_historical_service
+        try:
+            return weathernext_historical_service().read_point(latitude, longitude, selected, run=run, refresh=refresh)
+        except Exception as error:
+            status = getattr(error, "http_status", None)
+            if status in (401, 403):
+                import httpx
+                request = httpx.Request("GET", "https://storage.googleapis.com/")
+                raise httpx.HTTPStatusError("WeatherNext historical access was denied", request=request,
+                    response=httpx.Response(status, request=request)) from None
+            raise
+
+    def plan_series(self, start, end, *, run="latest"):
+        return None
+
+
 def source_readers() -> dict[str, SourceReader]:
     # Lazy imports preserve existing monkeypatch seams and do not create clients
     # when the catalogue is read. Fields here name implemented delivery paths,
@@ -283,6 +309,7 @@ def source_readers() -> dict[str, SourceReader]:
         GFSWaveSource(openmeteo_gfs_wave_query_service),
         OISSTSource(oisst_query_service),
         OSTIASource(ostia_query_service),
+        WeatherNextHistoricalSource(),
         *(ECMWFSource(source_id, product_id, lambda source_id=source_id: ecmwf_query_coordinator(source_id),
             ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "mean_sea_level_pressure", "total_cloud_geometric"), named_runs=False)
             for source_id, product_id in (("ecmwf-ifs", "ifs"), ("ecmwf-aifs-single", "aifs-single"))),
@@ -296,6 +323,10 @@ def source_capabilities(source_id: str) -> list[SourceCapability]:
 
 
 def source_configuration(source_id: str) -> SourceConfiguration:
+    if source_id == "google-weathernext-3-statistics":
+        from .weathernext_configuration import historical_configuration_status
+        configuration = historical_configuration_status()
+        return (latest_configuration(source_id) or configuration) if configuration.state == "ready" else configuration
     reported = latest_configuration(source_id)
     if reported is not None:
         return reported

@@ -64,7 +64,10 @@ class AccountedGCSTransport(WeatherNextGCSTransport):
             output,_=child.communicate(json.dumps(request).encode(),timeout=timeout)
             if child.returncode or len(output)>90*1024**2: raise BridgeUnavailable('WeatherNext HTTP child failed')
             response=json.loads(output)
-            if 'body' not in response: raise BridgeUnavailable('WeatherNext HTTP child refused')
+            if 'body' not in response:
+                error=BridgeUnavailable('WeatherNext HTTP child refused')
+                error.http_status=response.get('http_status') if response.get('http_status') in (401,403) else None
+                raise error
             body=base64.b64decode(response['body'],validate=True)
             if len(body)>cap: raise BridgeUnavailable('WeatherNext HTTP child byte cap')
             return body
@@ -78,7 +81,7 @@ def worker_command(container_name=None):
     if sys.platform == 'linux':
         return [sys.executable,'-m','weather_api.weathernext_gcs_worker']
     experiment=Path(__file__).resolve().parents[2]
-    return ['docker','run','--rm','--name',container_name or ('weathernext-'+uuid.uuid4().hex),'--network','none','--memory','2g','--cpus','2','-i',
+    return ['docker','run','--rm','--pull','never','--name',container_name or ('weathernext-'+uuid.uuid4().hex),'--network','none','--memory','2g','--cpus','2','-i',
             '-v',f'{experiment}:/work:ro','-w','/work','-e','PYTHONPATH=/work/api:/work',
             '-e','OPENBLAS_NUM_THREADS=1','astraeus-lightning-proof:c88ff83',
             'python','-m','weather_api.weathernext_gcs_worker']
@@ -168,8 +171,10 @@ def read_historical_point(selection: WeatherNextSelection, *, root_identity: Obj
                 payload_bytes+=len(body)
                 send({'body':base64.b64encode(body).decode('ascii')})
             else: raise BridgeUnavailable('WeatherNext bounded native worker failed')
-    except Exception:
-        raise BridgeUnavailable('WeatherNext bounded point acquisition failed') from None
+    except Exception as cause:
+        error=BridgeUnavailable('WeatherNext bounded point acquisition failed')
+        error.http_status=getattr(cause,'http_status',None) if getattr(cause,'http_status',None) in (401,403) else None
+        raise error from None
     finally:
         selector.close()
         if process is not None:

@@ -1127,6 +1127,9 @@ FIELDS: list[dict[str, Any]] = [
 _PROBE = "docs/research/wayfinder/size-probe-full-fields.md"
 
 SOURCE_SCOPE: list[dict[str, Any]] = [
+    {"source_id": "google-weathernext-3-statistics", "subsetting": "none", "policy": "family_fields_only",
+     "published_field_count": 126, "counted_from": "docs/research/wayfinder/weathernext-gcs-access-20260907.md",
+     "note": "Only the approved historical temperature_2m_mean point is delivered; the native chunk remains whole-grid. Other statistics are not acquired by this path."},
     {
         "source_id": "eccc-hrdps", "subsetting": "server_side", "policy": "family_fields_only",
         "published_field_count": 377, "counted_from": _PROBE,
@@ -1237,6 +1240,8 @@ _GFS_MIXED = ("Measured 2026-09-01 against the model's own specific humidity: di
               "-25 degC.")
 
 SOURCE_FIELDS: list[dict[str, Any]] = [
+    _sf("google-weathernext-3-statistics", "temperature_2m", "temperature_2m_mean", "available-not-stored",
+        "Historical provider ensemble_mean in K, converted to degC; exact hourly run/cell identity, no member fabrication or primary admission."),
     # --- ECCC GEM, opacity-weighted cloud, liquid-basis humidity -----------
     _sf("eccc-hrdps", "total_cloud_opacity", "HRDPS.CONTINENTAL_NT", "stored",
         "Title verified 'Total cloud cover [%]'. The opacity-weighted quantity."),
