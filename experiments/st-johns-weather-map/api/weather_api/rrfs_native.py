@@ -42,6 +42,16 @@ class RRFSRequest:
     latitude: float
     longitude: float
 
+    def __post_init__(self):
+        # ZoneInfo datetimes sharing a zone compare/subtract in wall time;
+        # repeated DST hours can therefore alias distinct native forecast runs.
+        # Normalize before dataclass equality/hash and every lead calculation.
+        for name in ("run_time", "valid_time"):
+            value = getattr(self, name)
+            if not isinstance(value, datetime) or value.utcoffset() is None:
+                raise ValueError("RRFS times must be offset-aware")
+            object.__setattr__(self, name, value.astimezone(UTC))
+
     def validate(self):
         for value in (self.run_time, self.valid_time):
             if not isinstance(value, datetime) or value.utcoffset() is None:

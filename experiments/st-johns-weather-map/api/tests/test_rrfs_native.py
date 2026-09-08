@@ -177,3 +177,33 @@ def test_range_refusal_never_downloads_a_full_file(tmp_path, message, status):
         decoder=lambda *_: pytest.fail("invalid response reached decoder"))
     with pytest.raises(RuntimeError, match="request failed"):
         service.query(REQUEST)
+
+
+def test_dst_repeated_hour_requests_do_not_share_cached_run(tmp_path, monkeypatch):
+    from zoneinfo import ZoneInfo
+    zone = ZoneInfo("America/New_York")
+    valid = datetime(2026, 11, 1, 7, tzinfo=UTC)
+    first = RRFSRequest(datetime(2026, 11, 1, 1, tzinfo=zone, fold=0), valid, 47.56, -52.71)
+    second = RRFSRequest(datetime(2026, 11, 1, 1, tzinfo=zone, fold=1), valid, 47.56, -52.71)
+    service = RRFSQueryService(tmp_path)
+    loads = []
+    def load(request):
+        loads.append(request.run_time.astimezone(UTC))
+        return {"run_time": request.run_time.astimezone(UTC).isoformat()}
+    monkeypatch.setattr(service, "_load", load)
+    assert service.query(first)["run_time"] == "2026-11-01T05:00:00+00:00"
+    assert service.query(second)["run_time"] == "2026-11-01T06:00:00+00:00"
+    assert first != second and len({first, second}) == 2
+    assert len(loads) == 2
+
+
+def test_dst_crossing_lead_uses_elapsed_utc_hours():
+    from zoneinfo import ZoneInfo
+    zone = ZoneInfo("America/New_York")
+    request = RRFSRequest(datetime(2026, 11, 1, 0, tzinfo=zone),
+                          datetime(2026, 11, 1, 2, tzinfo=zone), 47.56, -52.71)
+    assert request.url.endswith("rrfs.t04z.2dfld.13km.f003.na.grib2")
+    selected = b"1:0:d=2026110104:TMP:2 m above ground:3 hour fcst:\n2:100:d=2026110104:RH:2 m above ground:3 hour fcst:\n"
+    assert temperature_range(selected, request).as_tuple() == (0, 99)
+    assert request.run_time == datetime(2026, 11, 1, 4, tzinfo=UTC)
+    assert request.valid_time == datetime(2026, 11, 1, 7, tzinfo=UTC)
