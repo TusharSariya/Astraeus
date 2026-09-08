@@ -343,6 +343,19 @@ export interface components {
              */
             valid_time: string;
         };
+        /** DiscoveryMetadata */
+        DiscoveryMetadata: {
+            /** Ensemble Forms */
+            ensemble_forms?: string[];
+            /** Kinds */
+            kinds?: string[];
+            /** Map Capabilities */
+            map_capabilities?: components["schemas"]["MapCapability"][];
+            /** Methods */
+            methods?: string[];
+            /** Subjects */
+            subjects?: string[];
+        };
         /**
          * EnsembleMemberSet
          * @description The members one ensemble number covers, as they actually resolved.
@@ -747,6 +760,17 @@ export interface components {
             sha256: string;
             /** Url */
             url: string;
+        };
+        /** MapCapability */
+        MapCapability: {
+            /** Layer Id */
+            layer_id: string;
+            /** Product */
+            product?: string | null;
+            /** Subjects */
+            subjects?: string[];
+            /** Title */
+            title: string;
         };
         /**
          * NativeReportIdentity
@@ -1482,6 +1506,7 @@ export interface components {
             category: string;
             /** Delivery Kind */
             delivery_kind?: ("published_cell" | "reprocessed" | "intermediary_derived") | null;
+            discovery?: components["schemas"]["DiscoveryMetadata"] | null;
             /**
              * Display Primary
              * @default true

@@ -1,3 +1,4 @@
+import { readDiscovery } from './workbench/discovery'
 import { layerImagery } from './workbench/layerIdentity'
 import { FALLBACK_BACK_MINUTES, FALLBACK_FORWARD_MINUTES } from './tierBoundary'
 import { observationReceipt } from './observationReceipt'
@@ -1102,7 +1103,7 @@ export async function loadCatalog(signal?: AbortSignal): Promise<CatalogResult> 
     if (!body || typeof body !== 'object' || !Array.isArray((body as { sources?: unknown }).sources)) {
       return { sources: [], dataMode: 'unavailable', error: 'catalog returned an incompatible schema' }
     }
-    const sources = (body as { sources: unknown[] }).sources.filter(isCatalogSource).map((source) => ({ ...source, capabilities: Array.isArray(source.capabilities) ? source.capabilities.filter((capability) => isSourceCapability(capability, source.id)) : undefined }))
+    const sources = (body as { sources: unknown[] }).sources.filter(isCatalogSource).map((source) => ({ ...source, discovery: readDiscovery(source.discovery), capabilities: Array.isArray(source.capabilities) ? source.capabilities.filter((capability) => isSourceCapability(capability, source.id)) : undefined }))
     return { sources, dataMode: toDataMode((body as { data_mode?: unknown }).data_mode), error: null }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error

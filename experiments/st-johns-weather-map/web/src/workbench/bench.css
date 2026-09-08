@@ -274,3 +274,22 @@ html[data-theme='night'] .bench :is(.legend-swatch,.frame-marker,.scale-now,.scr
 .native-images img { max-width: 100%; height: auto; }
 .native-images figure { margin: 1rem 0; }
 .native-images { overflow-wrap: anywhere; }
+/* Shared discovery controls: compact inside Layers, reusable in Sources. */
+.discovery-controls { display: grid; gap: .5rem; }
+.discovery-controls > label { display: grid; gap: .3rem; }
+.discovery-controls input[type="search"], .discovery-controls select { width: 100%; min-width: 0; }
+.discovery-chips { display: flex; flex-wrap: wrap; gap: .3rem; }
+.discovery-chips:empty { display: none; }
+.discovery-filters > fieldset { min-width: 0; margin: .65rem 0; padding: .45rem; border: 1px solid var(--bench-line); max-height: 13rem; overflow: auto; }
+.discovery-filters > fieldset > label { display: flex; align-items: center; gap: .4rem; padding: .2rem 0; overflow-wrap: anywhere; }
+.discovery-group { margin: .8rem 0; }
+.discovery-group > summary { font-weight: 700; padding: .4rem 0; }
+.discovery-card { padding: .75rem 0; border-bottom: 1px solid var(--bench-line); min-width: 0; }
+.discovery-card > strong, .discovery-capability > strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.discovery-card small { display: block; overflow-wrap: anywhere; opacity: .8; margin: .2rem 0; }
+.discovery-card details { margin: .5rem 0; }
+.discovery-card p { overflow-wrap: anywhere; }
+.discovery-capability { margin: .5rem 0; padding: .5rem; border-left: 2px solid var(--bench-line); }
+.discovery-selected-point { overflow-wrap: anywhere; }
+
+.discovery-absence { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }

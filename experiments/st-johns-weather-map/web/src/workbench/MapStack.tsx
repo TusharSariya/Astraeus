@@ -1,11 +1,12 @@
+import { DiscoveryBrowser, type DiscoveryActions } from './DiscoveryBrowser'
 import { SourceTag } from './SourceTag'
 import { mapLayerEvidence } from './MapEvidenceDetails'
 import { layerMapping, layerImagery } from './layerIdentity'
 import { useRef, useState } from 'react'
-import type { LayerItem, LayerSelection, GeoJsonFeature, ResolvedEvidenceClass } from '../types'
-import { layerFamily, layerGroup, layerLegendUrl, layerFieldKey } from '../api'
+import type { CatalogSource, LayerItem, LayerSelection, GeoJsonFeature, ResolvedEvidenceClass } from '../types'
+import { layerFamily, layerGroup, layerLegendUrl } from '../api'
 import { ActiveFamilyLegends } from '../MapFamilyLegend'
-import { familyTitle, groupByFamily, fieldDefinition } from '../fieldFamily'
+import { groupByFamily } from '../fieldFamily'
 import { resolveEvidenceClass } from '../evidenceClass'
 import { EvidenceGlyph, type InspectedEvidence } from './EvidenceInspector'
 
@@ -44,7 +45,8 @@ function readSaved(): Record<string, LayerSelection[]> {
     return result
   } catch { return {} }
 }
-export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = false, error = null, notices = [] }: {
+export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = false, error = null, notices = [], catalog = [], catalogError, onPoint, onSeries, onSource }: DiscoveryActions & {
+  catalog?: CatalogSource[]; catalogError?: string | null
   layers: LayerItem[]; stack: LayerSelection[]; onChange: (stack: LayerSelection[]) => void; drawn: DrawEvidence[]
   onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void; loading?: boolean; error?: string | null; notices?: string[]
 }) {
@@ -52,9 +54,6 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
   const [saved, setSaved] = useState(readSaved)
   const [name, setName] = useState(''); const [notice, setNotice] = useState('')
   const [tab, setTab] = useState<'Active' | 'Browse'>('Active')
-  const [query, setQuery] = useState(''); const [family, setFamily] = useState('')
-  const provider = (layer: LayerItem) => [...new Set(layerMapping(layer).fields.map(row => row.source_id))].join(', ') || (layer.product ? `Product ${layer.product} · source unknown` : 'Source unknown')
-  const filtered = layers.filter(layer => (!family || layerFamily(layer) === family) && `${layer.title} ${provider(layer)}`.toLowerCase().includes(query.toLowerCase()))
   const patch = (id: string, values: Partial<LayerSelection>) => onChange(stack.map(entry => entry.id === id ? { ...entry, ...values } : entry))
   const move = (index: number, delta: number) => { const next = [...stack]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; onChange(next) }
   return <section className="bench-stack" aria-label="Ordered Map stack">
@@ -69,15 +68,7 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
     {notice && <p role="status">{notice}</p>}
     {loading && <p role="status">Loading available layers…</p>}{error && <p role="status">Layers unavailable: {error}</p>}
     <div hidden={tab !== 'Browse'}>
-      <label>Search layers<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Layer name or provider" /></label>
-      <label>Family<select value={family} onChange={event => setFamily(event.target.value)}><option value="">All families</option>{[...new Set(layers.map(layerFamily))].map(value => <option key={value} value={value}>{familyTitle(value)}</option>)}</select></label>
-      <ul className="bench-browse-list">{filtered.map(layer => <li key={layer.id}>
-        <div className="bench-layer-title"><EvidenceGlyph kind={resolveEvidenceClass(layer.evidence_class)} /><strong title={layer.title}>{layer.title}</strong></div>
-        <small>{provider(layer)} · {resolveEvidenceClass(layer.evidence_class)}</small><small>Imagery {layerImagery(layer).status}</small>
-        <button disabled={stack.some(entry => entry.id === layer.id)} aria-label={`Add ${layer.title}`} onClick={() => onChange([...stack, { id: layer.id, visible: true, opacity: .85 }])}>{stack.some(entry => entry.id === layer.id) ? 'Added' : 'Add'}</button>
-        <details><summary>Layer details</summary><p>{layer.title}</p><p>{layer.semantics}</p><h4>Field definition</h4><code>{layerFieldKey(layer) ?? 'Catalogue field unknown'}</code><p>{fieldDefinition(layerFieldKey(layer))}</p><p>Imagery: {layerImagery(layer).reason}</p></details>
-      </li>)}</ul>
-      {!filtered.length && !loading && <p>No matching published layers.</p>}
+      <DiscoveryBrowser catalog={catalog} layers={layers} stack={stack} error={catalogError} onPoint={onPoint} onSeries={onSeries} onSource={onSource} onAdd={id => { if (!stack.some(s => s.id === id)) onChange([...stack, { id, visible: true, opacity: .85 }]) }} />
     </div>
     <div hidden={tab !== 'Active'}>
       <p className="bench-order-label">Drawing order · top first</p>

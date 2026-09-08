@@ -64,3 +64,48 @@ shared response boundary, including boundary instants and rolled windows. Map
 request regressions distinguish sample and image axes, provider failure and stale
 older API responses. Bounded live checks audit every advertised frame axis and
 request the current radar/lightning imagery independently.
+
+### Requirement: Unified source and layer discovery
+
+Browse SHALL combine the source registry and declared map, point and native
+Series capabilities, independently of selected point product. Optional typed
+discovery metadata SHALL distinguish subjects, provider, product, kind, method
+and ensemble form from evidence class and current availability. Explicit
+multi-subject associations SHALL not imply scientific comparability. Unknown
+metadata SHALL remain searchable; registered sources SHALL not disappear.
+
+Default grouping SHALL be Subject, with Provider, Model/product, Kind and
+Ungrouped alternatives. Search, group selector, deduplicated count and active
+filter chips SHALL remain visible. Collapsible Filters SHALL apply OR within
+each dimension and AND across dimensions. All sources SHALL show by default;
+actionable entries precede information-only entries. Multiple group appearances
+SHALL retain one identity and one stack selection. Sources SHALL reuse the
+discovery filter engine without losing Ledger or Coverage.
+
+#### Scenario: WeatherNext is point-only
+- **WHEN** the source declares historical and local temperature point paths
+- **THEN** Browse offers each explicit path and its limitations, with no invented image or Series
+- **AND** opening a path preserves Focus and opens point Evidence; unavailable time or configuration stays explicit
+
+#### Scenario: Multiple subjects and providers
+- **WHEN** GOES cloud imagery is browsed
+- **THEN** it appears in Clouds and Satellite imagery with the explicitly declared producer and delivery route
+- **AND** filtering or repeated group appearances never duplicate a stack entry
+
+#### Scenario: Catalogue independence and partial failure
+- **WHEN** point product changes or one catalogue route fails
+- **THEN** unrelated layer identities remain available and partial failure is labelled
+- **AND** browsing performs no weather-value acquisition, cache warming or jobs
+
+#### Scenario: Keyboard and return context
+- **WHEN** details, overlays or views are opened and closed
+- **THEN** filters, group expansion, scroll, stack order, camera and Focus persist, and dismissal restores focus
+
+Verification: discovery registry/API and frontend tests, actual Chrome
+three-size/three-theme/200-percent-zoom captures, production build, contract
+validation and specctl. Existing URL and saved-stack regressions remain mapped.
+
+#### Scenario: Empty GFS map cache
+- **WHEN** a GFS stratum has an implemented selected-time raster route but no cached frames
+- **THEN** its descriptor remains selectable with unknown imagery and an empty native timestamp axis
+- **AND** only an explicit active selection requests the existing bounded raster route; absent strata remain absent in the returned image

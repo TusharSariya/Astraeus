@@ -1,0 +1,25 @@
+
+> @astraeus/st-johns-weather-map-web@0.0.1 test
+> vitest run --reporter=dot
+
+ Vitest  "providerOptions" in "gl" project is ignored because it's overridden by the configs. To hide this warning, remove the "providerOptions" property from the browser configuration.
+
+ RUN  v3.2.7 /Users/tusharsariya/Projects/Astraeus-map-first/experiments/st-johns-weather-map/web
+
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > draws exactly the real frames at t=0 and t=1, envelope on or off
+[H1 readback] envelope=0 t=0 -> 0, t=1 -> 255
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > draws exactly the real frames at t=0 and t=1, envelope on or off
+[H1 readback] envelope=1 t=0 -> 0, t=1 -> 255
+·····stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > adds the served envelope at the midpoint: 0.5 + 0.25*a, and nothing without it
+[H1 readback] t=0.5 with envelope (a=0.4039) -> 153 (expected ~153); without -> 128 (expected ~128)
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > scales the envelope by the served percent, and a negative residual removes cloud
+[H1 readback] t=0.5 scale 50 -> 140 (expected ~140); negative a -> 102 (expected ~102)
+·······stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > hands the whole pixel to frame 0 under the visibility branch when v0=1, v1=0 at t=0.5
+[H1 readback] visibility v0=1,v1=0 t=0.5: frame0=0 -> 0; frame0=64 -> 64; symmetric mix of 64/255 -> 160
+··································································································································································································································································································································································································································································································································································································
+
+ Test Files  42 passed (42)
+      Tests  590 passed (590)
+   Start at  11:37:16
+   Duration  13.56s (transform 1.80s, setup 4.12s, collect 6.76s, tests 27.16s, environment 10.08s, prepare 3.77s)
+

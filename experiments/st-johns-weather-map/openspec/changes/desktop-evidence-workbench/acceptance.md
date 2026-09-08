@@ -88,3 +88,13 @@ provider image inventory separately from stored sample times. No field/source
 identity is guessed, no observation is manufactured and no scheduled ingestion
 is introduced. Client image requests use that image inventory; feature requests
 continue to use only stored sample frames. Unknown inventories stay unknown.
+
+## Owner-authorized unified discovery, September 8, 2026
+
+The owner approved “Unified source and layer discovery” and instructed
+“Implement the plan.” This authorizes the additive experimental catalogue
+metadata and desktop navigation contract below. Default: all sources visible,
+Subject grouping, compact multi-select filters. No new acquisition, scientific
+field, source admission or WeatherNext imagery is authorized. This records
+owner acceptance for the isolated experiment, not production or verified status.
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.

@@ -3473,6 +3473,10 @@ def registry_source_records() -> list[Any]:
                 live_smoke_status=str(record["live_smoke_test_status"]),
             )
         )
+    from .discovery import discovery_metadata
+    declarations = {record['id']: record for record in _registry_records()}
+    for source in records:
+        source.discovery = discovery_metadata(declarations[source.id], source.fields, source.capabilities)
     return records
 
 

@@ -783,11 +783,11 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   useEffect(() => {
     const controller = new AbortController()
     setLayersLoading(true)
-    Promise.all([loadLayers(demandLayerProduct, controller.signal), loadLayers('CAP', controller.signal)]).then(([result, cap]) => {
+    Promise.all([undefined, 'GFS', 'CAP'].map(product => loadLayers(product, controller.signal))).then(results => {
       if (!controller.signal.aborted) {
-        setLayers([...result.layers.filter((item) => item.id !== 'eccc-cap-alerts-current'), ...cap.layers.filter((item) => item.id === 'eccc-cap-alerts-current')])
-        setLayerNotices([...result.notices, ...cap.notices])
-        setLayersError(result.error ?? cap.error)
+        setLayers([...new Map(results.flatMap(result => result.layers).map(layer => [layer.id, layer])).values()])
+        setLayerNotices([...new Set(results.flatMap(result => result.notices))])
+        setLayersError(results.map(result => result.error).filter(Boolean).join('; ') || null)
         setLayersLoading(false)
       }
     }).catch(() => undefined)
@@ -1932,9 +1932,12 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       const source = inspected.key.startsWith('source:') ? catalog.find((entry) => entry.id === inspected.key.slice(7)) : null
       return source?.native_image_endpoint ? { sourceId: source.id, endpoint: source.native_image_endpoint, instant: selectedMs } : undefined
     })()} /> : undefined}
-    layers={<MapStack layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} loading={layersLoading} error={layersError} notices={layerNotices} />}
+    layers={<MapStack catalog={catalog} catalogError={catalogError}
+      onPoint={(product, opener) => { pausePlayback(); setSelectedProduct(product); window.dispatchEvent(new CustomEvent('bench-map-evidence', { detail: { opener, returnToLayers: true } })) }}
+      onSeries={(field, source) => { setActivitySeries({ field, source, revision: Date.now() }); setView('Series'); if (dock === 'Series') setDock(null); window.dispatchEvent(new Event('bench-timeline-activate')) }}
+      onSource={(source, opener) => inspect(sourceEvidence(source.id, catalog, sourceStatuses, snapshot.servedFields, layers), opener)} layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} loading={layersLoading} error={layersError} notices={layerNotices} />}
     legends={<MapLegends layers={layers} stack={selections} />}
-    evidence={<><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger"><summary>Point evidence ledger</summary>{ledger}</details></>}
+    evidence={<><p className="discovery-selected-point">Point product: {selectedProduct ?? 'API selection'} · {dataPathCopy[dataSource]}</p><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger" open={!!selectedProduct}><summary>Point evidence ledger</summary>{ledger}</details></>}
     views={{
       Map: <div className="bench-map-layout">{benchMap}</div>,
       Series: nativeSeries,

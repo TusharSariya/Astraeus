@@ -1032,15 +1032,15 @@ def _layer_catalogue(product: str | None = None) -> LayersResponse:
         )
         return LayersResponse(data_mode=DataMode.LIVE, layers=[Layer(
             **mappings([("noaa-gfs", field)]),
-            imagery_availability=imagery("known", now(), "cached_native_grid", "Native cloud grids currently in the finite source cache; listing performs no new acquisition and rendering may fail", availability[field]),
+            imagery_availability=imagery("known" if availability[field] else "unknown", now(), "cached_native_grid", "Native cloud grids currently in the finite source cache; listing performs no new acquisition. Add requests the selected time through the existing bounded raster path; it may fail", availability[field]),
             id=layer_id, title=f"{title} (selected-time native grid)",
             kind="raster", field=field, product="GFS", units="percent",
             evidence_class="retrieved", family="cloud_cover", field_key=field,
             semantics=f"NOAA GFS native geometric {stratum} cloud cover rendered from the selected grid; nearest cell, never interpolated, substituted between strata, or compared as opacity",
             times=list(availability[field]), cadence_seconds=None, staleness_tolerance_seconds=3600,
             z_index=Z_INDEX_BY_KIND["raster"], evidence_basis="demand_query", group="rendered_grid",
-            raster_available=bool(availability[field]), legend_available=False,
-        ) for layer_id, title, field, stratum in capabilities if availability[field]], notices=["GFS raster values are fetched only for the selected native timestamp; advertised hours are metadata, not fetched coverage"])
+            raster_available=True, legend_available=False,
+        ) for layer_id, title, field, stratum in capabilities], notices=["GFS raster values are fetched only for the selected native timestamp; advertised hours are metadata, not fetched coverage"])
 
     store = live_store()
     if store is None:

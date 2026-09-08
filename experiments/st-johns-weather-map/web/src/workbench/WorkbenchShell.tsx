@@ -23,14 +23,15 @@ export function WorkbenchShell({ timelineExpanded = false, onDismissTimeline, vi
   const [panel, setPanel] = useState<'Layers' | 'Evidence' | null>(null)
   const panelOpener = useRef<HTMLButtonElement | null>(null)
   const evidenceButton = useRef<HTMLButtonElement | null>(null)
+  const discoveryReturn = useRef<{ opener: HTMLButtonElement; toolbarOpener: HTMLButtonElement | null; scroll: number } | null>(null)
   const panelHeading = useRef<HTMLHeadingElement | null>(null)
   const returnTo = useRef<HTMLButtonElement | null>(null)
   const previousView = useRef(view)
   const lastVisible = useRef<Partial<Record<View, ReactNode>>>({})
   const shown = fullScreen ?? view
   useEffect(() => {
-    const open = () => { window.dispatchEvent(new Event('bench-timeline-dismiss')); onDismissTimeline?.(); panelOpener.current = evidenceButton.current; setPanel('Evidence') }
-    const timeline = () => { setPanel(null); onDismissInspector?.() }
+    const open = (event: Event) => { const detail = (event as CustomEvent<{ opener?: HTMLButtonElement; returnToLayers?: boolean }>).detail; if (detail?.returnToLayers && detail.opener) discoveryReturn.current = { opener: detail.opener, toolbarOpener: panelOpener.current, scroll: detail.opener.closest('.bench-overlay')?.scrollTop ?? 0 }; window.dispatchEvent(new Event('bench-timeline-dismiss')); onDismissTimeline?.(); panelOpener.current = evidenceButton.current; setPanel('Evidence') }
+    const timeline = () => { discoveryReturn.current = null; setPanel(null); onDismissInspector?.() }
     window.addEventListener('bench-timeline-activate', timeline)
     window.addEventListener('bench-map-evidence', open)
     return () => { window.removeEventListener('bench-map-evidence', open); window.removeEventListener('bench-timeline-activate', timeline) }
@@ -46,8 +47,8 @@ export function WorkbenchShell({ timelineExpanded = false, onDismissTimeline, vi
     else document.getElementById('bench-stage')?.focus()
   }) }
   useEffect(() => { if (timelineExpanded) setPanel(null) }, [timelineExpanded])
-  const closePanel = () => { setPanel(null); panelOpener.current?.focus() }
-  const openPanel = (name: 'Layers' | 'Evidence', opener: HTMLButtonElement) => { window.dispatchEvent(new Event('bench-timeline-dismiss')); onDismissTimeline?.(); panelOpener.current = opener; if (inspector) { onDismissInspector?.(); setPanel(name) } else setPanel(panel === name ? null : name) }
+  const closePanel = () => { const back = discoveryReturn.current; if (back && panel === 'Evidence') { discoveryReturn.current = null; panelOpener.current = back.toolbarOpener; setPanel('Layers'); requestAnimationFrame(() => { const overlay = back.opener.closest('.bench-overlay'); if (overlay) overlay.scrollTop = back.scroll; back.opener.focus() }); return }; setPanel(null); panelOpener.current?.focus() }
+  const openPanel = (name: 'Layers' | 'Evidence', opener: HTMLButtonElement) => { discoveryReturn.current = null; window.dispatchEvent(new Event('bench-timeline-dismiss')); onDismissTimeline?.(); panelOpener.current = opener; if (inspector) { onDismissInspector?.(); setPanel(name) } else setPanel(panel === name ? null : name) }
   return <div className={`bench${fullScreen ? ' bench-fullscreen' : ''}${timelineExpanded ? ' timeline-is-expanded' : ''}`} onKeyDown={event => {
     if (event.key !== 'Escape' || event.defaultPrevented) return
     if (panel && !inspector) { event.stopPropagation(); closePanel() }

@@ -1,3 +1,16 @@
+## Unified discovery checkpoint — September 8, 2026
+
+PR #306 now includes all-source Browse: 125 registry sources, Subject-first
+multi-tag grouping, compact combined filters for provider/product/kind/method/
+ensemble/interface, explicit point/Series actions, and stable map catalogues.
+WeatherNext 3 exposes its existing local/historical point paths; no raster or
+additional native fields are claimed. Empty GFS caches preserve discoverability.
+
+Verification and browser evidence: [unified discovery](../evidence/unified-discovery-20260908/README.md).
+Runtime remains frontend5197/API8197 in the isolated map-first worktree; refresh
+the frontend to use the correction. #38 remains open for owner visual acceptance.
+No source admission, credential setup or production deployment is included.
+
 # Autonomous execution handoff: deliver the working desktop evidence app
 
 ## Radar/lightning catalogue consistency correction, September 8

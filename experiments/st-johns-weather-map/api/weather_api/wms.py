@@ -370,6 +370,7 @@ SATELLITE_LAYERS: tuple[ForecastLayerSpec, ...] = (
         product="GOES-East",
         semantics=SATELLITE_SEMANTICS,
         group="satellite",
+        source_id="noaa-goes-east",
     ),
     ForecastLayerSpec(
         "geomet-live-goes-east-snowfog-nightmicro",
@@ -379,6 +380,7 @@ SATELLITE_LAYERS: tuple[ForecastLayerSpec, ...] = (
         product="GOES-East",
         semantics=SATELLITE_SEMANTICS,
         group="satellite",
+        source_id="noaa-goes-east",
     ),
     ForecastLayerSpec(
         "geomet-live-goes-east-naturalcolor",
@@ -388,6 +390,7 @@ SATELLITE_LAYERS: tuple[ForecastLayerSpec, ...] = (
         product="GOES-East",
         semantics=SATELLITE_SEMANTICS,
         group="satellite",
+        source_id="noaa-goes-east",
     ),
     ForecastLayerSpec(
         "geomet-live-goes-east-nightir-2km",
@@ -397,6 +400,7 @@ SATELLITE_LAYERS: tuple[ForecastLayerSpec, ...] = (
         product="GOES-East",
         semantics=SATELLITE_SEMANTICS,
         group="satellite",
+        source_id="noaa-goes-east",
     ),
 )
 

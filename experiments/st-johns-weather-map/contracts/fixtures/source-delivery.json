@@ -184,6 +184,108 @@
         ],
         "category": "deterministic_forecast",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Deterministic"
+          ],
+          "kinds": [
+            "Forecast"
+          ],
+          "map_capabilities": [
+            {
+              "layer_id": "geomet-live-hrdps-tt",
+              "product": null,
+              "subjects": [
+                "Temperature"
+              ],
+              "title": "HRDPS air temperature (live proxy)"
+            },
+            {
+              "layer_id": "geomet-live-hrdps-td",
+              "product": null,
+              "subjects": [
+                "Humidity"
+              ],
+              "title": "HRDPS dew point (live proxy)"
+            },
+            {
+              "layer_id": "geomet-live-hrdps-hr",
+              "product": null,
+              "subjects": [
+                "Humidity"
+              ],
+              "title": "HRDPS relative humidity (live proxy)"
+            },
+            {
+              "layer_id": "geomet-live-hrdps-wspd",
+              "product": null,
+              "subjects": [
+                "Wind"
+              ],
+              "title": "HRDPS wind speed (live proxy)"
+            },
+            {
+              "layer_id": "geomet-live-hrdps-wd",
+              "product": null,
+              "subjects": [
+                "Wind"
+              ],
+              "title": "HRDPS wind direction (live proxy)"
+            },
+            {
+              "layer_id": "geomet-live-hrdps-uu",
+              "product": null,
+              "subjects": [
+                "Wind"
+              ],
+              "title": "HRDPS wind, u component (live proxy)"
+            },
+            {
+              "layer_id": "geomet-live-hrdps-pr",
+              "product": null,
+              "subjects": [
+                "Precipitation"
+              ],
+              "title": "HRDPS precipitation (live proxy)"
+            },
+            {
+              "layer_id": "geomet-live-hrdps-pn",
+              "product": null,
+              "subjects": [
+                "Pressure"
+              ],
+              "title": "HRDPS mean sea level pressure (live proxy)"
+            },
+            {
+              "layer_id": "geomet-live-hrdps-nt",
+              "product": null,
+              "subjects": [
+                "Clouds"
+              ],
+              "title": "HRDPS total cloud (live proxy)"
+            }
+          ],
+          "methods": [
+            "Numerical model"
+          ],
+          "subjects": [
+            "Boundary layer",
+            "Clouds",
+            "Humidity",
+            "Marine",
+            "Precipitation",
+            "Pressure",
+            "Radiation/UV",
+            "Snow/ice",
+            "Soil moisture",
+            "Surface fluxes",
+            "Temperature",
+            "Terrain/reference",
+            "Vertical motion",
+            "Visibility/fog",
+            "Wind"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/nwp_hrdps/readme_hrdps_en/",
         "exact_variables": [
@@ -705,6 +807,31 @@
         ],
         "category": "deterministic_forecast",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Deterministic"
+          ],
+          "kinds": [
+            "Forecast"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Numerical model"
+          ],
+          "subjects": [
+            "Boundary layer",
+            "Clouds",
+            "Humidity",
+            "Marine",
+            "Precipitation",
+            "Pressure",
+            "Seeing",
+            "Sky transparency",
+            "Temperature",
+            "Visibility/fog",
+            "Wind"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/nwp_rdps/readme_rdps_en/",
         "exact_variables": [
@@ -1151,6 +1278,28 @@
         ],
         "category": "deterministic_forecast",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Deterministic"
+          ],
+          "kinds": [
+            "Forecast"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Numerical model"
+          ],
+          "subjects": [
+            "Boundary layer",
+            "Clouds",
+            "Humidity",
+            "Marine",
+            "Precipitation",
+            "Pressure",
+            "Temperature",
+            "Wind"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/nwp_gdps/readme_gdps_en/",
         "exact_variables": [
@@ -1460,6 +1609,26 @@
         ],
         "category": "ensemble",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Provider statistics"
+          ],
+          "kinds": [
+            "Forecast"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Numerical model"
+          ],
+          "subjects": [
+            "Clouds",
+            "Humidity",
+            "Precipitation",
+            "Pressure",
+            "Temperature",
+            "Wind"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/nwp_geps/readme_geps_en/",
         "exact_variables": [
@@ -1598,6 +1767,21 @@
         ],
         "category": "analysis",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Deterministic"
+          ],
+          "kinds": [
+            "Analysis/reanalysis"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Unknown"
+          ],
+          "subjects": [
+            "Marine"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://data.marine.copernicus.eu/product/SST_GLO_SST_L4_NRT_OBSERVATIONS_010_001/description",
         "exact_variables": [
@@ -1710,6 +1894,21 @@
         ],
         "category": "analysis",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Deterministic"
+          ],
+          "kinds": [
+            "Analysis/reanalysis"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Unknown"
+          ],
+          "subjects": [
+            "Marine"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://www.ncei.noaa.gov/products/optimum-interpolation-sst",
         "exact_variables": [
@@ -1910,6 +2109,31 @@
         ],
         "category": "surface_observation",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Not applicable"
+          ],
+          "kinds": [
+            "Observation"
+          ],
+          "map_capabilities": [
+            {
+              "layer_id": "eccc-swob-demand-observations",
+              "product": null,
+              "subjects": [],
+              "title": "Surface observations"
+            }
+          ],
+          "methods": [
+            "Instrument measurement"
+          ],
+          "subjects": [
+            "Humidity",
+            "Pressure",
+            "Temperature",
+            "Wind"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/readme_en/",
         "exact_variables": [
@@ -2023,6 +2247,30 @@
         ],
         "category": "air_quality",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Not applicable"
+          ],
+          "kinds": [
+            "Observation"
+          ],
+          "map_capabilities": [
+            {
+              "layer_id": "eccc-aqhi-demand-observations",
+              "product": null,
+              "subjects": [
+                "Air quality"
+              ],
+              "title": "AQHI observations"
+            }
+          ],
+          "methods": [
+            "Unknown"
+          ],
+          "subjects": [
+            "Air quality"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/readme_en/",
         "exact_variables": [
@@ -2195,6 +2443,27 @@
         ],
         "category": "deterministic_forecast",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Deterministic"
+          ],
+          "kinds": [
+            "Forecast"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Numerical model"
+          ],
+          "subjects": [
+            "Clouds",
+            "Humidity",
+            "Precipitation",
+            "Pressure",
+            "Temperature",
+            "Vertical motion",
+            "Wind"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://www.ecmwf.int/en/forecasts/datasets/open-data",
         "exact_variables": [
@@ -2452,6 +2721,26 @@
         ],
         "category": "deterministic_forecast",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Deterministic"
+          ],
+          "kinds": [
+            "Forecast"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Machine learning"
+          ],
+          "subjects": [
+            "Clouds",
+            "Humidity",
+            "Pressure",
+            "Temperature",
+            "Vertical motion",
+            "Wind"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://www.ecmwf.int/en/forecasts/datasets/open-data",
         "exact_variables": [
@@ -2807,6 +3096,63 @@
         ],
         "category": "deterministic_forecast",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Deterministic"
+          ],
+          "kinds": [
+            "Forecast"
+          ],
+          "map_capabilities": [
+            {
+              "layer_id": "noaa-gfs-demand-total-cloud",
+              "product": "GFS",
+              "subjects": [
+                "Clouds"
+              ],
+              "title": "GFS total cloud"
+            },
+            {
+              "layer_id": "noaa-gfs-demand-cloud-low",
+              "product": "GFS",
+              "subjects": [
+                "Clouds"
+              ],
+              "title": "GFS low cloud"
+            },
+            {
+              "layer_id": "noaa-gfs-demand-cloud-middle",
+              "product": "GFS",
+              "subjects": [
+                "Clouds"
+              ],
+              "title": "GFS middle cloud"
+            },
+            {
+              "layer_id": "noaa-gfs-demand-cloud-high",
+              "product": "GFS",
+              "subjects": [
+                "Clouds"
+              ],
+              "title": "GFS high cloud"
+            }
+          ],
+          "methods": [
+            "Numerical model"
+          ],
+          "subjects": [
+            "Air quality",
+            "Clouds",
+            "Humidity",
+            "Marine",
+            "Precipitation",
+            "Pressure",
+            "Temperature",
+            "Vertical motion",
+            "Visibility/fog",
+            "Wind"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast",
         "exact_variables": [
@@ -4930,6 +5276,26 @@
         ],
         "category": "ensemble",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Members"
+          ],
+          "kinds": [
+            "Forecast"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Numerical model"
+          ],
+          "subjects": [
+            "Clouds",
+            "Humidity",
+            "Precipitation",
+            "Pressure",
+            "Temperature",
+            "Wind"
+          ]
+        },
         "display_primary": true,
         "documentation_url": "https://registry.opendata.aws/noaa-gefs/",
         "exact_variables": [
@@ -5121,6 +5487,21 @@
         ],
         "category": "research_comparison",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Provider statistics"
+          ],
+          "kinds": [
+            "Forecast"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Machine learning"
+          ],
+          "subjects": [
+            "Temperature"
+          ]
+        },
         "display_primary": false,
         "documentation_url": "https://developers.google.com/weathernext/guides/gcs",
         "exact_variables": [
@@ -5193,6 +5574,21 @@
         ],
         "category": "air_quality",
         "delivery_kind": "reprocessed",
+        "discovery": {
+          "ensemble_forms": [
+            "Deterministic"
+          ],
+          "kinds": [
+            "Unknown"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Unknown"
+          ],
+          "subjects": [
+            "Air quality"
+          ]
+        },
         "display_primary": false,
         "documentation_url": "https://open-meteo.com/en/docs/air-quality-api",
         "exact_variables": [
@@ -5240,6 +5636,21 @@
         "capabilities": [],
         "category": "radar",
         "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Unknown"
+          ],
+          "kinds": [
+            "Observation"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Remote sensing"
+          ],
+          "subjects": [
+            "Precipitation"
+          ]
+        },
         "display_primary": false,
         "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/obs_radar/readme_radar_en/",
         "exact_variables": [
@@ -6425,7 +6836,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 15.2
+        "value": 16.0
       },
       {
         "absence_state": null,
@@ -6646,7 +7057,7 @@
           "vertical_level": "2 m"
         },
         "storage": "stored",
-        "value": 15.2
+        "value": 16.0
       }
     ],
     "latitude": 47.56,
@@ -8600,7 +9011,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 15.2
+            "value": 16.0
           },
           {
             "absence_state": null,
@@ -8690,7 +9101,7 @@
               "vertical_level": "2 m"
             },
             "storage": "stored",
-            "value": 15.2
+            "value": 16.0
           }
         ],
         "selectable_runs": [],
@@ -8784,7 +9195,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 100.0
+            "value": 88.0
           },
           {
             "absence_state": null,
@@ -8856,7 +9267,7 @@
               "vertical_level": "entire atmosphere (column)"
             },
             "storage": "stored",
-            "value": 100.0
+            "value": 88.0
           }
         ],
         "selectable_runs": [],

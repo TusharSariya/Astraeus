@@ -1039,6 +1039,21 @@ class SourceFieldEntry(StrictModel):
     note: str = ""
 
 
+class MapCapability(StrictModel):
+    layer_id: str
+    title: str
+    product: str | None = None
+    subjects: list[str] = Field(default_factory=list)
+
+
+class DiscoveryMetadata(StrictModel):
+    subjects: list[str] = Field(default_factory=list)
+    kinds: list[str] = Field(default_factory=list)
+    methods: list[str] = Field(default_factory=list)
+    ensemble_forms: list[str] = Field(default_factory=list)
+    map_capabilities: list[MapCapability] = Field(default_factory=list)
+
+
 class SourceRecord(StrictModel):
     """One catalogue entry. Derived from ``registry/source_data.py`` in every
     mode: the registry is a checked-in declaration of what may be retrieved, not
@@ -1067,6 +1082,7 @@ class SourceRecord(StrictModel):
     #: visible here rather than absent.
     fields: list[SourceFieldEntry] = Field(default_factory=list)
     capabilities: list[SourceCapability] = Field(default_factory=list)
+    discovery: DiscoveryMetadata | None = None
     native_image_endpoint: str | None = None
     exact_variables: list[str]
     levels: list[str]
