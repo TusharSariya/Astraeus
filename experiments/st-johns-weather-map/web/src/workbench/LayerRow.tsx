@@ -6,8 +6,8 @@ export function compactLayerName(title: string) {
 }
 
 /** Native primary button keeps Enter/Space semantics separate from details. */
-export function LayerRow({ title, label = compactLayerName(title), selected, status, onPrimary, onDetails, visibility, primaryRef }: {
-  title: string; label?: string; selected?: boolean; status: string
+export function LayerRow({ title, label = compactLayerName(title), selected, state, status, onPrimary, onDetails, visibility, primaryRef }: {
+  title: string; label?: string; selected?: boolean; state?: string; status: string
   onPrimary: (opener: HTMLButtonElement) => void
   onDetails: (opener: HTMLButtonElement) => void
   visibility?: ReactNode; primaryRef?: (node: HTMLButtonElement | null) => void
@@ -33,8 +33,8 @@ export function LayerRow({ title, label = compactLayerName(title), selected, sta
     }
   }}>
     {visibility}
-    <button ref={primaryRef} className="dense-layer-primary" title={title} aria-label={title} aria-describedby={statusId} aria-description={visibility ? 'Remove this layer from the map stack.' : selected !== undefined ? 'Toggle map stack membership.' : 'Open source details.'} aria-pressed={selected} onClick={event => onPrimary(event.currentTarget)}>
-      {selected !== undefined && <span className="dense-selection" aria-hidden="true">{selected ? '✓' : '○'}</span>}
+    <button ref={primaryRef} className="dense-layer-primary" title={state ? `${title} · ${state}` : title} aria-label={title} aria-describedby={statusId} aria-description={state ? `${state}. Activate to cycle selection.` : 'Open source details.'} aria-pressed={selected} onClick={event => onPrimary(event.currentTarget)}>
+      {selected !== undefined && <span className="dense-selection" aria-hidden="true">{state === 'Data only' ? '◐' : selected ? '●' : '○'}</span>}
       <span className="dense-layer-name">{label}</span>
       <span id={statusId} className="bench-layer-state" title={status}><span aria-hidden="true">{compactStatus[status] ?? status}</span><span className="visually-hidden">{status}</span></span>
     </button>

@@ -1,4 +1,5 @@
-import type { CatalogSource, LayerItem } from '../types'
+import { pointCapabilities, pointDefault, pointIdentity, pointSelectionId, pointLabel, layerPoints, pointFamily } from './pointSelections'
+import type { CatalogSource, LayerItem, PointFieldSelection } from '../types'
 import { layerMapping } from './layerIdentity'
 import { familyTitle } from '../fieldFamily'
 
@@ -58,6 +59,7 @@ export function readDiscovery(value: unknown): DiscoveryMetadata | undefined {
 
 export interface DiscoveryRow extends DiscoveryEntry {
   layerId?: string
+  point?: PointFieldSelection
 }
 /** The source ledger stays source-based; only Browse flattens capabilities. */
 export function discoveryRows(catalog: CatalogSource[], layers: LayerItem[]): DiscoveryRow[] {
@@ -70,11 +72,18 @@ export function discoveryRows(catalog: CatalogSource[], layers: LayerItem[]): Di
       ...entry.layers.filter(layer => !declared.some(cap => cap.layer_id === layer.id)).map(layer => ({
         id: layer.id, title: layer.title, subjects: layer.family ? [subjectForFamily(layer.family)] : ['Unknown'],
       }))]
-    if (!maps.length) return [entry]
-    return maps.map(map => ({ ...entry, id: `${entry.id}:layer:${map.id}`, layerId: map.id, title: map.title,
+    const mapped = entry.layers.flatMap(layer => layerPoints(layer, catalog))
+    const points: DiscoveryRow[] = pointCapabilities(entry.source ? [entry.source] : []).filter(({capability}) => !mapped.some(p => pointIdentity(p) === pointIdentity(pointDefault(capability)))).map(({capability}) => {
+      const point = pointDefault(capability), title = pointLabel(point)
+      const facets = { ...entry.facets, Subject: [subjectForFamily(pointFamily(point, catalog))], Interface: ['Point'] }
+      return { ...entry, id: pointSelectionId(point), point, title, facets,
+        searchable: [title, point.field, point.sourceId, entry.source?.producer, entry.source?.product, ...Object.values(facets).flat()].join(' ').toLowerCase() }
+    })
+    if (!maps.length) return points.length ? points : [entry]
+    return [...points, ...maps.map(map => ({ ...entry, id: `${entry.id}:layer:${map.id}`, layerId: map.id, title: map.title,
       facets: { ...entry.facets, Subject: map.subjects.length ? map.subjects : ['Unknown'] },
       searchable: [map.id, map.title, entry.source?.id, entry.source?.producer, entry.source?.product,
         ...Object.entries(entry.facets).filter(([key]) => key !== 'Subject').flatMap(([, values]) => values), ...map.subjects].join(' ').toLowerCase(),
-    }))
+    }))]
   })
 }

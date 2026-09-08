@@ -885,6 +885,8 @@ export interface components {
              */
             operational: false;
             selection: components["schemas"]["Selection"];
+            /** Time Selection */
+            time_selection?: "directional" | null;
             /**
              * Valid Time
              * Format: date-time
@@ -1410,6 +1412,11 @@ export interface components {
         SourceCapability: {
             /** Coverage Description */
             coverage_description: string;
+            /**
+             * Directional Time Selection
+             * @default false
+             */
+            directional_time_selection: boolean;
             /** Field */
             field: string;
             /** Levels */
@@ -1420,6 +1427,8 @@ export interface components {
             point: boolean;
             /** Point Product */
             point_product?: string | null;
+            /** Point Time Kind */
+            point_time_kind?: ("observation" | "forecast") | null;
             /** Product Id */
             product_id: string;
             /**
@@ -1693,6 +1702,7 @@ export interface operations {
                 longitude?: number;
                 valid_time?: string | null;
                 product?: string | null;
+                time_selection?: "directional" | null;
                 /** @description GEPS reductions reject named producer runs */
                 run?: string | null;
                 hrdps_fresh?: boolean;

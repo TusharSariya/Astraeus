@@ -1,3 +1,4 @@
+import { PointDataPanel, openPointData } from './workbench/PointDataPanel'
 import { useActivity, activityEvidence, type ActivityResponse } from './workbench/ActivityView'
 import { captureInspectorReturn, restoreInspectorReturn, type InspectorReturn } from './workbench/inspectorReturn'
 import { MapEvidenceDetails, mapLayerEvidence, openMapFeature, featureEvidenceKey } from './workbench/MapEvidenceDetails'
@@ -392,7 +393,6 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [inspected, setInspected] = useState<InspectedEvidence | null>(null)
   const inspectorReturn = useRef<InspectorReturn | null>(null)
   const inspect = useCallback((evidence: InspectedEvidence, element: HTMLButtonElement) => {
-    setTracksOpen(false); setStoryOpen(false)
     inspectorReturn.current = captureInspectorReturn(element)
     setInspected(evidence)
   }, [])
@@ -1284,7 +1284,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
                 onFrame: direction => { const next = frameNeighbour(markers.markers.map(marker => marker.ms), selectedMs, direction); if (next !== null) jumpToTime(new Date(next)) },
                 onReveal: () => setTimeRange(containingRange(selectedMs, reference.getTime())),
                 layers, selections, drawn, reference, evidenceStartMs, evidenceEndMs, expanded: tracksOpen,
-                onExpanded: open => { setTracksOpen(open); if (open) { setStoryOpen(false); setInspected(null) } },
+                onExpanded: open => { setTracksOpen(open); if (open) setStoryOpen(false) },
               }}
               offsetMinutes={offsetMinutes}
               scrubOffset={scrubOffset}
@@ -1932,14 +1932,17 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       const source = inspected.key.startsWith('source:') ? catalog.find((entry) => entry.id === inspected.key.slice(7)) : null
       return source?.native_image_endpoint ? { sourceId: source.id, endpoint: source.native_image_endpoint, instant: selectedMs } : undefined
     })()} /> : undefined}
-    layers={<MapStack catalog={catalog} catalogError={catalogError}
+    layers={<MapStack catalog={catalog} catalogError={catalogError} onOpenPointData={id => {
+      if (view !== 'Map' && dock !== 'Map') setView('Map')
+      requestAnimationFrame(() => openPointData(id))
+    }}
       onPoint={(product, opener) => { pausePlayback(); setSelectedProduct(product); window.dispatchEvent(new CustomEvent('bench-map-evidence', { detail: { opener, returnToLayers: true } })) }}
       onSeries={(field, source) => { setActivitySeries({ field, source, revision: Date.now() }); setView('Series'); if (dock === 'Series') setDock(null); window.dispatchEvent(new Event('bench-timeline-activate')) }}
       onSource={(source, opener) => inspect(sourceEvidence(source.id, catalog, sourceStatuses, snapshot.servedFields, layers), opener)} layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} loading={layersLoading} error={layersError} notices={layerNotices} />}
     legends={<MapLegends layers={layers} stack={selections} />}
     evidence={<><p className="discovery-selected-point">Point product: {selectedProduct ?? 'API selection'} · {dataPathCopy[dataSource]}</p><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger" open={!!selectedProduct}><summary>Point evidence ledger</summary>{ledger}</details></>}
     views={{
-      Map: <div className="bench-map-layout">{benchMap}</div>,
+      Map: <div className="bench-map-layout">{benchMap}<PointDataPanel stack={selections} layers={layers} catalog={catalog} location={location} instant={selectedMs} drawn={drawn} runs={runChoices} focusReady={!site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude)} /></div>,
       Series: nativeSeries,
       Sky: <SkyView {...skyProps} />,
       Activity: activity,

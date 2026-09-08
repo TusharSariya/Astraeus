@@ -108,3 +108,15 @@ context-menu keyboard access. This non-breaking experimental desktop revision
 is `spec-compatible-change`. Existing API, acquisition, scientific metadata,
 saved-stack and URL schemas remain unchanged. #38 remains open for owner visual
 acceptance; no verified status is asserted.
+
+## Owner-accepted selected-layer Point data, September 8, 2026
+
+The owner explicitly accepted the prepared selected-layer Point data contract
+and instructed “yeah sure i agree with the controact, go and implement”. This
+authorizes the persistent panel, three-state selection, independent point
+requests and compatible saved-stack/URL extension in the isolated experiment.
+The accepted `selected-layer-point-data` change replaces the conflicting
+binary-membership and details-only point-row clauses. No provider integration,
+new scientific derivation, acquisition schedule or verified status is authorized.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-005, GOV-SPEC-006.

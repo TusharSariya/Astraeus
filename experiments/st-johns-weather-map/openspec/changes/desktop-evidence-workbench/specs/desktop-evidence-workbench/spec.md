@@ -85,7 +85,7 @@ The interface SHALL present one View menu for Map, Series, Sky, Activity, and So
 - **THEN** the new dock replaces the old dock and the stage remains visible
 
 ### Requirement: Focus and Map stack state are linkable without freezing live now
-The client SHALL encode `site` or `lat` and `lon`, `view`, optional `dock`, and the ordered Map stack with opacity and visibility in the URL. It SHALL encode `t` only for a fixed instant; a Focus set to live now SHALL omit `t` so reopening the link uses the current session reference. Theme SHALL remain a browser preference and SHALL NOT enter the URL. An arbitrary point SHALL identify the nearest registered site and distance without borrowing that site's horizon.
+The client SHALL encode `site` or `lat` and `lon`, `view`, optional `dock`, and the ordered selections with opacity, map/data state and explicit point selectors in the URL. It SHALL encode `t` only for a fixed instant; a Focus set to live now SHALL omit `t` so reopening the link uses the current session reference. Theme SHALL remain a browser preference and SHALL NOT enter the URL. An arbitrary point SHALL identify the nearest registered site and distance without borrowing that site's horizon.
 
 #### Scenario: A live-now link is reopened
 - **WHEN** a URL without `t` is opened in a later session
@@ -107,15 +107,27 @@ The shell SHALL use one 56px desktop toolbar containing the compact wordmark, Vi
 - **THEN** the strip states "3 of 5" and names or provides the bounded exception summary while the detail control exposes every layer's reason
 
 ### Requirement: The Map legend is the ordered evidence stack
-One 360px right Layers overlay SHALL be closed initially, with Active and Browse tabs. Both lists SHALL use 28px single-line rows with existing 13px typography, thin separators and compact headings. Browse SHALL flatten each declared map capability into a stable layer row and retain one source row for sources without map capabilities. Each row SHALL expose selection, a short scientifically distinct name, compact availability and a details button; full identity SHALL remain accessible through its name, hover and details. Point-only rows SHALL say Point; information-only rows SHALL show status. Search SHALL occupy one compact line, followed by Group by, Filters and conditional Clear. Permanent capability counts and descriptive paragraphs SHALL be removed. An ungrouped Browse list SHALL expose at least 14 full rows at 1280×800 with filters and details closed.
+One 360px right Layers overlay SHALL be closed initially, with Active and Browse tabs. Both lists SHALL use 28px single-line rows with existing 13px typography, thin separators and compact headings. Browse SHALL flatten each declared map capability into a stable layer row, expose each supported point field, and retain a source row for information-only sources. Each row SHALL expose selection, a short scientifically distinct name, compact availability and a details button; full identity SHALL remain accessible through its name, hover and details. Point-only rows SHALL say Point; information-only rows SHALL show status. Search SHALL occupy one compact line, followed by Group by, Filters and conditional Clear. Permanent capability counts and descriptive paragraphs SHALL be removed. An ungrouped Browse list SHALL expose at least 14 full rows at 1280×800 with filters and details closed.
 
-Clicking a map row SHALL toggle that exact layer's stack membership, including unavailable layers. Repeated group appearances SHALL share selection, including hidden selections. Additions SHALL retain existing defaults and append at the top of drawing order; retained entries SHALL preserve settings. Active SHALL list actual drawing order top-first; clicking its main row SHALL remove it, while a separate visibility control SHALL hide/show without removal. Removing an Active row SHALL focus the next row, then previous row, then list heading. Enter/Space SHALL invoke the primary action. Right-click, Shift+F10, Menu key and the trailing details button SHALL open identical details without toggling membership. Point-only and information-only primary actions SHALL open details.
+Selection and Point data SHALL follow the owner-accepted
+[selected-layer point data contract](../../../selected-layer-point-data/specs/selected-layer-point-data/spec.md).
+Map rows cycle Off, Map + data and Data only; point-only fields alternate Off
+and Data only. Active retains explicit Remove. Data only preserves order and
+opacity. This replaces binary membership, separate visibility and details-only
+point primary actions. Browse exposes individual supported point fields.
 
-Details SHALL occupy the shared overlay space and include full identity, evidence class, availability/failure reasons, supplied timestamps, provenance, supported point/Series actions and selected-layer visibility, opacity and reorder controls. Generated, unavailable, stale and unknown states SHALL remain explicit. No inline capability trees or technical field-key buttons SHALL appear in the main lists. Opening details SHALL preserve filters, expansion and scroll; Escape SHALL return focus to the originating row. Saved-stack loading/naming SHALL remain behind Stacks. Legends SHALL appear once per family. Layers, Evidence and provenance SHALL share one overlay space with preserved return context. Vocabulary SHALL use only explicit existing client rules; unknown identity SHALL not become inferred provenance.
+Details SHALL preserve full identity, evidence class, availability, supplied
+timestamps, provenance, opacity and reorder controls. Opening details SHALL
+preserve filters, expansion and scroll; Escape SHALL return focus to the row.
+Layers, Evidence and provenance retain their shared right overlay, while the
+persistent bottom-left Point data panel remains present independently. Its
+Open point data action expands the panel and focuses the selected reading.
+Unknown identity SHALL NOT become inferred provenance.
 
-#### Scenario: Dense rows toggle one identity
-- **WHEN** a hidden selected map layer appears in two subject groups
-- **THEN** both appearances show selected, either main action removes that identity, and right-click or keyboard details access never changes membership
+#### Scenario: Dense rows cycle one identity
+- **WHEN** a selected map layer appears in two subject groups
+- **THEN** both appearances share its three-state selection, and details
+  gestures never change that state
 
 #### Scenario: Details preserve the list context
 - **WHEN** details are opened from a scrolled filtered group and dismissed with Escape
@@ -286,3 +298,13 @@ credential persistence in Git or source-admission change is authorized.
 
 Verification: Compose configuration validation, Make dry runs with and without
 the local pin, existing token-refresh helper and a normal local startup.
+
+#### Scenario: Local startup preserves an explicit pin
+- **WHEN** the owner runs `make down up` with the checkout-local configuration
+- **THEN** startup retains the pinned configuration and invokes the existing
+  private token refresh after API startup
+- **AND** refresh failure fails the command visibly
+
+#### Scenario: Local startup has no opted-in configuration
+- **WHEN** the checkout-local configuration file is absent
+- **THEN** startup performs no Google authentication

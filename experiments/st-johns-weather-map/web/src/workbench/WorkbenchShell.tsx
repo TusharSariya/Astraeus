@@ -31,7 +31,7 @@ export function WorkbenchShell({ timelineExpanded = false, onDismissTimeline, vi
   const shown = fullScreen ?? view
   useEffect(() => {
     const open = (event: Event) => { const detail = (event as CustomEvent<{ opener?: HTMLButtonElement; returnToLayers?: boolean }>).detail; if (detail?.returnToLayers && detail.opener) discoveryReturn.current = { opener: detail.opener, toolbarOpener: panelOpener.current, scroll: detail.opener.closest('.bench-overlay')?.scrollTop ?? 0 }; window.dispatchEvent(new Event('bench-timeline-dismiss')); onDismissTimeline?.(); panelOpener.current = evidenceButton.current; setPanel('Evidence') }
-    const timeline = () => { discoveryReturn.current = null; setPanel(null); onDismissInspector?.() }
+    const timeline = () => { discoveryReturn.current = null }
     window.addEventListener('bench-timeline-activate', timeline)
     window.addEventListener('bench-map-evidence', open)
     return () => { window.removeEventListener('bench-map-evidence', open); window.removeEventListener('bench-timeline-activate', timeline) }
@@ -46,9 +46,9 @@ export function WorkbenchShell({ timelineExpanded = false, onDismissTimeline, vi
     if (opener?.isConnected) (disclosure && !disclosure.open ? disclosure.querySelector('summary') : opener)?.focus()
     else document.getElementById('bench-stage')?.focus()
   }) }
-  useEffect(() => { if (timelineExpanded) setPanel(null) }, [timelineExpanded])
+
   const closePanel = () => { const back = discoveryReturn.current; if (back && panel === 'Evidence') { discoveryReturn.current = null; panelOpener.current = back.toolbarOpener; setPanel('Layers'); requestAnimationFrame(() => { const overlay = back.opener.closest('.bench-overlay'); if (overlay) overlay.scrollTop = back.scroll; back.opener.focus() }); return }; setPanel(null); panelOpener.current?.focus() }
-  const openPanel = (name: 'Layers' | 'Evidence', opener: HTMLButtonElement) => { discoveryReturn.current = null; window.dispatchEvent(new Event('bench-timeline-dismiss')); onDismissTimeline?.(); panelOpener.current = opener; if (inspector) { onDismissInspector?.(); setPanel(name) } else setPanel(panel === name ? null : name) }
+  const openPanel = (name: 'Layers' | 'Evidence', opener: HTMLButtonElement) => { discoveryReturn.current = null; panelOpener.current = opener; if (inspector) { onDismissInspector?.(); setPanel(name) } else setPanel(panel === name ? null : name) }
   return <div className={`bench${fullScreen ? ' bench-fullscreen' : ''}${timelineExpanded ? ' timeline-is-expanded' : ''}`} onKeyDown={event => {
     if (event.key !== 'Escape' || event.defaultPrevented) return
     if (panel && !inspector) { event.stopPropagation(); closePanel() }
@@ -60,7 +60,7 @@ export function WorkbenchShell({ timelineExpanded = false, onDismissTimeline, vi
       <div className="bench-brand" title="Avalon Evidence Bench · Experimental, not operational"><h1>Avalon</h1></div>
       <Popover label={`View · ${shown}`} className="bench-view-menu">
         <nav aria-label="Evidence views">{VIEWS.map(name => <div key={name}>
-          <button aria-pressed={view === name} onClick={event => { onView(name); if (dock === name) onDock(null); setFullScreen(null); const details = event.currentTarget.closest('details'); if (details) details.open = false; requestAnimationFrame(() => document.getElementById(`view-${name}`)?.focus()) }}>{name}</button>
+          <button aria-pressed={view === name} onClick={event => { onView(name); if (dock === name) onDock(null); setFullScreen(null); const details = event.currentTarget.closest('details'); if (details) details.open = false }}>{name}</button>
           {name !== view && <button aria-label={`Dock ${name}`} aria-pressed={dock === name} onClick={() => onDock(dock === name ? null : name)}>Dock</button>}
         </div>)}</nav>
         <button onClick={event => { if (fullScreen) exitFullScreen(); else { returnTo.current = event.currentTarget; setFullScreen(view) } }}>{fullScreen ? 'Return to Bench' : `Expand ${view}`}</button>

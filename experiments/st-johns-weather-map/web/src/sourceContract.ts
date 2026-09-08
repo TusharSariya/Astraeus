@@ -14,6 +14,8 @@ export const isPointProductToken = (value: unknown): value is string => typeof v
 export function isSourceCapability(value: unknown, sourceId: string): value is SourceCapability {
   return record(value) && value.source_id === sourceId && named(value.product_id) && named(value.field)
     && (value.point_product == null || isPointProductToken(value.point_product))
+    && (value.point_time_kind == null || ['observation', 'forecast'].includes(String(value.point_time_kind)))
+    && (value.directional_time_selection === undefined || typeof value.directional_time_selection === 'boolean')
     && Array.isArray(value.variants) && value.variants.length > 0 && value.variants.every(isSourceVariant)
     && strings(value.levels) && value.levels.length > 0 && typeof value.point === 'boolean' && typeof value.native_series === 'boolean'
     && ['latest', 'latest_previous', 'not_applicable'].includes(String(value.run_selection)) && named(value.time_semantics) && named(value.coverage_description)

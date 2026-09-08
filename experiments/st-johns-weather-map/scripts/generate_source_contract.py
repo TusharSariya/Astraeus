@@ -63,7 +63,7 @@ def fixtures():
 
 
 def _fixtures_at(now):
-    source_ids = {"eccc-hrdps", "eccc-rdps", "eccc-gdps", "noaa-gfs", "eccc-aqhi", "openmeteo-cams-aod",
+    source_ids = {"eccc-radar", "eccc-hrdps", "eccc-rdps", "eccc-gdps", "noaa-gfs", "eccc-aqhi", "openmeteo-cams-aod",
                   "eccc-swob", "noaa-gefs", "ecmwf-ifs", "ecmwf-aifs-single", "eccc-holyrood-cashr-dpqpe",
                   "metoffice-ostia-sst", "noaa-oisst-v2-1", "google-weathernext-3-statistics", "eccc-geps"}
     records = [record for record in registry_source_records() if record.id in source_ids]

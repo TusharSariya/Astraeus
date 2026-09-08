@@ -1,0 +1,21 @@
+{
+  "experiments/st-johns-weather-map/api/weather_api/app.py": "469aae56f8f5e5caa20bc84523878c366abfcc5650428da73d0c53db879ac518",
+  "experiments/st-johns-weather-map/api/weather_api/models.py": "4758405a61ec3f38161060eadf1c5844bf6f6a258dc540708a05ab807dcd1dc0",
+  "experiments/st-johns-weather-map/api/weather_api/source_contract.py": "308735a8ef1e03af8c1327de4fbde045d22537423930244c5b13fb006932b293",
+  "experiments/st-johns-weather-map/api/weather_api/source_delivery.py": "3af17f01a09b3ae9529d36d2cee56f9c38fec545703fcee448d507b11e92fa50",
+  "experiments/st-johns-weather-map/api/weather_api/point_time.py": "d76dcfa7ddcdc0f92c4edf8c056993e4ab068b95f2ba14739a2abaa3ef54e35d",
+  "experiments/st-johns-weather-map/api/weather_api/radar_delivery.py": "3bb321279c1a21dcb64195ce329b2f8edb2070de0fc85b9800d268e7056d2ec4",
+  "experiments/st-johns-weather-map/api/tests/test_point_directional.py": "be13141b3f65f7e19d59ae499e2bd7c0dc76fe38eb9e8dd484f50a3f426ce11a",
+  "experiments/st-johns-weather-map/scripts/generate_source_contract.py": "18ad1315e3290bf76bbdc916d90274b7b05541d5f71112ff3663411da230fb35",
+  "experiments/st-johns-weather-map/contracts/source-api.openapi.json": "0fdca32643261882f181b8562312f3b146169974f17b7ece809a5f75749c1a7b",
+  "experiments/st-johns-weather-map/contracts/fixtures/source-delivery.json": "167de9dbba08e4e9476379292b7f7e99b7146a937e0523a82e324836caa6d2ed",
+  "experiments/st-johns-weather-map/web/src/api.ts": "1843b903d0d14e33caf5e54283c8b0baace52d2efbf36793ccaa8725f2f3ef0d",
+  "experiments/st-johns-weather-map/web/src/sourceContract.ts": "fb48cb0b8a2fb4b4b67397f6a2a250d03de98affe34c7114b3445e4fd74461da",
+  "experiments/st-johns-weather-map/web/src/generated/source-api.ts": "6199e5bc27c062d08df4c3525716eb06c94633b897f20ec00a5dcaa975131070",
+  "experiments/st-johns-weather-map/web/src/workbench/PointDataPanel.tsx": "464cdf3297d449fe1bda413879c0eaba2b1598b4f4f20adf90f13cb3fea5a0e5",
+  "experiments/st-johns-weather-map/web/src/workbench/PointDataPanel.test.tsx": "ad49a3a5b5361ffdc939ad51c5607aaf05c688315192bb587d9dea5e18b60079",
+  "experiments/st-johns-weather-map/web/src/workbench/pointRequests.ts": "9ecfe1799d0ee7f6bd7b0f70fce5ac6ba9ce2ada4572ed441cf3bebb43dba991",
+  "experiments/st-johns-weather-map/web/src/workbench/bench.css": "aa03fc884e493cb3260dccf054b36c1956f3d78517874947a9d412775894d81a",
+  "experiments/st-johns-weather-map/web/scripts/prove-point-data.mjs": "1f36b8cd8deeaf76d0ce1108bb38882da2f9c33bf8d48bee093116dc18d527cb",
+  "experiments/st-johns-weather-map/openspec/changes/selected-layer-point-data/specs/selected-layer-point-data/spec.md": "baedf3fb9aa616677e3a118a59862a8ba65c9611463898ddc793f5bed1116fa3"
+}

@@ -7,17 +7,48 @@ import { useState } from 'react'
 import { MapStack } from './MapStack'
 import { discoveryRows } from './discovery'
 import { DiscoveryBrowser } from './DiscoveryBrowser'
+import { pointSelectionId } from './pointSelections'
+import type { LayerSelection } from '../types'
 
 const source: CatalogSource = { id: 'google-weathernext-3-statistics', producer: 'Google', product: 'WeatherNext 3', state: 'catalogued', status_reason: 'Explicit local configuration required', role: 'Comparison', may_enter_consensus: false, cadence: 'hourly', forecast_horizon: 'Pinned run', geographic_coverage: 'Native point', licence: 'Internal', attribution: 'Google', fields: [{ key: 'temperature_2m', family: 'temperature', storage: 'available-not-stored', upstream: 'temperature_2m_mean', note: 'Constructed declaration' }],
   discovery: { subjects: ['Temperature'], kinds: ['Forecast'], methods: ['Machine learning'], ensemble_forms: ['Provider statistics'], map_capabilities: [] },
-  capabilities: ['WeatherNext 3 local', 'WeatherNext 3 historical'].map(point_product => ({ source_id: 'google-weathernext-3-statistics', product_id: 'wn3', field: 'temperature_2m', variants: [{ kind: 'provider_statistic', statistic: 'ensemble_mean' }], levels: ['2 m'], point: true, point_product, native_series: false, run_selection: 'not_applicable', time_semantics: 'Exact time only', coverage_description: 'One native cell' })) }
+  capabilities: ['WeatherNext 3 local', 'WeatherNext 3 historical'].map(point_product => ({ source_id: 'google-weathernext-3-statistics', product_id: 'wn3', field: 'temperature_2m', variants: [{ kind: 'provider_statistic', statistic: 'ensemble_mean' }], levels: ['2 m'], point: true, point_product, native_series: false, directional_time_selection: false, run_selection: 'not_applicable', time_semantics: 'Exact time only', coverage_description: 'One native cell' })) }
 const goes: CatalogSource = { ...source, id: 'goes', producer: 'NOAA', product: 'GOES', capabilities: [], fields: [], discovery: { subjects: ['Clouds', 'Satellite imagery'], kinds: ['Observation'], methods: ['Remote sensing'], ensemble_forms: ['Not applicable'], map_capabilities: [{ layer_id: 'goes-image', title: 'GOES natural colour', product: null, subjects: ['Clouds','Satellite imagery'] }] } }
+it('cycles shared map rows through all three states and point-only fields through two', async () => {
+  function SelectedHarness() {
+    const [stack,setStack]=useState<LayerSelection[]>([])
+    return <><output aria-label="Selections">{JSON.stringify(stack)}</output><MapStack catalog={[source,goes]} layers={[]} stack={stack} onChange={setStack} drawn={[]} onInspect={vi.fn()} /></>
+  }
+  render(<SelectedHarness />)
+  const user=userEvent.setup()
+  await user.click(screen.getByRole('button',{name:'Browse'}))
+  const rows=()=>screen.getAllByRole('button',{name:'GOES natural colour'})
+  await user.click(rows()[0])
+  for(const row of rows())expect(row).toHaveAttribute('aria-description','Map + data. Activate to cycle selection.')
+  await user.click(rows()[1])
+  for(const row of rows())expect(row).toHaveAttribute('aria-description','Data only. Activate to cycle selection.')
+  rows()[0].focus();await user.keyboard(' ')
+  for(const row of rows())expect(row).toHaveAttribute('aria-description','Off. Activate to cycle selection.')
+  const point=screen.getByRole('button',{name:'WeatherNext 3 local · temperature 2m'})
+  await user.click(point)
+  const selected=JSON.parse(screen.getByLabelText('Selections').textContent!)[0]
+  expect(selected.visible).toBe(false);expect(selected.pointOnly).toBe(true)
+  expect(selected.id).toBe(pointSelectionId(selected.points[0]))
+  expect(point).toHaveAttribute('aria-description','Data only. Activate to cycle selection.')
+  await user.click(point);expect(screen.getByLabelText('Selections')).toHaveTextContent('[]')
+})
+it('searches the individual point field instead of every field published by its source', () => {
+  const withDew={...source,capabilities:[...source.capabilities!,{...source.capabilities![0],field:'dew_point_2m'}]}
+  const rows=discoveryRows([withDew],[]).filter(row=>matchesDiscovery(row,'dew point',{}))
+  expect(rows).toHaveLength(1)
+  expect(rows[0].point?.field).toBe('dew_point_2m')
+})
 it('discovers point-only WeatherNext and invokes the explicit path without adding imagery', async () => {
   const point = vi.fn(), add = vi.fn(), series = vi.fn(), user = userEvent.setup()
   render(<MapStack catalog={[source]} layers={[]} stack={[]} onChange={add} drawn={[]} onInspect={vi.fn()} onPoint={point} onSeries={series} />)
   await user.click(screen.getByRole('button', { name: 'Browse' }))
   await user.type(screen.getByRole('searchbox'), 'weathernext 3')
-  await user.click(screen.getByRole('button', {name: 'WeatherNext 3'}))
+  await user.click(screen.getByRole('button', {name: 'Details for WeatherNext 3 local · temperature 2m'}))
   await user.click(screen.getByRole('button', { name: 'Open point · WeatherNext 3 local' }))
   expect(point).toHaveBeenCalledWith('WeatherNext 3 local', expect.any(HTMLButtonElement))
   expect(screen.queryByRole('button', { name: /Add / })).not.toBeInTheDocument()
@@ -42,7 +73,7 @@ it('shows unavailable sources and preserves their reasons through filtering', as
   await user.click(within(facets).getByRole('checkbox',{name:'Information only'}))
   expect(screen.getByRole('status')).toHaveTextContent('1 unique entries')
   await user.click(screen.getByRole('button',{name:'Clear'}))
-  expect(screen.getByRole('status')).toHaveTextContent('2 unique entries')
+  expect(screen.getByRole('status')).toHaveTextContent('3 unique entries')
 })
 it('repeated map appearances share Added state and malformed metadata is discarded', async () => {
   const user=userEvent.setup(), add=vi.fn()
@@ -57,10 +88,10 @@ it('repeated map appearances share Added state and malformed metadata is discard
 it('flattens subjects per layer while retaining source facets and point-only entries', () => {
   const mixed = {...goes, discovery: {...goes.discovery!, map_capabilities: [...goes.discovery!.map_capabilities, {layer_id: 'snow', title: 'Snow / fog', product: null, subjects: ['Snow/ice', 'Visibility/fog']}]}}
   const rows = discoveryRows([source, mixed], [])
-  expect(rows).toHaveLength(3)
+  expect(rows).toHaveLength(4)
   expect(rows.filter(row => matchesDiscovery(row, '', {Subject: ['Clouds']})).map(row => row.layerId)).toEqual(['goes-image'])
   expect(rows.filter(row => matchesDiscovery(row, '', {Provider: ['NOAA']}))).toHaveLength(2)
-  expect(rows.find(row => row.id === source.id)?.layerId).toBeUndefined()
+  expect(rows.find(row => row.point?.sourceId === source.id)?.layerId).toBeUndefined()
 })
 it('toggles exact membership across groups and all details gestures preserve membership', async () => {
   const user = userEvent.setup(), details = vi.fn()
@@ -97,7 +128,7 @@ it('details return to Browse search if a catalogue refresh removes the originati
   const props = {layers:[], stack:[], drawn:[], onChange:vi.fn(), onInspect:vi.fn()}
   const {rerender} = render(<MapStack {...props} catalog={[source]} />)
   await userEvent.click(screen.getByRole('button', {name:'Browse'}))
-  await userEvent.click(screen.getByRole('button', {name:'WeatherNext 3'}))
+  await userEvent.click(screen.getByRole('button', {name:'Details for WeatherNext 3 local · temperature 2m'}))
   rerender(<MapStack {...props} catalog={[]} catalogError="HTTP 503" />)
   await userEvent.keyboard('{Escape}')
   await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus())

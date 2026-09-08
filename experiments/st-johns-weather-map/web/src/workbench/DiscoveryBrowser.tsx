@@ -1,5 +1,6 @@
+import { selectionState } from './pointSelections'
 import { useMemo, useState } from 'react'
-import type { CatalogSource, LayerItem, LayerSelection } from '../types'
+import type { CatalogSource, LayerItem, LayerSelection, PointFieldSelection } from '../types'
 import { discoveryRows, dimensions, groupDiscovery, matchesDiscovery, type Dimension, type Filters, type DiscoveryRow, type DiscoveryEntry } from './discovery'
 import { layerImagery } from './layerIdentity'
 import { LayerRow } from './LayerRow'
@@ -27,7 +28,7 @@ export function DiscoveryFilters({ entries, query, setQuery, filters, setFilters
 }
 export function DiscoveryBrowser({ catalog, layers, stack = [], onToggle, onDetails, error }: {
   catalog: CatalogSource[]; layers: LayerItem[]; stack?: LayerSelection[]
-  onToggle: (id: string) => void; onDetails: (row: DiscoveryRow, opener: HTMLButtonElement) => void; error?: string | null
+  onToggle: (id: string, point?: PointFieldSelection) => void; onDetails: (row: DiscoveryRow, opener: HTMLButtonElement) => void; error?: string | null
 }) {
   const [query,setQuery] = useState(''), [filters,setFilters] = useState<Filters>({}), [group,setGroup] = useState<Dimension | 'Ungrouped'>('Subject')
   const entries = useMemo(() => discoveryRows(catalog,layers), [catalog,layers])
@@ -36,8 +37,9 @@ export function DiscoveryBrowser({ catalog, layers, stack = [], onToggle, onDeta
     const layer = layers.find(layer => layer.id === entry.layerId)
     const status = entry.layerId ? layer ? layer.kind === 'raster' ? layerImagery(layer).status : 'Map' : 'Unknown' : entry.facets.Interface.includes('Point') ? 'Point' : entry.source?.state ?? 'Unknown'
     return <li key={entry.id} data-source-id={entry.source?.id ?? entry.id}><LayerRow title={entry.title} status={status}
-      selected={entry.layerId ? stack.some(s => s.id === entry.layerId) : undefined}
-      onPrimary={opener => entry.layerId ? onToggle(entry.layerId) : onDetails(entry, opener)}
+      selected={entry.layerId || entry.point ? stack.some(s => s.id === (entry.layerId ?? entry.id)) : undefined}
+      state={entry.layerId || entry.point ? selectionState(stack.find(s => s.id === (entry.layerId ?? entry.id))) : undefined}
+      onPrimary={opener => entry.layerId || entry.point ? onToggle(entry.layerId ?? entry.id, entry.point) : onDetails(entry, opener)}
       onDetails={opener => onDetails(entry, opener)} /></li>
   }
   return <section aria-label="Unified source discovery" className="discovery-browser">

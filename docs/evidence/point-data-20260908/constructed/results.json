@@ -1,0 +1,1467 @@
+{
+  "constructed": true,
+  "providerWeatherRequests": 0,
+  "requests": [
+    {
+      "path": "/methods",
+      "query": ""
+    },
+    {
+      "path": "/catalog",
+      "query": ""
+    },
+    {
+      "path": "/sources/status",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/timeline",
+      "query": ""
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/registry/sites",
+      "query": ""
+    },
+    {
+      "path": "/registry/cameras",
+      "query": ""
+    },
+    {
+      "path": "/methods",
+      "query": ""
+    },
+    {
+      "path": "/catalog",
+      "query": ""
+    },
+    {
+      "path": "/sources/status",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/timeline",
+      "query": ""
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/registry/sites",
+      "query": ""
+    },
+    {
+      "path": "/registry/cameras",
+      "query": ""
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/astronomy",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/space-weather",
+      "query": "?at=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z&product=GFS"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z&product=GFS"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z&product=GFS"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z&product=WeatherNext+3+local&statistic=ensemble_mean"
+    },
+    {
+      "path": "/methods",
+      "query": ""
+    },
+    {
+      "path": "/catalog",
+      "query": ""
+    },
+    {
+      "path": "/sources/status",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/timeline",
+      "query": ""
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/registry/sites",
+      "query": ""
+    },
+    {
+      "path": "/registry/cameras",
+      "query": ""
+    },
+    {
+      "path": "/methods",
+      "query": ""
+    },
+    {
+      "path": "/catalog",
+      "query": ""
+    },
+    {
+      "path": "/sources/status",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/timeline",
+      "query": ""
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/registry/sites",
+      "query": ""
+    },
+    {
+      "path": "/registry/cameras",
+      "query": ""
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/astronomy",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/space-weather",
+      "query": "?at=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z&product=GFS"
+    },
+    {
+      "path": "/methods",
+      "query": ""
+    },
+    {
+      "path": "/catalog",
+      "query": ""
+    },
+    {
+      "path": "/sources/status",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/timeline",
+      "query": ""
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/registry/sites",
+      "query": ""
+    },
+    {
+      "path": "/registry/cameras",
+      "query": ""
+    },
+    {
+      "path": "/methods",
+      "query": ""
+    },
+    {
+      "path": "/catalog",
+      "query": ""
+    },
+    {
+      "path": "/sources/status",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": ""
+    },
+    {
+      "path": "/layers",
+      "query": "?product=GFS"
+    },
+    {
+      "path": "/layers",
+      "query": "?product=CAP"
+    },
+    {
+      "path": "/layers/eccc-cap-alerts-current/features",
+      "query": "?valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/timeline",
+      "query": ""
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/registry/sites",
+      "query": ""
+    },
+    {
+      "path": "/registry/cameras",
+      "query": ""
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/astronomy",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/space-weather",
+      "query": "?at=2026-09-08T12%3A00%3A00.000Z"
+    },
+    {
+      "path": "/point",
+      "query": "?latitude=47.5&longitude=-52.7&valid_time=2026-09-08T12%3A00%3A00.000Z&product=GFS"
+    }
+  ],
+  "measures": [
+    {
+      "zoom": 100,
+      "theme": "dark",
+      "width": 1280,
+      "height": 800,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 271.8125,
+        "width": 360,
+        "height": 203.796875,
+        "top": 271.8125,
+        "right": 372,
+        "bottom": 475.609375,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 1280,
+        "height": 664,
+        "top": 56,
+        "right": 1280,
+        "bottom": 720,
+        "left": 0
+      },
+      "overlay": {
+        "x": 912,
+        "y": 64,
+        "width": 360,
+        "height": 411.609375,
+        "top": 64,
+        "right": 1272,
+        "bottom": 475.609375,
+        "left": 912
+      },
+      "timeline": {
+        "x": 8,
+        "y": 488.609375,
+        "width": 1264,
+        "height": 232.390625,
+        "top": 488.609375,
+        "right": 1272,
+        "bottom": 721,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 272.8125,
+        "width": 358,
+        "height": 72.171875,
+        "top": 272.8125,
+        "right": 371,
+        "bottom": 344.984375,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 130,
+        "scrollHeight": 1138
+      }
+    },
+    {
+      "zoom": 100,
+      "theme": "light",
+      "width": 1280,
+      "height": 800,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 271.8125,
+        "width": 360,
+        "height": 203.796875,
+        "top": 271.8125,
+        "right": 372,
+        "bottom": 475.609375,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 1280,
+        "height": 664,
+        "top": 56,
+        "right": 1280,
+        "bottom": 720,
+        "left": 0
+      },
+      "overlay": {
+        "x": 912,
+        "y": 64,
+        "width": 360,
+        "height": 411.609375,
+        "top": 64,
+        "right": 1272,
+        "bottom": 475.609375,
+        "left": 912
+      },
+      "timeline": {
+        "x": 8,
+        "y": 488.609375,
+        "width": 1264,
+        "height": 232.390625,
+        "top": 488.609375,
+        "right": 1272,
+        "bottom": 721,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 272.8125,
+        "width": 358,
+        "height": 72.171875,
+        "top": 272.8125,
+        "right": 371,
+        "bottom": 344.984375,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 130,
+        "scrollHeight": 1138
+      }
+    },
+    {
+      "zoom": 100,
+      "theme": "Red night",
+      "width": 1280,
+      "height": 800,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 271.8125,
+        "width": 360,
+        "height": 203.796875,
+        "top": 271.8125,
+        "right": 372,
+        "bottom": 475.609375,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 1280,
+        "height": 664,
+        "top": 56,
+        "right": 1280,
+        "bottom": 720,
+        "left": 0
+      },
+      "overlay": {
+        "x": 912,
+        "y": 64,
+        "width": 360,
+        "height": 411.609375,
+        "top": 64,
+        "right": 1272,
+        "bottom": 475.609375,
+        "left": 912
+      },
+      "timeline": {
+        "x": 8,
+        "y": 488.609375,
+        "width": 1264,
+        "height": 232.390625,
+        "top": 488.609375,
+        "right": 1272,
+        "bottom": 721,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 272.8125,
+        "width": 358,
+        "height": 72.171875,
+        "top": 272.8125,
+        "right": 371,
+        "bottom": 344.984375,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 130,
+        "scrollHeight": 1138
+      }
+    },
+    {
+      "zoom": 100,
+      "theme": "dark",
+      "width": 1440,
+      "height": 900,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 304.3125,
+        "width": 360,
+        "height": 236.296875,
+        "top": 304.3125,
+        "right": 372,
+        "bottom": 540.609375,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 1440,
+        "height": 764,
+        "top": 56,
+        "right": 1440,
+        "bottom": 820,
+        "left": 0
+      },
+      "overlay": {
+        "x": 1072,
+        "y": 64,
+        "width": 360,
+        "height": 476.609375,
+        "top": 64,
+        "right": 1432,
+        "bottom": 540.609375,
+        "left": 1072
+      },
+      "timeline": {
+        "x": 8,
+        "y": 553.609375,
+        "width": 1424,
+        "height": 267.390625,
+        "top": 553.609375,
+        "right": 1432,
+        "bottom": 821,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 305.3125,
+        "width": 358,
+        "height": 72.171875,
+        "top": 305.3125,
+        "right": 371,
+        "bottom": 377.484375,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 162,
+        "scrollHeight": 1138
+      }
+    },
+    {
+      "zoom": 100,
+      "theme": "light",
+      "width": 1440,
+      "height": 900,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 304.3125,
+        "width": 360,
+        "height": 236.296875,
+        "top": 304.3125,
+        "right": 372,
+        "bottom": 540.609375,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 1440,
+        "height": 764,
+        "top": 56,
+        "right": 1440,
+        "bottom": 820,
+        "left": 0
+      },
+      "overlay": {
+        "x": 1072,
+        "y": 64,
+        "width": 360,
+        "height": 476.609375,
+        "top": 64,
+        "right": 1432,
+        "bottom": 540.609375,
+        "left": 1072
+      },
+      "timeline": {
+        "x": 8,
+        "y": 553.609375,
+        "width": 1424,
+        "height": 267.390625,
+        "top": 553.609375,
+        "right": 1432,
+        "bottom": 821,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 305.3125,
+        "width": 358,
+        "height": 72.171875,
+        "top": 305.3125,
+        "right": 371,
+        "bottom": 377.484375,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 162,
+        "scrollHeight": 1138
+      }
+    },
+    {
+      "zoom": 100,
+      "theme": "Red night",
+      "width": 1440,
+      "height": 900,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 304.3125,
+        "width": 360,
+        "height": 236.296875,
+        "top": 304.3125,
+        "right": 372,
+        "bottom": 540.609375,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 1440,
+        "height": 764,
+        "top": 56,
+        "right": 1440,
+        "bottom": 820,
+        "left": 0
+      },
+      "overlay": {
+        "x": 1072,
+        "y": 64,
+        "width": 360,
+        "height": 476.609375,
+        "top": 64,
+        "right": 1432,
+        "bottom": 540.609375,
+        "left": 1072
+      },
+      "timeline": {
+        "x": 8,
+        "y": 553.609375,
+        "width": 1424,
+        "height": 267.390625,
+        "top": 553.609375,
+        "right": 1432,
+        "bottom": 821,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 305.3125,
+        "width": 358,
+        "height": 72.171875,
+        "top": 305.3125,
+        "right": 371,
+        "bottom": 377.484375,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 162,
+        "scrollHeight": 1138
+      }
+    },
+    {
+      "zoom": 100,
+      "theme": "dark",
+      "width": 1920,
+      "height": 1080,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 362.8125,
+        "width": 360,
+        "height": 294.796875,
+        "top": 362.8125,
+        "right": 372,
+        "bottom": 657.609375,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 1920,
+        "height": 944,
+        "top": 56,
+        "right": 1920,
+        "bottom": 1000,
+        "left": 0
+      },
+      "overlay": {
+        "x": 1552,
+        "y": 64,
+        "width": 360,
+        "height": 593.609375,
+        "top": 64,
+        "right": 1912,
+        "bottom": 657.609375,
+        "left": 1552
+      },
+      "timeline": {
+        "x": 8,
+        "y": 670.609375,
+        "width": 1904,
+        "height": 330.390625,
+        "top": 670.609375,
+        "right": 1912,
+        "bottom": 1001,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 363.8125,
+        "width": 358,
+        "height": 72.171875,
+        "top": 363.8125,
+        "right": 371,
+        "bottom": 435.984375,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 221,
+        "scrollHeight": 1138
+      }
+    },
+    {
+      "zoom": 100,
+      "theme": "light",
+      "width": 1920,
+      "height": 1080,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 362.8125,
+        "width": 360,
+        "height": 294.796875,
+        "top": 362.8125,
+        "right": 372,
+        "bottom": 657.609375,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 1920,
+        "height": 944,
+        "top": 56,
+        "right": 1920,
+        "bottom": 1000,
+        "left": 0
+      },
+      "overlay": {
+        "x": 1552,
+        "y": 64,
+        "width": 360,
+        "height": 593.609375,
+        "top": 64,
+        "right": 1912,
+        "bottom": 657.609375,
+        "left": 1552
+      },
+      "timeline": {
+        "x": 8,
+        "y": 670.609375,
+        "width": 1904,
+        "height": 330.390625,
+        "top": 670.609375,
+        "right": 1912,
+        "bottom": 1001,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 363.8125,
+        "width": 358,
+        "height": 72.171875,
+        "top": 363.8125,
+        "right": 371,
+        "bottom": 435.984375,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 221,
+        "scrollHeight": 1138
+      }
+    },
+    {
+      "zoom": 100,
+      "theme": "Red night",
+      "width": 1920,
+      "height": 1080,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 362.8125,
+        "width": 360,
+        "height": 294.796875,
+        "top": 362.8125,
+        "right": 372,
+        "bottom": 657.609375,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 1920,
+        "height": 944,
+        "top": 56,
+        "right": 1920,
+        "bottom": 1000,
+        "left": 0
+      },
+      "overlay": {
+        "x": 1552,
+        "y": 64,
+        "width": 360,
+        "height": 593.609375,
+        "top": 64,
+        "right": 1912,
+        "bottom": 657.609375,
+        "left": 1552
+      },
+      "timeline": {
+        "x": 8,
+        "y": 670.609375,
+        "width": 1904,
+        "height": 330.390625,
+        "top": 670.609375,
+        "right": 1912,
+        "bottom": 1001,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 363.8125,
+        "width": 358,
+        "height": 72.171875,
+        "top": 363.8125,
+        "right": 371,
+        "bottom": 435.984375,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 221,
+        "scrollHeight": 1138
+      }
+    },
+    {
+      "zoom": 200,
+      "theme": "dark",
+      "width": 640,
+      "height": 400,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 113,
+        "width": 248,
+        "height": 78,
+        "top": 113,
+        "right": 260,
+        "bottom": 191,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 86,
+        "width": 640,
+        "height": 180,
+        "top": 86,
+        "right": 640,
+        "bottom": 266,
+        "left": 0
+      },
+      "overlay": {
+        "x": 272,
+        "y": 94,
+        "width": 360,
+        "height": 97,
+        "top": 94,
+        "right": 632,
+        "bottom": 191,
+        "left": 272
+      },
+      "timeline": {
+        "x": 8,
+        "y": 204,
+        "width": 624,
+        "height": 63,
+        "top": 204,
+        "right": 632,
+        "bottom": 267,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 114,
+        "width": 246,
+        "height": 34.9453125,
+        "top": 114,
+        "right": 259,
+        "bottom": 148.9453125,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 41,
+        "scrollHeight": 1139
+      }
+    },
+    {
+      "zoom": 200,
+      "theme": "light",
+      "width": 640,
+      "height": 400,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 113,
+        "width": 248,
+        "height": 78,
+        "top": 113,
+        "right": 260,
+        "bottom": 191,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 86,
+        "width": 640,
+        "height": 180,
+        "top": 86,
+        "right": 640,
+        "bottom": 266,
+        "left": 0
+      },
+      "overlay": {
+        "x": 272,
+        "y": 94,
+        "width": 360,
+        "height": 97,
+        "top": 94,
+        "right": 632,
+        "bottom": 191,
+        "left": 272
+      },
+      "timeline": {
+        "x": 8,
+        "y": 204,
+        "width": 624,
+        "height": 63,
+        "top": 204,
+        "right": 632,
+        "bottom": 267,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 114,
+        "width": 246,
+        "height": 34.9453125,
+        "top": 114,
+        "right": 259,
+        "bottom": 148.9453125,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 41,
+        "scrollHeight": 1139
+      }
+    },
+    {
+      "zoom": 200,
+      "theme": "Red night",
+      "width": 640,
+      "height": 400,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 113,
+        "width": 248,
+        "height": 78,
+        "top": 113,
+        "right": 260,
+        "bottom": 191,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 86,
+        "width": 640,
+        "height": 180,
+        "top": 86,
+        "right": 640,
+        "bottom": 266,
+        "left": 0
+      },
+      "overlay": {
+        "x": 272,
+        "y": 94,
+        "width": 360,
+        "height": 97,
+        "top": 94,
+        "right": 632,
+        "bottom": 191,
+        "left": 272
+      },
+      "timeline": {
+        "x": 8,
+        "y": 204,
+        "width": 624,
+        "height": 63,
+        "top": 204,
+        "right": 632,
+        "bottom": 267,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 114,
+        "width": 246,
+        "height": 34.9453125,
+        "top": 114,
+        "right": 259,
+        "bottom": 148.9453125,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 41,
+        "scrollHeight": 1139
+      }
+    },
+    {
+      "zoom": 200,
+      "theme": "dark",
+      "width": 720,
+      "height": 450,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 120.5,
+        "width": 328,
+        "height": 103,
+        "top": 120.5,
+        "right": 340,
+        "bottom": 223.5,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 86,
+        "width": 720,
+        "height": 230,
+        "top": 86,
+        "right": 720,
+        "bottom": 316,
+        "left": 0
+      },
+      "overlay": {
+        "x": 352,
+        "y": 94,
+        "width": 360,
+        "height": 129.5,
+        "top": 94,
+        "right": 712,
+        "bottom": 223.5,
+        "left": 352
+      },
+      "timeline": {
+        "x": 8,
+        "y": 236.5,
+        "width": 704,
+        "height": 80.5,
+        "top": 236.5,
+        "right": 712,
+        "bottom": 317,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 121.5,
+        "width": 326,
+        "height": 34.9453125,
+        "top": 121.5,
+        "right": 339,
+        "bottom": 156.4453125,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 66,
+        "scrollHeight": 1139
+      }
+    },
+    {
+      "zoom": 200,
+      "theme": "light",
+      "width": 720,
+      "height": 450,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 120.5,
+        "width": 328,
+        "height": 103,
+        "top": 120.5,
+        "right": 340,
+        "bottom": 223.5,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 86,
+        "width": 720,
+        "height": 230,
+        "top": 86,
+        "right": 720,
+        "bottom": 316,
+        "left": 0
+      },
+      "overlay": {
+        "x": 352,
+        "y": 94,
+        "width": 360,
+        "height": 129.5,
+        "top": 94,
+        "right": 712,
+        "bottom": 223.5,
+        "left": 352
+      },
+      "timeline": {
+        "x": 8,
+        "y": 236.5,
+        "width": 704,
+        "height": 80.5,
+        "top": 236.5,
+        "right": 712,
+        "bottom": 317,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 121.5,
+        "width": 326,
+        "height": 34.9453125,
+        "top": 121.5,
+        "right": 339,
+        "bottom": 156.4453125,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 66,
+        "scrollHeight": 1139
+      }
+    },
+    {
+      "zoom": 200,
+      "theme": "Red night",
+      "width": 720,
+      "height": 450,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 120.5,
+        "width": 328,
+        "height": 103,
+        "top": 120.5,
+        "right": 340,
+        "bottom": 223.5,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 86,
+        "width": 720,
+        "height": 230,
+        "top": 86,
+        "right": 720,
+        "bottom": 316,
+        "left": 0
+      },
+      "overlay": {
+        "x": 352,
+        "y": 94,
+        "width": 360,
+        "height": 129.5,
+        "top": 94,
+        "right": 712,
+        "bottom": 223.5,
+        "left": 352
+      },
+      "timeline": {
+        "x": 8,
+        "y": 236.5,
+        "width": 704,
+        "height": 80.5,
+        "top": 236.5,
+        "right": 712,
+        "bottom": 317,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 121.5,
+        "width": 326,
+        "height": 34.9453125,
+        "top": 121.5,
+        "right": 339,
+        "bottom": 156.4453125,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 66,
+        "scrollHeight": 1139
+      }
+    },
+    {
+      "zoom": 200,
+      "theme": "dark",
+      "width": 960,
+      "height": 540,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 187.3046875,
+        "width": 360,
+        "height": 119.296875,
+        "top": 187.3046875,
+        "right": 372,
+        "bottom": 306.6015625,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 960,
+        "height": 404,
+        "top": 56,
+        "right": 960,
+        "bottom": 460,
+        "left": 0
+      },
+      "overlay": {
+        "x": 592,
+        "y": 64,
+        "width": 360,
+        "height": 242.6015625,
+        "top": 64,
+        "right": 952,
+        "bottom": 306.6015625,
+        "left": 592
+      },
+      "timeline": {
+        "x": 8,
+        "y": 319.6015625,
+        "width": 944,
+        "height": 141.3984375,
+        "top": 319.6015625,
+        "right": 952,
+        "bottom": 461,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 188.3046875,
+        "width": 358,
+        "height": 72.6875,
+        "top": 188.3046875,
+        "right": 371,
+        "bottom": 260.9921875,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 45,
+        "scrollHeight": 1139
+      }
+    },
+    {
+      "zoom": 200,
+      "theme": "light",
+      "width": 960,
+      "height": 540,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 187.3046875,
+        "width": 360,
+        "height": 119.296875,
+        "top": 187.3046875,
+        "right": 372,
+        "bottom": 306.6015625,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 960,
+        "height": 404,
+        "top": 56,
+        "right": 960,
+        "bottom": 460,
+        "left": 0
+      },
+      "overlay": {
+        "x": 592,
+        "y": 64,
+        "width": 360,
+        "height": 242.6015625,
+        "top": 64,
+        "right": 952,
+        "bottom": 306.6015625,
+        "left": 592
+      },
+      "timeline": {
+        "x": 8,
+        "y": 319.6015625,
+        "width": 944,
+        "height": 141.3984375,
+        "top": 319.6015625,
+        "right": 952,
+        "bottom": 461,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 188.3046875,
+        "width": 358,
+        "height": 72.6875,
+        "top": 188.3046875,
+        "right": 371,
+        "bottom": 260.9921875,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 45,
+        "scrollHeight": 1139
+      }
+    },
+    {
+      "zoom": 200,
+      "theme": "Red night",
+      "width": 960,
+      "height": 540,
+      "scrollX": false,
+      "scrollY": false,
+      "panel": {
+        "x": 12,
+        "y": 187.3046875,
+        "width": 360,
+        "height": 119.296875,
+        "top": 187.3046875,
+        "right": 372,
+        "bottom": 306.6015625,
+        "left": 12
+      },
+      "map": {
+        "x": 0,
+        "y": 56,
+        "width": 960,
+        "height": 404,
+        "top": 56,
+        "right": 960,
+        "bottom": 460,
+        "left": 0
+      },
+      "overlay": {
+        "x": 592,
+        "y": 64,
+        "width": 360,
+        "height": 242.6015625,
+        "top": 64,
+        "right": 952,
+        "bottom": 306.6015625,
+        "left": 592
+      },
+      "timeline": {
+        "x": 8,
+        "y": 319.6015625,
+        "width": 944,
+        "height": 141.3984375,
+        "top": 319.6015625,
+        "right": 952,
+        "bottom": 461,
+        "left": 8
+      },
+      "heading": {
+        "x": 13,
+        "y": 188.3046875,
+        "width": 358,
+        "height": 72.6875,
+        "top": 188.3046875,
+        "right": 371,
+        "bottom": 260.9921875,
+        "left": 13
+      },
+      "panelScroll": 0,
+      "contents": {
+        "height": 45,
+        "scrollHeight": 1139
+      }
+    }
+  ],
+  "errors": []
+}

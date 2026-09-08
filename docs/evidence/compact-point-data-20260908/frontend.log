@@ -1,0 +1,110 @@
+
+> @astraeus/st-johns-weather-map-web@0.0.1 test
+> vitest run
+
+ Vitest  "providerOptions" in "gl" project is ignored because it's overridden by the configs. To hide this warning, remove the "providerOptions" property from the browser configuration.
+
+ RUN  v3.2.7 /Users/tusharsariya/Projects/Astraeus/experiments/st-johns-weather-map/web
+
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > draws exactly the real frames at t=0 and t=1, envelope on or off
+[H1 readback] envelope=0 t=0 -> 0, t=1 -> 255
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > draws exactly the real frames at t=0 and t=1, envelope on or off
+[H1 readback] envelope=1 t=0 -> 0, t=1 -> 255
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > adds the served envelope at the midpoint: 0.5 + 0.25*a, and nothing without it
+[H1 readback] t=0.5 with envelope (a=0.4039) -> 153 (expected ~153); without -> 128 (expected ~128)
+ ✓ |unit| src/workbench/WorkbenchShell.test.tsx (5 tests) 1058ms
+   ✓ Bench composition > replaces a companion and moves a docked view to the stage without duplication  309ms
+   ✓ starts views on demand and retains their DOM and local state when switching or docking  310ms
+ ✓ |unit| src/workbench/ActivityView.test.tsx (6 tests) 1151ms
+   ✓ renders four fixed lanes, one expansion and shared inspector/stack/Series actions  448ms
+   ✓ keeps editable profile defaults after failed overrides and removes ordinary URL sharing state  347ms
+ ✓ |unit| src/workbench/SourcesView.test.tsx (4 tests) 1137ms
+   ✓ keeps declared geography and acquisition separate from point coverage across perspectives  482ms
+   ✓ keeps native zero and absence distinct and never turns a sparse report into a coverage band  359ms
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > scales the envelope by the served percent, and a negative residual removes cloud
+[H1 readback] t=0.5 scale 50 -> 140 (expected ~140); negative a -> 102 (expected ~102)
+ ✓ |unit| src/workbench/MapStack.test.tsx (15 tests) 1293ms
+   ✓ keeps absent layers in top-first order, hides without removing, and replaces Saved stacks  505ms
+ ✓ |unit| src/workbench/NativeSeries.test.tsx (9 tests) 1325ms
+   ✓ retains native samples, separate axes and a finite selection across view and Compare switches  424ms
+stdout | src/FlowBlendLayer.browser.test.ts > the flow-blend shader draws the arithmetic it claims (pixel readback) > hands the whole pixel to frame 0 under the visibility branch when v0=1, v1=0 at t=0.5
+[H1 readback] visibility v0=1,v1=0 t=0.5: frame0=0 -> 0; frame0=64 -> 64; symmetric mix of 64/255 -> 160
+ ✓ |gl (chromium)| src/FlowBlendLayer.browser.test.ts (8 tests) 1489ms
+   ✓ the flow-blend shader draws the arithmetic it claims (pixel readback) > draws exactly the real frames at t=0 and t=1, envelope on or off  455ms
+   ✓ the flow-blend shader draws the arithmetic it claims (pixel readback) > adds the served envelope at the midpoint: 0.5 + 0.25*a, and nothing without it  390ms
+   ✓ the flow-blend shader draws the arithmetic it claims (pixel readback) > scales the envelope by the served percent, and a negative residual removes cloud  336ms
+ ✓ |unit| src/workbench/discovery.test.tsx (10 tests) 1461ms
+   ✓ cycles shared map rows through all three states and point-only fields through two  522ms
+   ✓ discovers point-only WeatherNext and invokes the explicit path without adding imagery  398ms
+ ✓ |unit| src/evidence-class.test.tsx (12 tests) 1111ms
+   ✓ an unrecognised class is unavailable with its reason > shows no number for a class the client does not know, and names it  330ms
+ ✓ |unit| src/ensemble.test.tsx (13 tests) 1152ms
+   ✓ the panel and the text alternative, rendered > renders a member row, a statistic row, a refused row and a provider-reduction row, each with all four names  358ms
+   ✓ the panel and the text alternative, rendered > sends the selected member as a request parameter  409ms
+ ✓ |unit| src/field-family.test.tsx (25 tests) 1362ms
+   ✓ a family is what the response says it is, never what a key looks like > renders the served values grouped by family, key and definition beside each  337ms
+   ✓ a difference between non-comparable members is refused with the reason > refuses HRDPS minus GFS cloud in the interface, showing the reason  416ms
+ ✓ |unit| src/delivery-kind.test.tsx (20 tests) 1370ms
+   ✓ the delivery kind is a second axis, and it is labelled > shows the kind in the source catalogue view  431ms
+ ✓ |unit| src/workbench/MapEvidenceDetails.test.tsx (4 tests) 196ms
+ ✓ |unit| src/sites/site-preferred.test.tsx (7 tests) 299ms
+ ✓ |unit| src/workbench/PointDataPanel.test.tsx (15 tests) 346ms
+ ✓ |unit| src/workbench/sourceDelivery.test.tsx (8 tests) 401ms
+ ✓ |unit| src/derived-inputs.test.tsx (6 tests) 453ms
+ ✓ |unit| src/workbench/NativeImages.test.tsx (9 tests) 156ms
+ ✓ |unit| src/aged-out.test.tsx (12 tests) 202ms
+ ✓ |unit| src/workbench/layerIdentity.test.tsx (3 tests) 159ms
+ ✓ |unit| src/cameras/camera-frames.test.tsx (9 tests) 105ms
+ ✓ |unit| src/field-family-catalogue.test.ts (2 tests) 146ms
+ ✓ |unit| src/workbench/SkyView.test.tsx (4 tests) 130ms
+ ✓ |unit| src/workbench/inspectorReturn.test.tsx (2 tests) 57ms
+ ✓ |unit| src/workbench/EvidenceInspector.test.tsx (5 tests) 165ms
+ ✓ |unit| src/workbench/nativeProofFixtures.test.tsx (4 tests) 182ms
+ ✓ |unit| src/api.test.ts (103 tests) 89ms
+ ✓ |unit| src/profiles/profile-contract.test.tsx (11 tests) 107ms
+ ✓ |unit| src/boundary.test.tsx (18 tests) 75ms
+ ✓ |unit| src/coverage.test.tsx (13 tests) 79ms
+ ✓ |unit| src/workbench/pointRequests.test.ts (3 tests) 18ms
+ ✓ |unit| src/runchange.test.tsx (11 tests) 4ms
+ ✓ |unit| src/theme.test.tsx (2 tests) 16ms
+ ✓ |unit| src/scrubberAxis.test.ts (13 tests) 24ms
+ ✓ |unit| src/MapPanel.test.tsx (72 tests) 3363ms
+ ✓ |unit| src/regionalSources.test.ts (2 tests) 12ms
+ ✓ |unit| src/pointTimeout.test.ts (4 tests) 8ms
+ ✓ |unit| src/observationReceipt.test.ts (2 tests) 4ms
+ ✓ |unit| src/timelineModel.test.ts (6 tests) 5ms
+ ✓ |unit| src/pointProducts.test.ts (10 tests) 20ms
+ ✓ |unit| src/workbench/pointSelections.test.ts (4 tests) 6ms
+ ✓ |unit| src/workbench/focusUrl.test.ts (3 tests) 4ms
+ ✓ |unit| src/FlowBlendLayer.test.ts (18 tests) 3ms
+ ✓ |unit| src/playback.test.ts (8 tests) 2ms
+ ✓ |unit| src/mapStyle.test.ts (2 tests) 2ms
+ ✓ |unit| src/sourceContract.test.ts (3 tests) 1ms
+ ✓ |unit| src/workbench/DesktopApp.test.tsx (8 tests) 3507ms
+   ✓ keeps an explicitly fixed instant equal to Now fixed, then makes Now links session-relative  557ms
+   ✓ keeps keyboard inspection coherent across a response and theme change  676ms
+   ✓ reads a same-second Focus change exactly and clears old point evidence on failure  389ms
+   ✓ shares loaded native pages with Sources and clears its open inspector on fixed expiry without fetching again  773ms
+   ✓ keeps exact minute steps separate from native frame navigation and preserves instant across range changes  468ms
+ ✓ |unit| src/App.test.tsx (94 tests) 13223ms
+   ✓ weather workbench fail-closed behavior > shows point provenance notices in Brief and Workbench  431ms
+   ✓ weather workbench fail-closed behavior > shows a partial CAP warning together with the incomplete-domain notice  388ms
+   ✓ weather workbench fail-closed behavior > clears prior CAP evidence while a new selected-time request is pending  367ms
+   ✓ weather workbench fail-closed behavior > renders level-qualified HRDPS values when the expert profile response completes  402ms
+   ✓ weather workbench fail-closed behavior > clears previous point evidence while a new point is loading  364ms
+   ✓ weather workbench fail-closed behavior > supports keyboard coordinate entry and validates bounds  425ms
+   ✓ model row states its own coverage > uses the successful demand response for a selected model instead of claiming nothing was ingested  343ms
+   ✓ space weather cards: Kp and Bz, fail-closed > says space weather is unavailable, with the API reason, instead of showing a quiet zero  339ms
+   ✓ space weather cards: Kp and Bz, fail-closed > marks a stale Bz as stale with its age rather than presenting it as current  398ms
+   ✓ space weather cards: Kp and Bz, fail-closed > labels missing native spacecraft, Bt, flags, quality, and transport as unknown  409ms
+   ✓ timeline dock: interpolation setting and frame snapping > snaps keyboard scrubbing to the exact published frame instants of the active layers  354ms
+   ✓ timeline dock: interpolation setting and frame snapping > does not request TAF at animation-frame cadence  342ms
+   ✓ timeline dock: interpolation setting and frame snapping > does not request Kp at animation-frame cadence  768ms
+   ✓ timeline dock: interpolation setting and frame snapping > clears solar-wind evidence while scrubbing and ignores an aborted older response  623ms
+   ✓ timeline dock: interpolation setting and frame snapping > doubles and halves the speed within the ladder, clamping at both ends  477ms
+   ✓ preserves an explicit older Focus for declared OSTIA SST even with unavailable point evidence  563ms
+
+ Test Files  47 passed (47)
+      Tests  627 passed (627)
+   Start at  18:31:42
+   Duration  15.49s (transform 3.77s, setup 4.48s, collect 13.58s, tests 37.48s, environment 12.81s, prepare 5.55s)

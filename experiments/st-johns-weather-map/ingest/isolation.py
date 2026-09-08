@@ -89,8 +89,8 @@ def _resource_module() -> object | None:
     return resource
 
 
-def _limit_preexec(limits: ProcessAllocationLimits) -> None:
-    """Install hard limits in the child immediately before ``exec``."""
+def _install_limits(limits: ProcessAllocationLimits) -> None:
+    """Install hard limits in a fresh launcher before the decoder is exec’d."""
     resource = _resource_module()
     if resource is None:
         raise BoundedProcessUnavailable("RLIMIT_AS and RLIMIT_FSIZE are unavailable on this runtime")
@@ -216,12 +216,13 @@ def run_bounded_process(
     try:
         try:
             process = subprocess.Popen(
-                _replace_output_argument(command, output),
+                [sys.executable, "-I", "-S", str(Path(__file__).resolve()),
+                 str(limits.address_space_bytes), str(limits.output_bytes),
+                 *_replace_output_argument(command, output)],
                 cwd=workspace,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                preexec_fn=lambda: _limit_preexec(limits),
                 start_new_session=True,
                 bufsize=0,
                 env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
@@ -241,6 +242,8 @@ def run_bounded_process(
         except subprocess.TimeoutExpired as error:
             raise BoundedProcessError(f"bounded decoder exceeded {timeout_seconds:g}-second timeout") from error
 
+        if exit_code == 125 and stderr.startswith(b"ASTRAEUS_LIMITS_UNAVAILABLE:"):
+            raise BoundedProcessUnavailable("runtime rejected required kernel allocation limits")
         if exit_code != 0:
             if exit_code < 0:
                 signame = signal.Signals(-exit_code).name
@@ -272,3 +275,16 @@ def run_bounded_process(
                 if stream is not None:
                     stream.close()
         shutil.rmtree(workspace, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    # Never run Python preexec_fn in the threaded API: it forces fork and can
+    # deadlock OpenBLAS before Popen returns, outside the exchange deadline.
+    # A fresh stdlib-only interpreter installs the same hard limits before
+    # exec; neither it nor the decoder reads stdin before those limits apply.
+    try:
+        _install_limits(ProcessAllocationLimits(int(sys.argv[1]), int(sys.argv[2]), 1, 1, 1))
+    except Exception:
+        sys.stderr.write("ASTRAEUS_LIMITS_UNAVAILABLE: runtime rejected required kernel allocation limits\n")
+        sys.exit(125)
+    os.execvpe(sys.argv[3], sys.argv[3:], os.environ)

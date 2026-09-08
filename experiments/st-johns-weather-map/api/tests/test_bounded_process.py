@@ -297,3 +297,27 @@ def test_caller_cancellation_reaps_child_and_preserves_destination(monkeypatch, 
     assert len(launched) == 1 and launched[0].returncode is not None
     assert all(stream.closed for stream in (launched[0].stdin, launched[0].stdout, launched[0].stderr))
     assert destination.read_bytes() == b'previous' and _workspaces(tmp_path) == []
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Linux vfork path and actual hard limits')
+def test_threaded_decoder_launch_avoids_parent_fork_handlers(tmp_path: Path) -> None:
+    """Regression for the live OpenBLAS atfork / astronomy deadlock."""
+    import os
+    from concurrent.futures import ThreadPoolExecutor
+    forks = []
+    os.register_at_fork(before=lambda: forks.append(True))
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(
+            run_bounded_process,
+            command=_command(
+                'import resource,sys; from pathlib import Path; '
+                f'assert resource.getrlimit(resource.RLIMIT_AS) == ({LIMITS.address_space_bytes},)*2; '
+                f'assert resource.getrlimit(resource.RLIMIT_FSIZE) == ({LIMITS.output_bytes},)*2; '
+                'Path(sys.argv[1]).write_bytes(sys.stdin.buffer.read())'
+            ), stdin=b'bounded', destination=tmp_path / str(i), limits=LIMITS,
+            timeout_seconds=3,
+        ) for i in range(6)]
+        for future in futures:
+            assert future.result(timeout=5).output_path.read_bytes() == b'bounded'
+    assert forks == [], 'launch entered parent atfork handlers and can deadlock OpenBLAS'
+    assert _workspaces(tmp_path) == []
