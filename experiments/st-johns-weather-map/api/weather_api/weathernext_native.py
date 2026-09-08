@@ -158,7 +158,15 @@ class NativeStatisticsReader:
                     value = node(name, dimensions)
                     coordinate_unit = ("degrees_north" if name.startswith("lat_") else
                                        "degrees_east" if name.startswith("lon_") else None)
-                    if coordinate_unit and value.get("attributes", {}).get("units") != coordinate_unit:
+                    attributes = value.get("attributes", {})
+                    # The provider uses plain degrees for true longitude. CF's
+                    # standard_name distinguishes it from rotated grid_longitude;
+                    # degrees alone cannot establish a geographic coordinate.
+                    explicit_longitude = (name.startswith("lon_")
+                                          and attributes.get("units") == "degrees"
+                                          and attributes.get("standard_name") == "longitude")
+                    if (coordinate_unit and attributes.get("units") != coordinate_unit
+                            and not explicit_longitude):
                         raise ValueError("native geographic coordinate unit")
                     if value["shape"] != value["chunk_grid"]["configuration"]["chunk_shape"]:
                         raise ValueError("coordinate requires multiple chunks")

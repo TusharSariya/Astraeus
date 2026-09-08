@@ -15,19 +15,21 @@ NOW = datetime(2026, 9, 1, tzinfo=UTC)
 
 
 @pytest.fixture
-def transport(tmp_path):
+def transport(tmp_path, request):
+    grid = getattr(request, "param", "0p1")
+    field = FIELD if grid == "0p1" else "station_head_temperature_2m_p90"
     arrays = {
         "init_time": (np.array(0, dtype="int64"), (), [], "days since 2026-08-01 00:00:00"),
         "lead_time": (np.array([5, 6, 7], dtype="int64"), (3,), ["lead_time"], "hours"),
-        "lat_0p1": (np.array([47.6, 47.5], dtype="float64"), (2,), ["lat_0p1"], "degrees_north"),
-        "lon_0p1": (np.array([307.2, 307.3], dtype="float64"), (2,), ["lon_0p1"], "degrees_east"),
-        FIELD: (np.arange(12, dtype="float32").reshape(3, 2, 2) / 20, (1, 1, 2),
-                ["lead_time", "lat_0p1", "lon_0p1"], "(0 - 1)"),
+        f"lat_{grid}": (np.array([47.6 if grid == "0p1" else 47.55, 47.5], dtype="float32"), (2,), [f"lat_{grid}"], "degrees_north"),
+        f"lon_{grid}": (np.array([307.2 if grid == "0p1" else 307.25, 307.3], dtype="float32"), (2,), [f"lon_{grid}"], "degrees_east"),
+        field: (np.arange(12, dtype="float32").reshape(3, 2, 2) / 20, (1, 1, 2),
+                ["lead_time", f"lat_{grid}", f"lon_{grid}"], "(0 - 1)" if grid == "0p1" else "K"),
     }
     nodes = {}
     for name, (data, chunks, dims, unit) in arrays.items():
         a = zarr.create_array(tmp_path / name, data=data, chunks=chunks, dimension_names=dims,
-                              config={"write_empty_chunks": True}, attributes={"units": unit}, fill_value=-9999 if name == FIELD else None)
+                              config={"write_empty_chunks": True}, attributes={"units": unit}, fill_value=-9999 if name == field else None)
         nodes[name] = json.loads((tmp_path / name / "zarr.json").read_bytes())
     class Transport:
         def __init__(self):
@@ -53,8 +55,8 @@ def transport(tmp_path):
     return Transport()
 
 
-def selection():
-    return WeatherNextSelection(INIT, datetime(2026, 8, 1, 6, tzinfo=UTC), 47.5, -52.7, (FIELD,))
+def selection(field=FIELD):
+    return WeatherNextSelection(INIT, datetime(2026, 8, 1, 6, tzinfo=UTC), 47.5, -52.7, (field,))
 
 
 def test_native_chunk_axes_time_statistic_and_bytes(transport):
@@ -147,6 +149,7 @@ def test_decimal_float32_fill_is_preserved(transport, tmp_path):
 @pytest.mark.parametrize('unit', ['radians', 'unknown', None])
 def test_geographic_coordinate_units_fail_before_field_acquisition(transport, coordinate, unit):
     attrs = transport.nodes[coordinate]['attributes']
+    attrs['standard_name'] = 'longitude' if coordinate.startswith('lon_') else 'latitude'
     if unit is None:
         del attrs['units']
     else:
@@ -154,3 +157,29 @@ def test_geographic_coordinate_units_fail_before_field_acquisition(transport, co
     with pytest.raises(NativeUnavailable):
         NativeStatisticsReader(transport).read_point(selection(), now=NOW)
     assert not any(path.startswith(FIELD) for _, path in transport.calls)
+
+
+@pytest.mark.parametrize("transport", ["0p1", "0p05"], indirect=True)
+def test_provider_degrees_with_explicit_longitude_decodes_native_grid(transport):
+    # Minimal schema from the retained historical group, with real Zarr chunks.
+    # CF 4.2: https://cfconventions.org/Data/cf-conventions/cf-conventions-1.7/build/ch04s02.html
+    longitude = next(name for name in transport.nodes if name.startswith("lon_"))
+    transport.nodes[longitude]["attributes"].update(units="degrees", standard_name="longitude")
+    field = FIELD if longitude == "lon_0p1" else "station_head_temperature_2m_p90"
+    result = NativeStatisticsReader(transport).read_point(selection(field), now=NOW)
+    value = result.values[0]
+    assert value.value == pytest.approx(.35)
+    assert value.longitude == pytest.approx(-52.7)
+    assert value.grid == longitude.removeprefix("lon_")
+    assert value.unit == ("(0 - 1)" if field == FIELD else "K")
+
+
+@pytest.mark.parametrize("standard_name", [None, "grid_longitude", "latitude", "unknown"])
+def test_plain_degrees_requires_true_longitude_before_chunk_acquisition(transport, standard_name):
+    attributes = transport.nodes["lon_0p1"]["attributes"]
+    attributes["units"] = "degrees"
+    if standard_name is not None:
+        attributes["standard_name"] = standard_name
+    with pytest.raises(NativeUnavailable):
+        NativeStatisticsReader(transport).read_point(selection(), now=NOW)
+    assert not any(path.startswith(("lon_0p1/", FIELD)) for _, path in transport.calls)
