@@ -7,7 +7,7 @@ import { capabilityOptions } from './workbench/sourceCapabilities'
 
 // Contract example only: descriptor availability never establishes a live reading.
 const cams: SourceCapability = { source_id: 'openmeteo-cams-aod', product_id: 'cams-global-aod', field: 'aerosol_optical_depth_550nm',
-  point_product: 'CAMS AOD', point: true, native_series: false, variants: [{ kind: 'deterministic' }], levels: ['column'],
+  point_product: 'CAMS AOD', point: true, native_series: false, directional_time_selection: false, variants: [{ kind: 'deterministic' }], levels: ['column'],
   run_selection: 'not_applicable', time_semantics: 'Exact intermediary hourly labels; not producer-native timestamps', coverage_description: 'Retrieval establishes applicable point evidence' }
 afterEach(() => vi.unstubAllGlobals())
 it('offers the declared CAMS point token without adding a native Series path', () => {

@@ -72,6 +72,7 @@ class ForecastSource:
         return tuple(SourceCapability(source_id=self.source_id, product_id=self.product_id,
             field=key, variants=[SourceVariant(kind="deterministic")],
             levels=[str(catalogue.field(key).level)], point=True, point_product=self.product_id.upper(), native_series=True,
+            point_time_kind="forecast", directional_time_selection=True,
             run_selection="latest_previous" if self.named_runs else "latest",
             time_semantics="Provider-native forecast frames; ordinary point reads retain the source's existing matching rule",
             coverage_description="Existing Avalon point bounds; actual field and time coverage is established only by retrieval") for key in self.fields)
@@ -91,6 +92,17 @@ class ForecastSource:
         return tuple(value.model_copy(deep=True) for value in values if value.provenance.source_id == self.source_id)
 
     @observed_read
+    def resolve_point_time(self, selected):
+        from datetime import timedelta
+        from .point_time import choose_native_time
+        plan = self.plan_series(selected, selected + timedelta(days=16))
+        if plan is None:
+            from .native_runs import RunUnavailable
+            raise RunUnavailable('Source has no native time discovery for directional selection')
+        stamp = choose_native_time((frame.valid_time for frame in plan.frames), selected, 'forecast')
+        frame = next(frame for frame in plan.frames if frame.valid_time == stamp)
+        return frame
+
     def plan_series(self, start, end, *, run="latest"):
         from .native_runs import RunUnavailable
         coordinator = self.factory()
@@ -182,6 +194,16 @@ class SWOBSource(SWOBPointReader):
 
 
 class ECMWFSource(ForecastSource):
+    def resolve_point_time(self, selected):
+        from .ecmwf_query import ECMWFHTTP
+        from .point_time import choose_native_time
+        from datetime import timedelta
+        coordinator = self.factory()
+        candidates = coordinator._discover(ECMWFHTTP(coordinator.client, now=coordinator.now, clock=coordinator.clock))
+        candidate = candidates[0]
+        stamp = choose_native_time((candidate.run_time + timedelta(hours=lead) for lead in candidate.detail['files']), selected, 'forecast')
+        return stamp
+
     def descriptors(self):
         return tuple(capability.model_copy(update={"point_product": "IFS" if self.source_id == "ecmwf-ifs" else "AIFS Single",
             "native_series": False, "run_selection": "latest",
@@ -197,6 +219,17 @@ class GEFSSource:
 
     def __init__(self, factory):
         self.factory = factory
+
+    def resolve_point_time(self, selected):
+        # The existing selected-lead discovery verifies the control index. Its
+        # declared three-hour native axis is a candidate, never availability.
+        from datetime import timedelta
+        candidate = selected.replace(hour=selected.hour // 3 * 3, minute=0, second=0, microsecond=0)
+        if candidate < selected:
+            candidate += timedelta(hours=3)
+        run = self.factory().selected_lead_run(candidate)
+        from .point_time import choose_native_time
+        return choose_native_time(run.detail['valid_times'], selected, 'forecast')
 
     def descriptors(self):
         from .gefs_delivery import point_capabilities
@@ -297,12 +330,14 @@ def source_readers() -> dict[str, SourceReader]:
     from .ostia_query import ostia_query_service
     from .geps_delivery import GEPSReductionSource, geps_point_service
     from .ostia_delivery import OSTIASource
+    from .radar_delivery import RadarSource
     common = ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure")
     readers = [
         ForecastSource("eccc-hrdps", "hrdps", hrdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
         ForecastSource("eccc-rdps", "rdps", rdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
         ForecastSource("eccc-gdps", "gdps", gdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
         ForecastSource("noaa-gfs", "gfs", gfs_query_coordinator, (*common, "visibility", "total_cloud_geometric", "cloud_low", "cloud_middle", "cloud_high", "precipitable_water"), named_runs=True),
+        RadarSource(),
         AQHISource(aqhi_query_service),
         CAMSAODSource(openmeteo_cams_aod_query_service),
         SWOBSource(swob_query_service),
@@ -322,7 +357,12 @@ def source_readers() -> dict[str, SourceReader]:
 
 def source_capabilities(source_id: str) -> list[SourceCapability]:
     reader = source_readers().get(source_id)
-    return list(reader.descriptors()) if reader else []
+    if reader is None:
+        return []
+    observations = {'eccc-radar', 'eccc-aqhi', 'eccc-swob', 'awc-metar-speci', 'noaa-oisst-v2-1', 'metoffice-ostia-sst'}
+    automatic = {'eccc-hrdps', 'eccc-rdps', 'eccc-gdps', 'noaa-gfs', 'eccc-radar', 'awc-metar-speci', 'eccc-aqhi', 'noaa-gefs', 'ecmwf-ifs', 'ecmwf-aifs-single'}
+    return [cap.model_copy(update={'point_time_kind': 'observation' if source_id in observations else 'forecast',
+        'directional_time_selection': source_id in automatic}) for cap in reader.descriptors()]
 
 
 def source_configuration(source_id: str) -> SourceConfiguration:

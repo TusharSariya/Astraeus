@@ -16,14 +16,14 @@ it('keeps absent layers in top-first order, hides without removing, and replaces
   await user.keyboard('{Escape}')
   await waitFor(() => expect(screen.getByRole('button', {name: 'first'})).toHaveFocus())
   expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('first')
-  await user.click(screen.getByRole('button', { name: 'Show first' }))
+  await user.click(screen.getByRole('button', { name: 'first' }))
   expect(screen.getByLabelText('Stack state')).toHaveTextContent('"visible":false')
   await user.type(screen.getByRole('textbox', { name: 'Stack name' }), 'My stack')
   await user.click(screen.getByRole('button', { name: 'Save stack' }))
   await user.click(screen.getByRole('button', { name: 'first' }))
   await user.selectOptions(screen.getByRole('combobox', { name: 'Saved stacks' }), 'My stack')
   expect(screen.getAllByRole('listitem')).toHaveLength(2)
-  expect(screen.getByRole('button', { name: 'Show first' })).toHaveAttribute('aria-pressed', 'false')
+  expect(screen.getByRole('button', { name: 'first' })).toHaveAttribute('aria-description', 'Data only. Activate to cycle selection.')
 })
 it('shows one family legend with distinct provider scales and never relabels the newest index run as the drawn run', async () => {
   const layers = ['total_cloud_opacity', 'total_cloud_geometric'].map((field_key, index) => ({ id: `cloud-${index}`, title: `Cloud ${index}`, field: field_key, field_key, family: 'cloud_cover', kind: 'raster', product: 'Declared product', units: '%', semantics: 'Declared cloud quantity', raster_available: true, legend_available: true, evidence_class: 'retrieved', run_time: '2026-09-07T12:00:00Z', frames: [{ valid_time: '2026-09-07T13:00:00Z', run_time: '2026-09-07T06:00:00Z', provider_run_id: 'older', run_stale: false }] }))
@@ -56,7 +56,7 @@ it('repairs a retired selection only on request, preserving its position and set
   expect(screen.getByText(/Stored HRDPS cloud delivery was retired/)).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Use HRDPS total cloud (live proxy)' }))
   expect(screen.getByLabelText('Stack state').textContent).toBe(JSON.stringify(initial.map(row => row.id === retiredCloud ? { ...row, id: liveCloud.id } : row)))
-  expect(screen.getByRole('button', { name: 'Show HRDPS total cloud (live proxy)' })).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Remove HRDPS total cloud (live proxy)' })).toHaveFocus()
 })
 it.each([{ layers: [] }, { layers: [liveCloud] }])('does not offer an unpublished or already-selected replacement', ({ layers }) => {
   const onChange = vi.fn()
@@ -94,9 +94,9 @@ it('distinguishes a successful empty feature response from unavailable data', ()
 
 it('removing Active rows focuses next, previous, then the list heading', async () => {
   const user = userEvent.setup(); render(<Harness />)
-  await user.click(screen.getByRole('button', {name:'second'}))
+  await user.click(screen.getByRole('button', {name:'Remove second'}))
   expect(screen.getByRole('button', {name:'first'})).toHaveFocus()
-  await user.click(screen.getByRole('button', {name:'first'}))
+  await user.click(screen.getByRole('button', {name:'Remove first'}))
   expect(screen.getByText('Drawing order · top first')).toHaveFocus()
 })
 it('context details do not mutate membership and preserve opacity and ordering until explicit edits', async () => {
@@ -115,6 +115,6 @@ it('context details do not mutate membership and preserve opacity and ordering u
 
 it('removing the last Active row falls back to the previous row', async () => {
   render(<Harness />)
-  await userEvent.click(screen.getByRole('button', {name:'first'}))
+  await userEvent.click(screen.getByRole('button', {name:'Remove first'}))
   expect(screen.getByRole('button', {name:'second'})).toHaveFocus()
 })

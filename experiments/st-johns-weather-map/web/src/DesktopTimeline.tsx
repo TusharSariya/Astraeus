@@ -1,3 +1,4 @@
+import { pointLabel } from './workbench/pointSelections'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { frameMarkers, resolveLayerImageFrame, drawableFrames, describeResolution, layerGroup, LAYER_GROUP_LABELS, type FrameMarker } from './api'
 import type { LayerItem, LayerSelection } from './types'
@@ -149,7 +150,7 @@ export function DesktopTimeline(props: TimelineDockProps & { desktop: DesktopTim
       <p>Drawing order · top first. │ Observations · ◇ Forecasts · ? Other/unknown · ↯ Run change. Markers describe published availability; drawn times below come from map receipts.</p>
       {Number.isFinite(boundary) && boundary >= start && boundary <= end && <p>Core through +24h; planning to +14d. Gaps indicate no reported frames.</p>}
       <div className="timeline-track-rows">{rows.map(({ selection, layer, markers: native }) => {
-        if (!layer) return <article key={selection.id}><strong>{selection.id}</strong><p>Layer unavailable · no published frame axis</p></article>
+        if (!layer) return <article className="timeline-track is-hidden" key={selection.id}><strong>{selection.pointOnly && selection.points?.[0] ? pointLabel(selection.points[0]) : selection.id}</strong><p>{selection.pointOnly ? 'Data only · no map frame axis; point readings follow the shared time.' : 'Layer unavailable · no published frame axis'}</p></article>
         const resolution = resolveLayerImageFrame(layer, new Date(selectedMs), { reference: state.reference, interpolate: props.interpolate && layer.evidence_basis !== 'demand_query' })
         const frames = drawableFrames(resolution)
         const receipt = state.drawn.find(row => row.id === layer.id)
@@ -158,10 +159,10 @@ export function DesktopTimeline(props: TimelineDockProps & { desktop: DesktopTim
         const runStatus = runFlags.some(flag => flag === true) ? 'Stale run' : runFlags.length && runFlags.every(flag => flag === false) ? 'Run within cadence' : 'Run freshness unknown'
         const provider = [...new Set(layer.field_mappings?.map(mapping => mapping.source_id) ?? [])].join(', ') || `${layer.product} · provider unknown`
         return <article className={`timeline-track${selection.visible ? '' : ' is-hidden'}`} key={selection.id}>
-          <div className="timeline-track-title"><strong title={layer.title}>{layer.title}</strong><span>{selection.visible ? LAYER_GROUP_LABELS[layerGroup(layer)] : 'Hidden'} · {provider} · {layer.cadence_seconds ? `${layer.cadence_seconds/60} min cadence` : 'Cadence unknown'}</span></div>
+          <div className="timeline-track-title"><strong title={layer.title}>{layer.title}</strong><span>{selection.visible ? LAYER_GROUP_LABELS[layerGroup(layer)] : 'Data only'} · {provider} · {layer.cadence_seconds ? `${layer.cadence_seconds/60} min cadence` : 'Cadence unknown'}</span></div>
           <FrameRail markers={native} start={start} end={end} selected={selectedMs} onPick={pick} layers={[layer]} onCluster={openCluster} label={`${layer.title} frames`} />
           {!native.length && <p>{layer.times?.length ? 'No published frames in this range' : 'No published frame axis'}</p>}
-          <div className="timeline-track-status"><span>{!selection.visible ? 'Hidden · excluded from navigation' : receipt?.status ?? (receipt?.drawn ? 'drawn' : 'Map receipt unavailable')} · {receipt?.drawn ? `Drawn ${receipt.times.map(time => frameTime(Date.parse(time))).join(' + ')}` : frames.length ? `Native ${frames.map(frame => frameTime(Date.parse(frame.time))).join(' + ')}` : 'No eligible frame'} · {runStatus}{receipt?.evidenceClass === 'generated_display' ? ' · GENERATED display' : ''}</span>
+          <div className="timeline-track-status"><span>{!selection.visible ? 'Data only · excluded from map navigation' : receipt?.status ?? (receipt?.drawn ? 'drawn' : 'Map receipt unavailable')} · {receipt?.drawn ? `Drawn ${receipt.times.map(time => frameTime(Date.parse(time))).join(' + ')}` : frames.length ? `Native ${frames.map(frame => frameTime(Date.parse(frame.time))).join(' + ')}` : 'No eligible frame'} · {runStatus}{receipt?.evidenceClass === 'generated_display' ? ' · GENERATED display' : ''}</span>
           <details><summary>Frame details</summary><p>{describeResolution(resolution) ?? 'Exact native frame'}.</p><p>{receipt?.description ?? 'Map receipt unavailable for this selection.'}</p><p>Declared run: {frames.map(frame => layer.frames?.find(entry => entry.valid_time === frame.time)?.run_time ?? 'unknown').join(', ') || 'unknown'}. {layer.run_stale_reason}</p></details></div>
         </article>
       })}</div>

@@ -705,6 +705,18 @@ export interface LayerSelection {
   id: string
   visible: boolean
   opacity: number
+  /** Off is absence; visible=true is Map + data, false is Data only. */
+  pointOnly?: boolean
+  points?: PointFieldSelection[]
+}
+
+export interface PointFieldSelection {
+  sourceId: string
+  productId: string
+  product: string
+  field: string
+  variant?: SourceVariant | null
+  level?: string | null
 }
 
 /** Which frame of a layer answers a requested time, if any does. */

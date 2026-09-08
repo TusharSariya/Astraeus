@@ -26,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 import math
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 
@@ -148,6 +148,7 @@ PROFILE_PRESSURES = (1000, 850, 700, 500, 300)
 # Product controls name registry sources, so selecting one can be checked
 # against what is actually published rather than against a fixture table.
 PRODUCT_SOURCE_IDS = {
+    "Radar": "eccc-radar",
     "HRDPS": "eccc-hrdps",
     "RDPS": "eccc-rdps",
     "REPS": "eccc-reps",
@@ -1375,14 +1376,17 @@ def _live_point(
                 badge="GEPS reductions selected" if fields else "GEPS reductions unavailable",
                 reason="Exact provider statistic; producer run remains unknown"),
             notices=[RESIDUAL, "Requested WCS reference time is not verified producer-run identity"])
-    if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB", "METAR", "OISST SST", "OSTIA SST", "WEATHERNEXT 3 HISTORICAL", "WEATHERNEXT 3 LOCAL"}:
+    if product and product.upper() in {"IFS", "ECMWF", "AIFS SINGLE", "SWOB", "METAR", "OISST SST", "OSTIA SST", "RADAR", "WEATHERNEXT 3 HISTORICAL", "WEATHERNEXT 3 LOCAL"}:
         from .source_delivery import source_readers
-        source_id = {"WEATHERNEXT 3 LOCAL": "google-weathernext-3-statistics", "OSTIA SST": "metoffice-ostia-sst", "WEATHERNEXT 3 HISTORICAL": "google-weathernext-3-statistics", "SWOB": "eccc-swob", "METAR": "awc-metar-speci", "OISST SST": "noaa-oisst-v2-1",
+        source_id = {"RADAR": "eccc-radar", "WEATHERNEXT 3 LOCAL": "google-weathernext-3-statistics", "OSTIA SST": "metoffice-ostia-sst", "WEATHERNEXT 3 HISTORICAL": "google-weathernext-3-statistics", "SWOB": "eccc-swob", "METAR": "awc-metar-speci", "OISST SST": "noaa-oisst-v2-1",
             "AIFS SINGLE": "ecmwf-aifs-single"}.get(product.upper(), "ecmwf-ifs")
         try:
             reader = source_readers()[source_id]
             options = {"internal_forecast": True} if product.upper() == "WEATHERNEXT 3 LOCAL" else {}
-            fields = list(reader.read_point(latitude, longitude, time, **options))
+            with wms.budgeted():
+                fields = list(reader.read_point(latitude, longitude, time, **options))
+        except wms.UpstreamBudgetExhausted:
+            raise HTTPException(status_code=429, detail="GeoMet upstream request budget exhausted") from None
         except Exception:
             fields = []
         return PointResponse(data_mode=DataMode.LIVE if fields else DataMode.UNAVAILABLE,
@@ -2429,6 +2433,7 @@ def get_point(
     longitude: float = Query(default=-52.7126, ge=-180, le=180),
     valid_time: datetime | None = None,
     product: str | None = None,
+    time_selection: Literal["directional"] | None = None,
     run: str | None = Query(default=None, description="GEPS reductions reject named producer runs"),
     hrdps_fresh: bool = True,
     rdps_fresh: bool = True,
@@ -2454,6 +2459,14 @@ def get_point(
         raise HTTPException(status_code=422, detail=f"unknown statistic: {statistic}; the registered entries are {', '.join(ENSEMBLE_STATISTIC_ENTRIES)}")
     if comparison is not None and comparison not in THRESHOLD_COMPARISONS:
         raise HTTPException(status_code=422, detail=f"unknown comparison: {comparison}; the accepted comparisons are {', '.join(THRESHOLD_COMPARISONS)}")
+    if time_selection == 'directional':
+        if valid_time is None or valid_time.tzinfo is None:
+            raise HTTPException(status_code=422, detail='Directional point selection requires an offset-aware selected instant')
+        if run is not None:
+            raise HTTPException(status_code=422, detail='Directional point selection cannot select a named run')
+        from .point_time import directional_point
+        return directional_point(latitude, longitude, valid_time.astimezone(timezone.utc), product,
+            member=member, statistic=statistic, quantile=quantile, threshold=threshold, comparison=comparison)
     if product and product.upper() == "GEPS REDUCTIONS":
         from .geps_delivery import validate_variant, validate_selection
         try:
@@ -2531,7 +2544,7 @@ def get_point(
             member=member, statistic=statistic,
             quantile=quantile, threshold=threshold, comparison=comparison,
         )
-        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name not in {"SWOB", "METAR", "OISST SST", "OSTIA SST", "WeatherNext 3 historical", "WeatherNext 3 local", "GEPS reductions"}), "GDPS", "GEFS"}:
+        if product and product.upper() in {*(name.upper() for name in PRODUCT_SOURCE_IDS if name not in {"Radar", "SWOB", "METAR", "OISST SST", "OSTIA SST", "WeatherNext 3 historical", "WeatherNext 3 local", "GEPS reductions"}), "GDPS", "GEFS"}:
             from .observation_companions import with_aqhi_observation  # noqa: PLC0415
 
             response = with_aqhi_observation(response)

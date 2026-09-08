@@ -1,10 +1,12 @@
+import { cycleSelection, parseSelection, pointLabel, selectionPoints, selectionState } from './pointSelections'
+import { PointChoices } from './PointChoices'
 import { DiscoveryBrowser, SourceActions, type DiscoveryActions } from './DiscoveryBrowser'
 import { LayerRow } from './LayerRow'
 import { discoveryRows, type DiscoveryRow } from './discovery'
 import { mapLayerEvidence } from './MapEvidenceDetails'
 import { layerImagery } from './layerIdentity'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CatalogSource, LayerItem, LayerSelection, GeoJsonFeature, ResolvedEvidenceClass } from '../types'
+import type { CatalogSource, LayerItem, LayerSelection, GeoJsonFeature, ResolvedEvidenceClass, PointFieldSelection } from '../types'
 import { layerFamily, layerGroup, layerLegendUrl } from '../api'
 import { ActiveFamilyLegends } from '../MapFamilyLegend'
 import { groupByFamily } from '../fieldFamily'
@@ -47,12 +49,16 @@ function readSaved(): Record<string, LayerSelection[]> {
     const result: Record<string, LayerSelection[]> = {}
     for (const [name, entries] of Object.entries(parsed).slice(0, 12)) {
       if (name.length > 60 || !Array.isArray(entries) || entries.length > 32) continue
-      if (entries.every((entry) => entry && typeof entry.id === 'string' && /^[\w.:-]{1,160}$/.test(entry.id) && typeof entry.visible === 'boolean' && typeof entry.opacity === 'number' && entry.opacity >= 0 && entry.opacity <= 1) && new Set(entries.map((entry) => entry.id)).size === entries.length) result[name] = entries
+      try {
+        const valid = entries.map(parseSelection)
+        if (new Set(valid.map(entry => entry.id)).size === valid.length) result[name] = valid
+      } catch { /* Invalid saved stack is not partially restored. */ }
     }
     return result
   } catch { return {} }
 }
-export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = false, error = null, notices = [], catalog = [], catalogError, onPoint, onSeries, onSource }: DiscoveryActions & {
+export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = false, error = null, notices = [], catalog = [], catalogError, onPoint, onSeries, onSource, onOpenPointData }: DiscoveryActions & {
+  onOpenPointData?: (id: string) => void
   catalog?: CatalogSource[]; catalogError?: string | null
   layers: LayerItem[]; stack: LayerSelection[]; onChange: (stack: LayerSelection[]) => void; drawn: DrawEvidence[]
   onInspect: (evidence: InspectedEvidence, opener: HTMLButtonElement) => void; loading?: boolean; error?: string | null; notices?: string[]
@@ -72,7 +78,7 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
   useLayoutEffect(() => { if (details) heading.current?.focus() }, [details?.identity.id])
   const openDetails = (id: string, opener: HTMLButtonElement, row?: DiscoveryRow) => {
     const overlay = opener.closest('.bench-overlay')
-    setDetails({ identity: row && !row.layerId ? { kind: 'source', id } : { kind: 'layer', id }, row, opener, scroll: overlay?.scrollTop ?? 0 })
+    setDetails({ identity: row && !row.layerId && !row.point ? { kind: 'source', id } : { kind: 'layer', id }, row, opener, scroll: overlay?.scrollTop ?? 0 })
     if (overlay) overlay.scrollTop = 0
   }
   const closeDetails = () => {
@@ -91,7 +97,11 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
     pendingFocus.current = order[index + 1]?.id ?? order[index - 1]?.id ?? 'heading'
     onChange(stack.filter(row => row.id !== id))
   }
-  const toggle = (id: string) => onChange(stack.some(row => row.id === id) ? stack.filter(row => row.id !== id) : [...stack, { id, visible: true, opacity: .85 }])
+  const toggle = (id: string, point?: PointFieldSelection) => {
+    const next = cycleSelection(stack, id, point, selectionPoints({ id, visible: true, opacity: .85 }, layers, catalog))
+    if (tab === 'Active' && !next.some(row => row.id === id)) remove(id)
+    else onChange(next)
+  }
   const replacementFocus = useRef<string | null>(null)
   const [saved, setSaved] = useState(readSaved)
   const [name, setName] = useState(''); const [notice, setNotice] = useState('')
@@ -120,13 +130,13 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
       {stack.length === 0 && <p>Basemap only. No meteorological layer is requested.</p>}
       <ol reversed className="dense-layer-list">{[...stack].reverse().map(entry => {
         const layer = layers.find(candidate => candidate.id === entry.id), actual = drawn.find(row => row.id === entry.id)
-        const title = layer?.title ?? discovery.find(row => row.layerId === entry.id)?.title ?? entry.id
-        const state = !entry.visible ? 'Hidden' : entry.opacity <= 0 ? 'Opacity zero' : loading && !layer ? 'Checking layer catalogue' : error && !layer ? 'Catalogue request failed · availability unknown' : !layer ? 'Not in current catalogue · imagery not requested' : actual?.status === 'loading' ? 'Loading frame' : actual?.status === 'refreshing' ? 'Refreshing' : actual?.status === 'empty' ? 'No features returned' : actual?.drawn ? actual.evidenceClass === 'generated_display' ? 'Generated' : layer.run_stale ? 'Stale' : 'Drawn' : 'Unavailable · no frame drawn'
-        return <li key={entry.id}><LayerRow title={title} status={state} onPrimary={() => remove(entry.id)}
+        const title = layer?.title ?? discovery.find(row => (row.layerId ?? row.id) === entry.id)?.title ?? (entry.pointOnly && entry.points?.[0] ? pointLabel(entry.points[0]) : entry.id)
+        const state = !entry.visible ? 'Data only' : entry.opacity <= 0 ? 'Opacity zero' : loading && !layer ? 'Checking layer catalogue' : error && !layer ? 'Catalogue request failed · availability unknown' : !layer ? 'Not in current catalogue · imagery not requested' : actual?.status === 'loading' ? 'Loading frame' : actual?.status === 'refreshing' ? 'Refreshing' : actual?.status === 'empty' ? 'No features returned' : actual?.drawn ? actual.evidenceClass === 'generated_display' ? 'Generated' : layer.run_stale ? 'Stale' : 'Drawn' : 'Unavailable · no frame drawn'
+        return <li key={entry.id}><LayerRow title={title} status={state} selected state={selectionState(entry)} onPrimary={() => toggle(entry.id)}
           primaryRef={node => { if (node) primaryButtons.current.set(entry.id, node); else primaryButtons.current.delete(entry.id) }}
-          onDetails={opener => openDetails(entry.id, opener)} visibility={<button className="dense-visibility" aria-label={`Show ${title}`} aria-pressed={entry.visible}
+          onDetails={opener => openDetails(entry.id, opener)} visibility={<button className="dense-remove" aria-label={`Remove ${title}`} title={`Remove ${title}`}
             ref={node => { if (node && replacementFocus.current === entry.id) { node.focus(); replacementFocus.current = null } }}
-            onClick={() => patch(entry.id, { visible: !entry.visible })} title={entry.visible ? 'Hide layer' : 'Show layer'}>{entry.visible ? '◉' : '○'}</button>} /></li>
+            onClick={() => remove(entry.id)}>×</button>} /></li>
       })}</ol>
     </div>
     </div>
@@ -135,8 +145,9 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
       const layer = isLayer ? layers.find(candidate => candidate.id === id) : undefined
       const actual = isLayer ? drawn.find(row => row.id === id) : undefined
       const entry = isLayer ? stack.find(row => row.id === id) : undefined, index = stack.findIndex(row => row.id === id)
-      const row = discovery.find(row => isLayer ? row.layerId === id : row.id === id) ?? details.row
-      const title = layer?.title ?? row?.title ?? id
+      const row = discovery.find(row => isLayer ? (row.layerId ?? row.id) === id : row.id === id) ?? details.row
+      const title = layer?.title ?? row?.title ?? (entry?.pointOnly && entry.points?.[0] ? pointLabel(entry.points[0]) : id)
+      const selectedPoints = entry ? selectionPoints(entry, layers, catalog) : row?.point ? [row.point] : selectionPoints({id, visible:true, opacity:.85}, layers, catalog)
       const source = row?.source
       const update = isLayer ? DELIVERY_UPDATES[id] : undefined
       const replacement = !loading && !error && update ? layers.find(candidate => candidate.id === update.id) : undefined
@@ -145,7 +156,7 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
       const diagnosis = !layer ? `${catalogueState}.${error ? ` ${error}` : ''}` : actual?.description ?? 'No current draw receipt for this layer.'
       return <section className="layer-details" aria-label="Layer or source details">
         <div className="bench-view-heading"><h3 ref={heading} tabIndex={-1}>{title}</h3><button onClick={closeDetails}>Back to {tab}</button></div>
-        {isLayer && <>
+        {isLayer && !entry?.pointOnly && !row?.point && <>
           <p>{id}</p><p><EvidenceGlyph kind={actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} /> {actual?.evidenceClass ?? resolveEvidenceClass(layer?.evidence_class)} · {source?.product ?? layer?.product ?? 'Source unknown'}</p>
           <p>{layer?.semantics ?? 'No current layer metadata returned.'}</p><p>{diagnosis}</p>
           <p>Actual frame: {actual?.times.join(', ') || 'None drawn'}. Drawn frame run: {actual?.times.length ? actual.times.map(time => layer?.frames?.find(frame => Date.parse(frame.valid_time) === Date.parse(time))?.run_time ?? 'not supplied').join(', ') : 'not supplied'}. Index newest run: {layer?.run_time ?? 'not supplied'}</p>
@@ -154,13 +165,25 @@ export function MapStack({ layers, stack, onChange, drawn, onInspect, loading = 
           {notices.length > 0 && <details><summary>Catalogue notices · all sources</summary><ul>{notices.map((value, index) => <li key={index}>{value}</li>)}</ul></details>}
           {update && <div className="bench-layer-repair"><p>{update.reason}</p>{entry && replacement && !alreadySelected && <button onClick={() => { replacementFocus.current = replacement.id; patch(id, { id: replacement.id }); setDetails(null); setNotice(`Selected ${replacement.title}. Its returned evidence basis applies. Save the stack again to retain this change in browser storage.`) }}>Use {replacement.title}</button>}{alreadySelected && <small>Current delivery is already in this stack. Remove the older selection when ready.</small>}</div>}
           {entry ? <div className="bench-stack-row-actions">
-            <label><input type="checkbox" aria-label={`Show ${title}`} checked={entry.visible} onChange={event => patch(id, { visible: event.target.checked })} />Visible</label>
+            <button onClick={() => patch(id, { visible: !entry.visible })} aria-label={`Selection state for ${title}`} title="Change map and data state">{selectionState(entry)}</button>
             <label>Opacity<input aria-label={`Stack opacity ${title}`} type="range" min={0} max={1} step={.05} value={entry.opacity} onChange={event => patch(id, { opacity: Number(event.target.value) })} /></label>
             <button aria-label={`Raise ${title}`} disabled={index === stack.length - 1} onClick={() => move(index, 1)}>↑</button><button aria-label={`Lower ${title}`} disabled={index === 0} onClick={() => move(index, -1)}>↓</button>
           </div> : <button onClick={() => toggle(id)}>Add {title}</button>}
           <button aria-label={`Inspect layer ${title}`} onClick={event => onInspect({ ...mapLayerEvidence(id, layer, actual), text: diagnosis, details: { ...mapLayerEvidence(id, layer, actual).details, 'Catalogue status': catalogueState, 'Catalogue error': error, 'Catalogue notices': notices, 'Delivery update': update ?? null } }, event.currentTarget)}>Provenance</button>
         </>}
-        <SourceActions source={source} onPoint={onPoint} onSeries={onSeries} onSource={onSource} />
+        {(isLayer || row?.point) && <>
+          {selectedPoints.map(point => <PointChoices key={JSON.stringify([point.sourceId,point.product,point.field])} point={point} catalog={catalog} onChange={updated => {
+            const points = selectedPoints.map(p => p === point ? updated : p)
+            if (entry) patch(id, {points})
+            else onChange([...stack, {id, opacity:.85, visible: !row?.point, ...(row?.point ? {pointOnly:true} : {}), points}])
+          }} />)}
+          {onOpenPointData && <button onClick={() => {
+            if (!entry) onChange([...stack, {id, opacity:.85, visible: !row?.point, ...(row?.point ? {pointOnly:true} : {}), ...(selectedPoints.length ? {points:selectedPoints} : {})}])
+            onOpenPointData(id)
+          }}>Open point data</button>}
+          {entry && <button onClick={() => { remove(id); setDetails(null) }}>Remove {title}</button>}
+        </>}
+        <SourceActions source={source} onPoint={onOpenPointData ? undefined : onPoint} onSeries={onSeries} onSource={onSource} />
       </section>
     })()}
 

@@ -1,0 +1,18 @@
+   Building astraeus-st-johns-weather-api @ file:///Users/tusharsariya/Projects/Astraeus/experiments/st-johns-weather-map/api
+      Built astraeus-st-johns-weather-api @ file:///Users/tusharsariya/Projects/Astraeus/experiments/st-johns-weather-map/api
+Uninstalled 1 package in 0.80ms
+Installed 1 package in 1ms
+........................................................................ [ 79%]
+...................                                                      [100%]
+=============================== warnings summary ===============================
+tests/test_source_point_integration.py::test_oisst_http_uses_native_analysis_and_reuses_crop[0]
+tests/test_source_point_integration.py::test_oisst_http_uses_native_analysis_and_reuses_crop[0]
+tests/test_source_point_integration.py::test_oisst_http_uses_native_analysis_and_reuses_crop[36]
+tests/test_source_point_integration.py::test_oisst_http_uses_native_analysis_and_reuses_crop[36]
+tests/test_source_point_integration.py::test_oisst_http_uses_native_analysis_and_reuses_crop[96]
+tests/test_source_point_integration.py::test_oisst_http_uses_native_analysis_and_reuses_crop[96]
+  /Users/tusharsariya/Projects/Astraeus/experiments/st-johns-weather-map/api/.venv/lib/python3.13/site-packages/xarray/backends/netCDF4_.py:96: DeprecationWarning: Setting the shape on a NumPy array has been deprecated in NumPy 2.5.
+  As an alternative, you can create a new view using np.reshape (with copy=False if needed).
+    data[key] = value
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html

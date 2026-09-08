@@ -1,3 +1,4 @@
+import { parseSelection } from './pointSelections'
 import type { LayerSelection, LocationPoint } from '../types'
 
 export const VIEWS = ['Map', 'Series', 'Sky', 'Activity', 'Sources'] as const
@@ -47,11 +48,10 @@ export function parseFocusUrl(search: string, fallback: LocationPoint): BenchSta
       if (!Array.isArray(raw) || raw.length > 32) throw new Error('stack bounds')
       const seen = new Set<string>()
       stack = raw.map((entry: unknown) => {
-        if (!entry || typeof entry !== 'object' || !('id' in entry) || !validId(entry.id) || seen.has(entry.id)
-          || !('opacity' in entry) || typeof entry.opacity !== 'number' || !Number.isFinite(entry.opacity) || entry.opacity < 0 || entry.opacity > 1
-          || !('visible' in entry) || typeof entry.visible !== 'boolean') throw new Error('invalid stack')
-        seen.add(entry.id)
-        return { id: entry.id, opacity: entry.opacity, visible: entry.visible }
+        const selection = parseSelection(entry)
+        if (seen.has(selection.id)) throw new Error('duplicate selection')
+        seen.add(selection.id)
+        return selection
       })
     } catch { notices.push('Invalid Map stack in link; default stack selected.') }
   }

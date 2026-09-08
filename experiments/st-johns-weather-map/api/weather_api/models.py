@@ -1480,6 +1480,7 @@ class PointConsensus(StrictModel):
 
 
 class PointResponse(StrictModel):
+    time_selection: Literal["directional"] | None = None
     demand_unavailable: RDPSDemandUnavailable | GDPSDemandUnavailable | None = None
     observation_unavailable: list[AQHIDemandUnavailable | SWOBDemandUnavailable] = Field(default_factory=list)
     data_mode: DataMode = DataMode.FIXTURE

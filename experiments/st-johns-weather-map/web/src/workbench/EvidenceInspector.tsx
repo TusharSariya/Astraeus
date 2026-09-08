@@ -48,9 +48,9 @@ function acquisitionSummary(attribution: FieldAttribution) {
     expires_at: value.expires_at, normalized_sha256: value.normalized_sha256,
     transfer_count: value.transport_receipts.length }
 }
-export function EvidenceInspector({ evidence, onClose, nativeImages }: { evidence: InspectedEvidence; onClose: () => void; nativeImages?: NativeImageSelection }) {
+export function EvidenceInspector({ evidence, onClose, nativeImages, preventFocusScroll = false }: { evidence: InspectedEvidence; onClose: () => void; nativeImages?: NativeImageSelection; preventFocusScroll?: boolean }) {
   const heading = useRef<HTMLHeadingElement | null>(null)
-  useEffect(() => { heading.current?.focus() }, [evidence.key])
+  useEffect(() => { heading.current?.focus({preventScroll:preventFocusScroll}) }, [evidence.key])
   const a = evidence.attribution
   const nativeFeature = evidence.key.startsWith('map-feature:')
   const structured = nativeFeature || evidence.key.startsWith('activity:')

@@ -469,6 +469,7 @@ function cloudLayersOf(fields: ApiEvidenceField[], preferredSourceId: string | n
  *  fetched separately, so a point normalised before it arrives simply applies
  *  the provenance gate alone and re-normalises when the catalogue lands. */
 export interface NormalizeOptions {
+  timeSelection?: 'directional'
   nonPrimarySources?: ReadonlySet<string>
   /** Seam D request parameters. Read only by `loadPoint`, which puts them on
    *  the query string; `normalizePoint` ignores them, because the response is
@@ -728,7 +729,15 @@ export function normalizePoint(point: ApiPointResponse, options: NormalizeOption
   }
 }
 
+export const POINT_REQUEST_TIMEOUT_MS = 30_000
+
 export async function loadPoint(location: LocationPoint, validTime?: string, product?: string, signal?: AbortSignal, options: NormalizeOptions = {}): Promise<{ snapshot: EvidenceSnapshot; source: PointDataSource; error?: string }> {
+  const controller = new AbortController()
+  let timedOut = false
+  const cancel = () => controller.abort()
+  if (signal?.aborted) cancel()
+  else signal?.addEventListener('abort', cancel, { once: true })
+  const timer = setTimeout(() => { timedOut = true; controller.abort() }, POINT_REQUEST_TIMEOUT_MS)
   try {
     const params = new URLSearchParams({ latitude: String(location.latitude), longitude: String(location.longitude) })
     if (validTime) params.set('valid_time', validTime)
@@ -736,12 +745,13 @@ export async function loadPoint(location: LocationPoint, validTime?: string, pro
     // Seam D: member and statistic are request parameters, sent only when the
     // caller named one, so a request that narrows nothing looks exactly like
     // it did before this axis existed.
+    if (options.timeSelection) params.set('time_selection', options.timeSelection)
     if (options.member) params.set('member', options.member)
     if (options.statistic) params.set('statistic', options.statistic)
     if (typeof options.quantile === 'number') params.set('quantile', String(options.quantile))
     if (typeof options.threshold === 'number') params.set('threshold', String(options.threshold))
     if (options.comparison) params.set('comparison', options.comparison)
-    const response = await fetch(`${prefix}/point?${params}`, { signal, headers: { Accept: 'application/json' } })
+    const response = await fetch(`${prefix}/point?${params}`, { signal: controller.signal, headers: { Accept: 'application/json' } })
     if (!response.ok) {
       const refusal = await response.json().catch(() => null)
       if (refusal?.detail?.code === 'outside_supported_area') throw new Error(`Outside supported area: ${refusal.detail.message}`)
@@ -762,11 +772,16 @@ export async function loadPoint(location: LocationPoint, validTime?: string, pro
     const error = snapshot.dataMode === 'unavailable' ? (reason ? `${mode} · ${reason}` : mode) : undefined
     return { snapshot, source: snapshot.dataMode, error }
   } catch (error) {
+    if (signal?.aborted) throw new DOMException('Point request canceled', 'AbortError')
+    if (timedOut) return { snapshot: unavailableSnapshot, source: 'unavailable', error: 'Point evidence request timed out after 30 seconds. The API or source may be busy; try again.' }
     if (error instanceof DOMException && error.name === 'AbortError') throw error
     if (import.meta.env.DEV && import.meta.env.VITE_WEATHER_FIXTURES === 'true') {
       return { snapshot: fixtureSnapshot, source: 'fixture', error: 'API unavailable; explicit development fixture enabled' }
     }
     return { snapshot: unavailableSnapshot, source: 'unavailable', error: error instanceof Error ? error.message : 'weather API unavailable' }
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', cancel)
   }
 }
 

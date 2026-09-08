@@ -15,6 +15,7 @@
         "capabilities": [
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -22,6 +23,7 @@
             "native_series": true,
             "point": true,
             "point_product": "HRDPS",
+            "point_time_kind": "forecast",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -39,6 +41,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "dew_point_2m",
             "levels": [
               "2 m"
@@ -46,6 +49,7 @@
             "native_series": true,
             "point": true,
             "point_product": "HRDPS",
+            "point_time_kind": "forecast",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -63,6 +67,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "relative_humidity_2m",
             "levels": [
               "2 m"
@@ -70,6 +75,7 @@
             "native_series": true,
             "point": true,
             "point_product": "HRDPS",
+            "point_time_kind": "forecast",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -87,6 +93,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "wind_u_10m",
             "levels": [
               "10 m"
@@ -94,6 +101,7 @@
             "native_series": true,
             "point": true,
             "point_product": "HRDPS",
+            "point_time_kind": "forecast",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -111,6 +119,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "wind_v_10m",
             "levels": [
               "10 m"
@@ -118,6 +127,7 @@
             "native_series": true,
             "point": true,
             "point_product": "HRDPS",
+            "point_time_kind": "forecast",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -135,6 +145,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "mean_sea_level_pressure",
             "levels": [
               "mean sea level"
@@ -142,6 +153,7 @@
             "native_series": true,
             "point": true,
             "point_product": "HRDPS",
+            "point_time_kind": "forecast",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -159,6 +171,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "total_cloud_opacity",
             "levels": [
               "entire atmosphere (column)"
@@ -166,6 +179,7 @@
             "native_series": true,
             "point": true,
             "point_product": "HRDPS",
+            "point_time_kind": "forecast",
             "product_id": "hrdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-hrdps",
@@ -638,6 +652,7 @@
         "capabilities": [
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -645,6 +660,7 @@
             "native_series": true,
             "point": true,
             "point_product": "RDPS",
+            "point_time_kind": "forecast",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -662,6 +678,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "dew_point_2m",
             "levels": [
               "2 m"
@@ -669,6 +686,7 @@
             "native_series": true,
             "point": true,
             "point_product": "RDPS",
+            "point_time_kind": "forecast",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -686,6 +704,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "relative_humidity_2m",
             "levels": [
               "2 m"
@@ -693,6 +712,7 @@
             "native_series": true,
             "point": true,
             "point_product": "RDPS",
+            "point_time_kind": "forecast",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -710,6 +730,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "wind_u_10m",
             "levels": [
               "10 m"
@@ -717,6 +738,7 @@
             "native_series": true,
             "point": true,
             "point_product": "RDPS",
+            "point_time_kind": "forecast",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -734,6 +756,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "wind_v_10m",
             "levels": [
               "10 m"
@@ -741,6 +764,7 @@
             "native_series": true,
             "point": true,
             "point_product": "RDPS",
+            "point_time_kind": "forecast",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -758,6 +782,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "mean_sea_level_pressure",
             "levels": [
               "mean sea level"
@@ -765,6 +790,7 @@
             "native_series": true,
             "point": true,
             "point_product": "RDPS",
+            "point_time_kind": "forecast",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -782,6 +808,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "total_cloud_opacity",
             "levels": [
               "entire atmosphere (column)"
@@ -789,6 +816,7 @@
             "native_series": true,
             "point": true,
             "point_product": "RDPS",
+            "point_time_kind": "forecast",
             "product_id": "rdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-rdps",
@@ -1109,6 +1137,7 @@
         "capabilities": [
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -1116,6 +1145,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GDPS",
+            "point_time_kind": "forecast",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1133,6 +1163,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "dew_point_2m",
             "levels": [
               "2 m"
@@ -1140,6 +1171,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GDPS",
+            "point_time_kind": "forecast",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1157,6 +1189,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "relative_humidity_2m",
             "levels": [
               "2 m"
@@ -1164,6 +1197,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GDPS",
+            "point_time_kind": "forecast",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1181,6 +1215,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "wind_u_10m",
             "levels": [
               "10 m"
@@ -1188,6 +1223,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GDPS",
+            "point_time_kind": "forecast",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1205,6 +1241,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "wind_v_10m",
             "levels": [
               "10 m"
@@ -1212,6 +1249,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GDPS",
+            "point_time_kind": "forecast",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1229,6 +1267,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "mean_sea_level_pressure",
             "levels": [
               "mean sea level"
@@ -1236,6 +1275,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GDPS",
+            "point_time_kind": "forecast",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1253,6 +1293,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "total_cloud_opacity",
             "levels": [
               "entire atmosphere (column)"
@@ -1260,6 +1301,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GDPS",
+            "point_time_kind": "forecast",
             "product_id": "gdps",
             "run_selection": "latest_previous",
             "source_id": "eccc-gdps",
@@ -1512,6 +1554,7 @@
         "capabilities": [
           {
             "coverage_description": "Five verified coverages acquired; raw gust-threshold probability lacks an accepted catalogue/level/window mapping; 527 other advertised reductions remain unresolved; no member or native Series capability",
+            "directional_time_selection": false,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -1519,6 +1562,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEPS reductions",
+            "point_time_kind": "forecast",
             "product_id": "geomet-provider-reductions",
             "run_selection": "not_applicable",
             "source_id": "eccc-geps",
@@ -1536,6 +1580,7 @@
           },
           {
             "coverage_description": "Five verified coverages acquired; raw gust-threshold probability lacks an accepted catalogue/level/window mapping; 527 other advertised reductions remain unresolved; no member or native Series capability",
+            "directional_time_selection": false,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -1543,6 +1588,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEPS reductions",
+            "point_time_kind": "forecast",
             "product_id": "geomet-provider-reductions",
             "run_selection": "not_applicable",
             "source_id": "eccc-geps",
@@ -1560,6 +1606,7 @@
           },
           {
             "coverage_description": "Five verified coverages acquired; raw gust-threshold probability lacks an accepted catalogue/level/window mapping; 527 other advertised reductions remain unresolved; no member or native Series capability",
+            "directional_time_selection": false,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -1567,6 +1614,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEPS reductions",
+            "point_time_kind": "forecast",
             "product_id": "geomet-provider-reductions",
             "run_selection": "not_applicable",
             "source_id": "eccc-geps",
@@ -1584,6 +1632,7 @@
           },
           {
             "coverage_description": "Five verified coverages acquired; raw gust-threshold probability lacks an accepted catalogue/level/window mapping; 527 other advertised reductions remain unresolved; no member or native Series capability",
+            "directional_time_selection": false,
             "field": "total_cloud_opacity",
             "levels": [
               "entire atmosphere (column)"
@@ -1591,6 +1640,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEPS reductions",
+            "point_time_kind": "forecast",
             "product_id": "geomet-provider-reductions",
             "run_selection": "not_applicable",
             "source_id": "eccc-geps",
@@ -1694,6 +1744,7 @@
         "capabilities": [
           {
             "coverage_description": "Native cells in the fixed coastal evidence box; SST, uncertainty and surface mask retained",
+            "directional_time_selection": false,
             "field": "sea_surface_temperature",
             "levels": [
               "sea surface"
@@ -1701,6 +1752,7 @@
             "native_series": false,
             "point": true,
             "point_product": "OSTIA SST",
+            "point_time_kind": "observation",
             "product_id": "ostia-foundation-sst-v2",
             "run_selection": "not_applicable",
             "source_id": "metoffice-ostia-sst",
@@ -1718,6 +1770,7 @@
           },
           {
             "coverage_description": "Native cells in the fixed coastal evidence box; SST, uncertainty and surface mask retained",
+            "directional_time_selection": false,
             "field": "sea_surface_temperature_uncertainty",
             "levels": [
               "sea surface"
@@ -1725,6 +1778,7 @@
             "native_series": false,
             "point": true,
             "point_product": "OSTIA SST",
+            "point_time_kind": "observation",
             "product_id": "ostia-foundation-sst-v2",
             "run_selection": "not_applicable",
             "source_id": "metoffice-ostia-sst",
@@ -1742,6 +1796,7 @@
           },
           {
             "coverage_description": "Native cells in the fixed coastal evidence box; SST, uncertainty and surface mask retained",
+            "directional_time_selection": false,
             "field": "sea_surface_temperature_mask",
             "levels": [
               "sea surface"
@@ -1749,6 +1804,7 @@
             "native_series": false,
             "point": true,
             "point_product": "OSTIA SST",
+            "point_time_kind": "observation",
             "product_id": "ostia-foundation-sst-v2",
             "run_selection": "not_applicable",
             "source_id": "metoffice-ostia-sst",
@@ -1845,6 +1901,7 @@
         "capabilities": [
           {
             "coverage_description": "Native cells in the fixed coastal evidence box; preliminary/final identity, masks and uncertainty remain",
+            "directional_time_selection": false,
             "field": "sea_surface_temperature",
             "levels": [
               "sea surface"
@@ -1852,6 +1909,7 @@
             "native_series": false,
             "point": true,
             "point_product": "OISST SST",
+            "point_time_kind": "observation",
             "product_id": "oisst-avhrr-v2.1",
             "run_selection": "not_applicable",
             "source_id": "noaa-oisst-v2-1",
@@ -1869,6 +1927,7 @@
           },
           {
             "coverage_description": "Native cells in the fixed coastal evidence box; preliminary/final identity, masks and uncertainty remain",
+            "directional_time_selection": false,
             "field": "sea_surface_temperature_uncertainty",
             "levels": [
               "sea surface"
@@ -1876,6 +1935,7 @@
             "native_series": false,
             "point": true,
             "point_product": "OISST SST",
+            "point_time_kind": "observation",
             "product_id": "oisst-avhrr-v2.1",
             "run_selection": "not_applicable",
             "source_id": "noaa-oisst-v2-1",
@@ -1964,6 +2024,7 @@
         "capabilities": [
           {
             "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "directional_time_selection": false,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -1971,6 +2032,7 @@
             "native_series": false,
             "point": true,
             "point_product": "SWOB",
+            "point_time_kind": "observation",
             "product_id": "swob-observations",
             "run_selection": "not_applicable",
             "source_id": "eccc-swob",
@@ -1988,6 +2050,7 @@
           },
           {
             "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "directional_time_selection": false,
             "field": "dew_point_2m",
             "levels": [
               "2 m"
@@ -1995,6 +2058,7 @@
             "native_series": false,
             "point": true,
             "point_product": "SWOB",
+            "point_time_kind": "observation",
             "product_id": "swob-observations",
             "run_selection": "not_applicable",
             "source_id": "eccc-swob",
@@ -2012,6 +2076,7 @@
           },
           {
             "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "directional_time_selection": false,
             "field": "relative_humidity_2m",
             "levels": [
               "2 m"
@@ -2019,6 +2084,7 @@
             "native_series": false,
             "point": true,
             "point_product": "SWOB",
+            "point_time_kind": "observation",
             "product_id": "swob-observations",
             "run_selection": "not_applicable",
             "source_id": "eccc-swob",
@@ -2036,6 +2102,7 @@
           },
           {
             "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "directional_time_selection": false,
             "field": "mean_sea_level_pressure",
             "levels": [
               "mean sea level"
@@ -2043,6 +2110,7 @@
             "native_series": false,
             "point": true,
             "point_product": "SWOB",
+            "point_time_kind": "observation",
             "product_id": "swob-observations",
             "run_selection": "not_applicable",
             "source_id": "eccc-swob",
@@ -2060,6 +2128,7 @@
           },
           {
             "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "directional_time_selection": false,
             "field": "wind_speed_10m",
             "levels": [
               "10 m"
@@ -2067,6 +2136,7 @@
             "native_series": false,
             "point": true,
             "point_product": "SWOB",
+            "point_time_kind": "observation",
             "product_id": "swob-observations",
             "run_selection": "not_applicable",
             "source_id": "eccc-swob",
@@ -2084,6 +2154,7 @@
           },
           {
             "coverage_description": "Existing bounded MSC station selection; native gaps and QC remain",
+            "directional_time_selection": false,
             "field": "wind_direction_10m",
             "levels": [
               "10 m"
@@ -2091,6 +2162,7 @@
             "native_series": false,
             "point": true,
             "point_product": "SWOB",
+            "point_time_kind": "observation",
             "product_id": "swob-observations",
             "run_selection": "not_applicable",
             "source_id": "eccc-swob",
@@ -2213,6 +2285,165 @@
         "status_reason": "Canonical GeoMet OGC API Features `swob-realtime` is queried at the exact selected report instant; only MSC surface-weather datasets are admitted by native response identity."
       },
       {
+        "access_endpoint": "https://geo.weather.gc.ca/geomet/",
+        "archival": "Immutable downloaded artifact plus seven days of run/status metadata; no claim of a permanent provider archive.",
+        "attribution": "Credit Environment and Climate Change Canada; preserve producer, product, run/valid time and supplied notices.",
+        "authentication": "Anonymous OGC services",
+        "caching": "Cache only within the 25 GiB experiment cap; retain the latest and previous complete model run or at least three observation hours.",
+        "cadence": "approximately 6-10 minutes, collection-dependent",
+        "capabilities": [
+          {
+            "coverage_description": "Existing Avalon bounds and returned native cell coverage; empty responses remain missing",
+            "directional_time_selection": true,
+            "field": "precipitation_rate",
+            "levels": [
+              "surface"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "Radar",
+            "point_time_kind": "observation",
+            "product_id": "geomet-radar-composite",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-radar",
+            "time_semantics": "Published native scan at or before selection, at most 20 minutes old; no forecast run",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "observation",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon bounds and returned native cell coverage; empty responses remain missing",
+            "directional_time_selection": true,
+            "field": "snow_rate",
+            "levels": [
+              "surface"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "Radar",
+            "point_time_kind": "observation",
+            "product_id": "geomet-radar-composite",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-radar",
+            "time_semantics": "Published native scan at or before selection, at most 20 minutes old; no forecast run",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "observation",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          },
+          {
+            "coverage_description": "Existing Avalon bounds and returned native cell coverage; empty responses remain missing",
+            "directional_time_selection": true,
+            "field": "radar_echo",
+            "levels": [
+              "radar mosaic surface projection"
+            ],
+            "native_series": false,
+            "point": true,
+            "point_product": "Radar",
+            "point_time_kind": "observation",
+            "product_id": "geomet-radar-composite",
+            "run_selection": "not_applicable",
+            "source_id": "eccc-radar",
+            "time_semantics": "Published native scan at or before selection, at most 20 minutes old; no forecast run",
+            "variants": [
+              {
+                "comparison": null,
+                "kind": "observation",
+                "member": null,
+                "quantile": null,
+                "statistic": null,
+                "threshold": null
+              }
+            ]
+          }
+        ],
+        "category": "radar",
+        "delivery_kind": "published_cell",
+        "discovery": {
+          "ensemble_forms": [
+            "Not applicable"
+          ],
+          "kinds": [
+            "Observation"
+          ],
+          "map_capabilities": [],
+          "methods": [
+            "Remote sensing"
+          ],
+          "subjects": [
+            "Precipitation"
+          ]
+        },
+        "display_primary": true,
+        "documentation_url": "https://eccc-msc.github.io/open-data/msc-data/obs_radar/readme_radar_en/",
+        "exact_variables": [
+          "radar_precipitation_rate",
+          "radar_precipitation_type",
+          "radar_extrapolation",
+          "coverage_mask",
+          "no_echo"
+        ],
+        "fields": [
+          {
+            "family": "precipitation",
+            "key": "radar_echo",
+            "note": "The mosaic's own 'looked and saw nothing' arrives as value 0 and must be recognised by name, not by its number.",
+            "storage": "stored",
+            "upstream": "RADAR_1KM_RRAI + RADAR_1KM_RSNO"
+          },
+          {
+            "family": "precipitation",
+            "key": "precipitation_rate",
+            "note": "Declared to the manifest only when the scan carried a value.",
+            "storage": "stored",
+            "upstream": "RADAR_1KM_RRAI"
+          },
+          {
+            "family": "precipitation",
+            "key": "snow_rate",
+            "note": "As precipitation_rate.",
+            "storage": "stored",
+            "upstream": "RADAR_1KM_RSNO"
+          }
+        ],
+        "fixture_status": "passing",
+        "forecast_horizon": "short extrapolation only",
+        "freshness_threshold_seconds": 1200,
+        "geographic_coverage": "North American/Canadian radar coverage; crop Avalon",
+        "id": "eccc-radar",
+        "integration": "raw_protocol: OWSLib WMS/WCS plus GeoTIFF adapter",
+        "intermediary": null,
+        "levels": [
+          "radar mosaic surface projection"
+        ],
+        "licence": "MSC Open Data licence",
+        "live_smoke_status": "planned",
+        "may_enter_consensus": false,
+        "native_image_endpoint": null,
+        "producer": "Environment and Climate Change Canada",
+        "product": "Weather radar composite and extrapolation",
+        "redistribution": "Redistribution permitted subject to the MSC Open Data licence, attribution and no-warranty terms.",
+        "role": "Observed precipitating-echo evidence; no echo never means clear sky",
+        "schedulable": true,
+        "schema_version": "GeoMet collection metadata at activation",
+        "state": "implemented-unverified",
+        "status_reason": "Official composite/rate/type and extrapolation products exist; no-echo semantics must be fixture-tested."
+      },
+      {
         "access_endpoint": "https://api.weather.gc.ca/collections/aqhi-observations-realtime/items",
         "archival": "Immutable downloaded artifact plus seven days of run/status metadata; no claim of a permanent provider archive.",
         "attribution": "Credit Environment and Climate Change Canada; preserve producer, product, run/valid time and supplied notices.",
@@ -2222,6 +2453,7 @@
         "capabilities": [
           {
             "coverage_description": "Accepted Avalon station box and existing distance ceiling; no archive or forecast promise",
+            "directional_time_selection": true,
             "field": "air_quality_health_index",
             "levels": [
               "station"
@@ -2229,6 +2461,7 @@
             "native_series": false,
             "point": true,
             "point_product": null,
+            "point_time_kind": "observation",
             "product_id": "aqhi-observations",
             "run_selection": "not_applicable",
             "source_id": "eccc-aqhi",
@@ -2322,6 +2555,7 @@
         "capabilities": [
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -2329,6 +2563,7 @@
             "native_series": false,
             "point": true,
             "point_product": "IFS",
+            "point_time_kind": "forecast",
             "product_id": "ifs",
             "run_selection": "latest",
             "source_id": "ecmwf-ifs",
@@ -2346,6 +2581,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "dew_point_2m",
             "levels": [
               "2 m"
@@ -2353,6 +2589,7 @@
             "native_series": false,
             "point": true,
             "point_product": "IFS",
+            "point_time_kind": "forecast",
             "product_id": "ifs",
             "run_selection": "latest",
             "source_id": "ecmwf-ifs",
@@ -2370,6 +2607,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "relative_humidity_2m",
             "levels": [
               "2 m"
@@ -2377,6 +2615,7 @@
             "native_series": false,
             "point": true,
             "point_product": "IFS",
+            "point_time_kind": "forecast",
             "product_id": "ifs",
             "run_selection": "latest",
             "source_id": "ecmwf-ifs",
@@ -2394,6 +2633,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "mean_sea_level_pressure",
             "levels": [
               "mean sea level"
@@ -2401,6 +2641,7 @@
             "native_series": false,
             "point": true,
             "point_product": "IFS",
+            "point_time_kind": "forecast",
             "product_id": "ifs",
             "run_selection": "latest",
             "source_id": "ecmwf-ifs",
@@ -2418,6 +2659,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "total_cloud_geometric",
             "levels": [
               "entire atmosphere (column)"
@@ -2425,6 +2667,7 @@
             "native_series": false,
             "point": true,
             "point_product": "IFS",
+            "point_time_kind": "forecast",
             "product_id": "ifs",
             "run_selection": "latest",
             "source_id": "ecmwf-ifs",
@@ -2600,6 +2843,7 @@
         "capabilities": [
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -2607,6 +2851,7 @@
             "native_series": false,
             "point": true,
             "point_product": "AIFS Single",
+            "point_time_kind": "forecast",
             "product_id": "aifs-single",
             "run_selection": "latest",
             "source_id": "ecmwf-aifs-single",
@@ -2624,6 +2869,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "dew_point_2m",
             "levels": [
               "2 m"
@@ -2631,6 +2877,7 @@
             "native_series": false,
             "point": true,
             "point_product": "AIFS Single",
+            "point_time_kind": "forecast",
             "product_id": "aifs-single",
             "run_selection": "latest",
             "source_id": "ecmwf-aifs-single",
@@ -2648,6 +2895,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "relative_humidity_2m",
             "levels": [
               "2 m"
@@ -2655,6 +2903,7 @@
             "native_series": false,
             "point": true,
             "point_product": "AIFS Single",
+            "point_time_kind": "forecast",
             "product_id": "aifs-single",
             "run_selection": "latest",
             "source_id": "ecmwf-aifs-single",
@@ -2672,6 +2921,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "mean_sea_level_pressure",
             "levels": [
               "mean sea level"
@@ -2679,6 +2929,7 @@
             "native_series": false,
             "point": true,
             "point_product": "AIFS Single",
+            "point_time_kind": "forecast",
             "product_id": "aifs-single",
             "run_selection": "latest",
             "source_id": "ecmwf-aifs-single",
@@ -2696,6 +2947,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "total_cloud_geometric",
             "levels": [
               "entire atmosphere (column)"
@@ -2703,6 +2955,7 @@
             "native_series": false,
             "point": true,
             "point_product": "AIFS Single",
+            "point_time_kind": "forecast",
             "product_id": "aifs-single",
             "run_selection": "latest",
             "source_id": "ecmwf-aifs-single",
@@ -2807,6 +3060,7 @@
         "capabilities": [
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -2814,6 +3068,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -2831,6 +3086,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "dew_point_2m",
             "levels": [
               "2 m"
@@ -2838,6 +3094,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -2855,6 +3112,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "relative_humidity_2m",
             "levels": [
               "2 m"
@@ -2862,6 +3120,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -2879,6 +3138,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "wind_u_10m",
             "levels": [
               "10 m"
@@ -2886,6 +3146,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -2903,6 +3164,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "wind_v_10m",
             "levels": [
               "10 m"
@@ -2910,6 +3172,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -2927,6 +3190,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "mean_sea_level_pressure",
             "levels": [
               "mean sea level"
@@ -2934,6 +3198,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -2951,6 +3216,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "visibility",
             "levels": [
               "surface"
@@ -2958,6 +3224,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -2975,6 +3242,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "total_cloud_geometric",
             "levels": [
               "entire atmosphere (column)"
@@ -2982,6 +3250,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -2999,6 +3268,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "cloud_low",
             "levels": [
               "low cloud layer"
@@ -3006,6 +3276,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -3023,6 +3294,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "cloud_middle",
             "levels": [
               "middle cloud layer"
@@ -3030,6 +3302,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -3047,6 +3320,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "cloud_high",
             "levels": [
               "high cloud layer"
@@ -3054,6 +3328,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -3071,6 +3346,7 @@
           },
           {
             "coverage_description": "Existing Avalon point bounds; actual field and time coverage is established only by retrieval",
+            "directional_time_selection": true,
             "field": "precipitable_water",
             "levels": [
               "entire atmosphere (column)"
@@ -3078,6 +3354,7 @@
             "native_series": true,
             "point": true,
             "point_product": "GFS",
+            "point_time_kind": "forecast",
             "product_id": "gfs",
             "run_selection": "latest_previous",
             "source_id": "noaa-gfs",
@@ -3315,6 +3592,7 @@
         "capabilities": [
           {
             "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "directional_time_selection": true,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -3322,6 +3600,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEFS",
+            "point_time_kind": "forecast",
             "product_id": "pgrb2ap5",
             "run_selection": "latest",
             "source_id": "noaa-gefs",
@@ -3595,6 +3874,7 @@
           },
           {
             "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "directional_time_selection": true,
             "field": "dew_point_2m",
             "levels": [
               "2 m"
@@ -3602,6 +3882,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEFS",
+            "point_time_kind": "forecast",
             "product_id": "pgrb2ap5",
             "run_selection": "latest",
             "source_id": "noaa-gefs",
@@ -3875,6 +4156,7 @@
           },
           {
             "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "directional_time_selection": true,
             "field": "relative_humidity_2m",
             "levels": [
               "2 m"
@@ -3882,6 +4164,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEFS",
+            "point_time_kind": "forecast",
             "product_id": "pgrb2ap5",
             "run_selection": "latest",
             "source_id": "noaa-gefs",
@@ -4155,6 +4438,7 @@
           },
           {
             "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "directional_time_selection": true,
             "field": "wind_u_10m",
             "levels": [
               "10 m"
@@ -4162,6 +4446,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEFS",
+            "point_time_kind": "forecast",
             "product_id": "pgrb2ap5",
             "run_selection": "latest",
             "source_id": "noaa-gefs",
@@ -4435,6 +4720,7 @@
           },
           {
             "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "directional_time_selection": true,
             "field": "wind_v_10m",
             "levels": [
               "10 m"
@@ -4442,6 +4728,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEFS",
+            "point_time_kind": "forecast",
             "product_id": "pgrb2ap5",
             "run_selection": "latest",
             "source_id": "noaa-gefs",
@@ -4715,6 +5002,7 @@
           },
           {
             "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "directional_time_selection": true,
             "field": "mean_sea_level_pressure",
             "levels": [
               "mean sea level"
@@ -4722,6 +5010,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEFS",
+            "point_time_kind": "forecast",
             "product_id": "pgrb2ap5",
             "run_selection": "latest",
             "source_id": "noaa-gefs",
@@ -4995,6 +5284,7 @@
           },
           {
             "coverage_description": "Bounded Avalon member-family point read; control-index discovery alone does not establish member, optional-field or sampled-cell availability",
+            "directional_time_selection": true,
             "field": "total_cloud_mean_6h",
             "levels": [
               "entire atmosphere (column)"
@@ -5002,6 +5292,7 @@
             "native_series": false,
             "point": true,
             "point_product": "GEFS",
+            "point_time_kind": "forecast",
             "product_id": "pgrb2ap5",
             "run_selection": "latest",
             "source_id": "noaa-gefs",
@@ -5438,6 +5729,7 @@
         "capabilities": [
           {
             "coverage_description": "One native 0.1 degree temperature mean cell; pinned historical run, no current or full-run coverage promise",
+            "directional_time_selection": false,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -5445,6 +5737,7 @@
             "native_series": false,
             "point": true,
             "point_product": "WeatherNext 3 historical",
+            "point_time_kind": "forecast",
             "product_id": "weathernext_3_0_0_statistics",
             "run_selection": "not_applicable",
             "source_id": "google-weathernext-3-statistics",
@@ -5462,6 +5755,7 @@
           },
           {
             "coverage_description": "Internal experimental forecast; one pinned native temperature mean cell, no latest-run or freshness promise",
+            "directional_time_selection": false,
             "field": "temperature_2m",
             "levels": [
               "2 m"
@@ -5469,6 +5763,7 @@
             "native_series": false,
             "point": true,
             "point_product": "WeatherNext 3 local",
+            "point_time_kind": "forecast",
             "product_id": "weathernext_3_0_0_statistics",
             "run_selection": "not_applicable",
             "source_id": "google-weathernext-3-statistics",
@@ -5549,6 +5844,7 @@
         "capabilities": [
           {
             "coverage_description": "Selected point only, with the returned intermediary cell and missing values preserved; no primary or derived evidence admission",
+            "directional_time_selection": false,
             "field": "aerosol_optical_depth_550nm",
             "levels": [
               "entire atmosphere (column)"
@@ -5556,6 +5852,7 @@
             "native_series": false,
             "point": true,
             "point_product": "CAMS AOD",
+            "point_time_kind": "forecast",
             "product_id": "cams-global-aod",
             "run_selection": "not_applicable",
             "source_id": "openmeteo-cams-aod",
@@ -6740,6 +7037,7 @@
       "selected_product_id": null,
       "selected_source_id": null
     },
+    "time_selection": null,
     "valid_time": "2026-09-07T12:00:00Z"
   },
   "point_aqhi": {
@@ -6961,6 +7259,7 @@
       "selected_product_id": "hrdps",
       "selected_source_id": "eccc-hrdps"
     },
+    "time_selection": null,
     "valid_time": "2026-09-07T12:30:00Z"
   },
   "point_aqhi_unavailable": {
@@ -7083,6 +7382,7 @@
       "selected_product_id": "hrdps",
       "selected_source_id": "eccc-hrdps"
     },
+    "time_selection": null,
     "valid_time": "2026-09-07T12:30:00Z"
   },
   "point_cams_aod": {
@@ -7182,6 +7482,7 @@
       "selected_product_id": null,
       "selected_source_id": null
     },
+    "time_selection": null,
     "valid_time": "2026-09-07T12:00:00Z"
   },
   "point_ifs": {
@@ -8138,6 +8439,7 @@
       "selected_product_id": null,
       "selected_source_id": null
     },
+    "time_selection": null,
     "valid_time": "2026-09-07T12:00:00Z"
   },
   "point_swob": {
@@ -8864,6 +9166,7 @@
       "selected_product_id": null,
       "selected_source_id": null
     },
+    "time_selection": null,
     "valid_time": "2026-09-07T03:00:00Z"
   },
   "series": {
@@ -9514,6 +9817,25 @@
         "last_retrieval": null,
         "operational": false,
         "source_id": "eccc-swob",
+        "state": "implemented-unverified"
+      },
+      {
+        "configuration": {
+          "checked_at": null,
+          "reason": "Anonymous source read software is available; this does not establish successful retrieval or coverage",
+          "required_environment": [],
+          "state": "ready"
+        },
+        "data_mode": "unavailable",
+        "detail": "no live retrieval recorded; Official composite/rate/type and extrapolation products exist; no-echo semantics must be fixture-tested.",
+        "freshness": {
+          "age_seconds": null,
+          "status": "unknown",
+          "threshold_seconds": 1200
+        },
+        "last_retrieval": null,
+        "operational": false,
+        "source_id": "eccc-radar",
         "state": "implemented-unverified"
       },
       {

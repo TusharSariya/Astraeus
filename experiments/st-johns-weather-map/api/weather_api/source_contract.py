@@ -47,6 +47,8 @@ class SourceCapability(ContractModel):
     point: bool
     point_product: str | None = None
     native_series: bool
+    point_time_kind: Literal["observation", "forecast"] | None = None
+    directional_time_selection: bool = False
     run_selection: Literal["latest", "latest_previous", "not_applicable"]
     time_semantics: str
     coverage_description: str

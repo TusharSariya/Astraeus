@@ -1765,6 +1765,18 @@
           "selection": {
             "$ref": "#/components/schemas/Selection"
           },
+          "time_selection": {
+            "anyOf": [
+              {
+                "const": "directional",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Time Selection"
+          },
           "valid_time": {
             "format": "date-time",
             "title": "Valid Time",
@@ -3257,6 +3269,11 @@
             "title": "Coverage Description",
             "type": "string"
           },
+          "directional_time_selection": {
+            "default": false,
+            "title": "Directional Time Selection",
+            "type": "boolean"
+          },
           "field": {
             "title": "Field",
             "type": "string"
@@ -3287,6 +3304,21 @@
               }
             ],
             "title": "Point Product"
+          },
+          "point_time_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "observation",
+                  "forecast"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Point Time Kind"
           },
           "product_id": {
             "title": "Product Id",
@@ -4031,6 +4063,23 @@
                 }
               ],
               "title": "Product"
+            }
+          },
+          {
+            "in": "query",
+            "name": "time_selection",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "directional",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Time Selection"
             }
           },
           {
