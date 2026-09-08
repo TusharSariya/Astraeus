@@ -167,3 +167,110 @@ def test_input_over_its_declared_bound_fails_before_a_child_can_start(tmp_path: 
             destination=tmp_path / "artifact.zarr.zip",
             limits=too_small,
         )
+
+
+@requires_enforcement
+def test_deadline_covers_blocked_stdin_and_preserves_previous_artifact(tmp_path: Path) -> None:
+    import time
+    from dataclasses import replace
+    destination = tmp_path / "artifact.zarr.zip"
+    destination.write_bytes(b"previous complete artifact")
+    started = time.monotonic()
+    with pytest.raises(BoundedProcessError, match="timeout"):
+        run_bounded_process(
+            command=_command("import time; time.sleep(2)"),
+            stdin=b"x" * (1024 * 1024), destination=destination,
+            limits=replace(LIMITS, stdin_bytes=1024 * 1024), timeout_seconds=.15,
+        )
+    assert time.monotonic() - started < 1
+    assert destination.read_bytes() == b"previous complete artifact"
+    assert _workspaces(tmp_path) == []
+
+
+@requires_enforcement
+def test_streaming_input_and_output_share_one_deadline(tmp_path: Path) -> None:
+    from dataclasses import replace
+    body = b"x" * (256 * 1024)
+    result = run_bounded_process(
+        command=_command(
+            "import sys; from pathlib import Path; "
+            "sys.stdout.buffer.write(b'a' * 131072); sys.stdout.buffer.flush(); "
+            "data=sys.stdin.buffer.read(); Path(sys.argv[1]).write_bytes(str(len(data)).encode())"
+        ), stdin=body, destination=tmp_path / "result",
+        limits=replace(LIMITS, stdin_bytes=len(body), stdout_bytes=131072), timeout_seconds=3,
+    )
+    assert result.stdout == b"a" * 131072
+    assert result.output_path.read_bytes() == str(len(body)).encode()
+    assert _workspaces(tmp_path) == []
+
+
+@requires_enforcement
+@pytest.mark.parametrize("channel", ["stdout", "stderr"])
+def test_output_overflow_stops_child_even_when_sigterm_is_ignored(tmp_path: Path, channel: str) -> None:
+    import time
+    started = time.monotonic()
+    with pytest.raises(BoundedProcessOutputExceeded):
+        run_bounded_process(
+            command=_command(
+                "import signal,sys,time; signal.signal(signal.SIGTERM,signal.SIG_IGN); "
+                f"sys.{channel}.write('x'*2048); sys.{channel}.flush(); time.sleep(2)"
+            ), stdin=b"", destination=tmp_path / "artifact", limits=LIMITS, timeout_seconds=3,
+        )
+    assert time.monotonic() - started < 1
+    assert _workspaces(tmp_path) == []
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Actual Linux process-group cleanup and /proc state")
+def test_deadline_kills_descendant_holding_reply_pipe_after_parent_exits(tmp_path: Path) -> None:
+    import time
+    pid_path = tmp_path / "descendant.pid"
+    started = time.monotonic()
+    with pytest.raises(BoundedProcessError, match="timeout"):
+        run_bounded_process(
+            command=_command(
+                "import subprocess,sys; from pathlib import Path; "
+                "child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(5)']); "
+                f"Path({str(pid_path)!r}).write_text(str(child.pid))"
+            ), stdin=b"", destination=tmp_path / "artifact", limits=LIMITS, timeout_seconds=.3,
+        )
+    assert time.monotonic() - started < 1.5
+    pid = int(pid_path.read_text())
+    status = Path(f"/proc/{pid}/status")
+    # PID 1 in some containers reaps orphan zombies asynchronously. A zombie
+    # has already stopped and cannot retain pipes or recreate scratch files.
+    if status.exists():
+        assert "State:\tZ" in status.read_text()
+    assert _workspaces(tmp_path) == []
+
+
+@pytest.mark.parametrize("timeout", [float('nan'), float('inf'), 0, -1])
+def test_invalid_deadline_fails_before_launch(monkeypatch, tmp_path: Path, timeout: float) -> None:
+    monkeypatch.setattr(isolation, '_resource_module', lambda: object())
+    monkeypatch.setattr(isolation.subprocess, 'Popen', lambda *a, **k: pytest.fail('invalid deadline launched child'))
+    with pytest.raises(ValueError, match='timeout'):
+        run_bounded_process(command=_command('pass'), stdin=b'', destination=tmp_path/'artifact',
+                            limits=LIMITS, timeout_seconds=timeout)
+
+
+@requires_enforcement
+def test_caller_cancellation_reaps_child_and_preserves_destination(monkeypatch, tmp_path: Path) -> None:
+    launched = []
+    original_popen = isolation.subprocess.Popen
+    original_selector = isolation.selectors.DefaultSelector
+    def launch(*args, **kwargs):
+        process = original_popen(*args, **kwargs)
+        launched.append(process)
+        return process
+    class CancelledSelector(original_selector):
+        def select(self, timeout=None):
+            raise KeyboardInterrupt
+    monkeypatch.setattr(isolation.subprocess, 'Popen', launch)
+    monkeypatch.setattr(isolation.selectors, 'DefaultSelector', CancelledSelector)
+    destination = tmp_path / 'artifact'
+    destination.write_bytes(b'previous')
+    with pytest.raises(KeyboardInterrupt):
+        run_bounded_process(command=_command('import time;time.sleep(5)'), stdin=b'payload',
+                            destination=destination, limits=LIMITS)
+    assert len(launched) == 1 and launched[0].returncode is not None
+    assert all(stream.closed for stream in (launched[0].stdin, launched[0].stdout, launched[0].stderr))
+    assert destination.read_bytes() == b'previous' and _workspaces(tmp_path) == []
