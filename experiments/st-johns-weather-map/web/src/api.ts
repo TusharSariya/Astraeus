@@ -1,3 +1,4 @@
+import { isVisibleSource } from './regionalSources'
 import { readDiscovery } from './workbench/discovery'
 import { layerImagery } from './workbench/layerIdentity'
 import { FALLBACK_BACK_MINUTES, FALLBACK_FORWARD_MINUTES } from './tierBoundary'
@@ -1103,7 +1104,7 @@ export async function loadCatalog(signal?: AbortSignal): Promise<CatalogResult> 
     if (!body || typeof body !== 'object' || !Array.isArray((body as { sources?: unknown }).sources)) {
       return { sources: [], dataMode: 'unavailable', error: 'catalog returned an incompatible schema' }
     }
-    const sources = (body as { sources: unknown[] }).sources.filter(isCatalogSource).map((source) => ({ ...source, discovery: readDiscovery(source.discovery), capabilities: Array.isArray(source.capabilities) ? source.capabilities.filter((capability) => isSourceCapability(capability, source.id)) : undefined }))
+    const sources = (body as { sources: unknown[] }).sources.filter(isCatalogSource).filter(source => isVisibleSource(source.id, source.state)).map((source) => ({ ...source, discovery: readDiscovery(source.discovery), capabilities: Array.isArray(source.capabilities) ? source.capabilities.filter((capability) => isSourceCapability(capability, source.id)) : undefined }))
     return { sources, dataMode: toDataMode((body as { data_mode?: unknown }).data_mode), error: null }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
@@ -1129,7 +1130,7 @@ export async function loadSourceStatus(signal?: AbortSignal): Promise<SourceStat
     if (!body || typeof body !== 'object' || !Array.isArray((body as { statuses?: unknown }).statuses)) {
       return { statuses: null, dataMode: 'unavailable', error: 'source status returned an incompatible schema' }
     }
-    const statuses: SourceStatusItem[] = (body as { statuses: unknown[] }).statuses.filter(isSourceStatus).map((row) => ({
+    const statuses: SourceStatusItem[] = (body as { statuses: unknown[] }).statuses.filter(isSourceStatus).filter(row => isVisibleSource(row.source_id, row.state)).map((row) => ({
       source_id: row.source_id,
       configuration: isSourceConfiguration(row.configuration) ? row.configuration : undefined,
       state: row.state,

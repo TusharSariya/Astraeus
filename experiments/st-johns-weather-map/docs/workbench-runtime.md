@@ -50,3 +50,19 @@ catalogue variants against the API's serving window. The second additionally
 requests one 256×256 image per available layer, at most 32 images with two
 concurrent requests. It does not request point forecasts or start ingestion.
 Provider failures remain reported independently of time-window violations.
+
+## Normal checkout after merge
+
+From the updated main checkout's experiment directory, `make down up` rebuilds
+and serves the workbench at http://localhost:5173 (API 8000).
+
+To preserve an explicitly selected WeatherNext run, place its existing nonsecret
+configuration in `.weathernext-local.json` (ignored by Git). The Makefile then
+includes `compose.weathernext.yaml` and runs the existing private token-refresh
+helper after startup, using the local `astraeus` gcloud profile. Authentication
+failure makes `make up` fail visibly; it never substitutes fixture values.
+The run stays pinned, and this does not schedule ingestion or select a newer run.
+Refresh an expired token with `python3 scripts/refresh_weathernext_runtime_token.py`.
+Remove the local pin to opt out on the next recreation. Tokens never enter the
+configuration file, Compose YAML or Git. Without the local pin, startup does
+not contact Google for authentication.

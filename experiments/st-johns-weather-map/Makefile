@@ -1,19 +1,23 @@
+# A local pinned WeatherNext configuration opts this checkout into Google auth.
+COMPOSE = docker compose $(if $(wildcard .weathernext-local.json),-f compose.yaml -f compose.weathernext.yaml,)
+
 .PHONY: config build up down logs test test-api test-web test-registry test-sql spec-validate smoke live-smoke test-layers
 
 config:
-	docker compose config --quiet
+	$(COMPOSE) config --quiet
 
 build:
-	docker compose build
+	$(COMPOSE) build
 
 up:
-	docker compose up --build --wait
+	$(COMPOSE) up --build --wait
+	$(if $(wildcard .weathernext-local.json),python3 scripts/refresh_weathernext_runtime_token.py, @:)
 
 down:
-	docker compose down
+	$(COMPOSE) down
 
 logs:
-	docker compose logs --follow
+	$(COMPOSE) logs --follow
 
 test: test-api test-web test-registry test-sql spec-validate
 

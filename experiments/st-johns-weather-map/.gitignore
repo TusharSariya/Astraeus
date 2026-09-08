@@ -12,3 +12,6 @@ vite.config.d.ts
 
 # Pinned JPL ephemeris kernel: fetched out of band, verified by checksum.
 data/ephemeris/
+
+# Local nonsecret pinned WeatherNext run; access tokens stay in container tmpfs.
+.weathernext-local.json

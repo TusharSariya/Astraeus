@@ -242,3 +242,47 @@ not from which side of Now a timestamp falls on.
 #### Scenario: A request finishes after the playhead moves
 - **WHEN** imagery for an older selection arrives late
 - **THEN** it cannot replace newer selected evidence; any retained image is named at its actual time
+
+### Requirement: Newfoundland discovery omits geographically inapplicable sources
+Owner direction, 2026-09-08: omit sources that cannot cover Newfoundland; retain
+paid, credentialed and agreement-gated sources. All UI catalogue and source-status
+surfaces SHALL omit exact source identities with documented geographic exclusion.
+Temporary failures, stale data, unknown coverage, missing adapters, payment,
+credentials and agreements SHALL NOT establish geographic exclusion. The raw
+registry and API audit SHALL retain the records. This is a presentation rule,
+not source admission or evidence filtering.
+
+#### Scenario: A Europe-only source is returned by the API
+- **WHEN** the catalogue or source-status endpoint returns Open-Meteo pollen/ammonia
+- **THEN** it is absent from Browse, Sources and their counts and filters
+- **AND** global and access-restricted sources remain visible with their actual status
+
+Verification: `web/src/regionalSources.test.ts` exercises both shared UI boundaries.
+
+### Requirement: Superseded sources are hidden without deletion
+Owner direction, 2026-09-08: dated sources that have been superseded SHALL be
+hidden from all UI catalogue and source-status surfaces, including Browse and
+Sources. The declared `superseded` registry state SHALL determine this rule;
+old timestamps, historical coverage and transient staleness SHALL NOT. Registry
+records and API audit history SHALL remain intact. Replacement sources and
+paid, credentialed or agreement-gated entries SHALL remain visible unless they
+independently meet an explicit geographic exclusion or supersession rule.
+
+#### Scenario: A retired feed has a replacement
+- **WHEN** the API returns superseded standalone RAQDPS-FireWork and its RAQDPS replacement
+- **THEN** the UI hides standalone FireWork and retains RAQDPS
+- **AND** the raw records remain intact and unrelated historical or stale feeds remain visible
+
+Verification: `web/src/regionalSources.test.ts` tests catalogue, status and discovery
+consumers, including a future superseded identity without a hardcoded source list.
+
+### Requirement: Opted-in local WeatherNext configuration survives normal restart
+The owner's local restart workflow SHALL preserve an explicitly pinned WeatherNext
+configuration through `make down up`. A checkout-local ignored configuration SHALL
+opt into the existing Compose mount and private token refresh after API startup.
+Without that file, startup SHALL perform no Google authentication. Refresh failure
+SHALL fail the command visibly. No automatic run rollover, ingestion schedule,
+credential persistence in Git or source-admission change is authorized.
+
+Verification: Compose configuration validation, Make dry runs with and without
+the local pin, existing token-refresh helper and a normal local startup.
