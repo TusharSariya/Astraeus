@@ -72,7 +72,7 @@ const badgeCopy: Record<FallbackMode, string> = {
 }
 
 const dataPathCopy: Record<DataSource, string> = {
-  loading: 'Checking API',
+  loading: 'Loading point evidence',
   live: 'Live API',
   mixed: 'Mixed live and fixture',
   fixture: 'Development fixture',
@@ -80,7 +80,7 @@ const dataPathCopy: Record<DataSource, string> = {
 }
 
 const bannerCopy: Record<Exclude<DataSource, 'live'>, string> = {
-  loading: 'CHECKING API · NO EVIDENCE SHOWN YET',
+  loading: 'LOADING POINT EVIDENCE · WAITING FOR THE SELECTED LOCATION AND TIME',
   mixed: 'MIXED EVIDENCE · SOME FIELDS ARE NOT LIVE',
   fixture: 'DEVELOPMENT FIXTURE · NOT LIVE EVIDENCE',
   unavailable: 'NO LIVE EVIDENCE RETRIEVED',
@@ -1079,7 +1079,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const mapField = dataSource === 'live' ? 'Response-backed evidence points'
     : dataSource === 'mixed' ? 'Mixed live and fixture evidence points'
       : dataSource === 'fixture' ? 'Development fixture evidence points'
-        : dataSource === 'loading' ? 'Checking the API for evidence points'
+        : dataSource === 'loading' ? 'Waiting for point evidence at the selected location and time'
           : 'No response-backed evidence points'
 
   // Shared between the two layouts: in simple mode these live inside the
@@ -1896,7 +1896,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       {Object.entries(runChoices).filter(([, run]) => run !== 'latest').map(([source, run]) => <details className="bench-run-pin" key={source}><summary>Browsing run · {source}: {run}</summary><p>Map delivery cannot request named runs; matching imagery and point ledger values are withheld. Sky and Activity retain their own evidence selection. <button onClick={() => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next })}>Use Latest available for {source}</button></p></details>)}
       <button onClick={() => setLegacyOpen(true)}>Existing evidence panels</button>
     </FocusBar>}
-    status={<><strong>{dataPathCopy[dataSource]}</strong> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices
+    status={<><strong>{dataPathCopy[dataSource]}</strong>{dataSource === 'loading' ? ' · Waiting for the point response at the selected location and time.' : <> · {snapshot.servedFields.filter((field) => field.hasValue).length} returned values · {snapshot.notices.length} notices</>}
       {sourceError && <span> · {sourceError}</span>}{initialFocus.notices.map((notice) => <span key={notice}> · {notice}</span>)}</>}
     timeline={benchTimeline}
     inspector={inspected ? <EvidenceInspector evidence={inspected} onClose={closeInspector} nativeImages={(() => {
