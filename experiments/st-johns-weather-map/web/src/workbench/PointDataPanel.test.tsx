@@ -198,3 +198,33 @@ it('distinguishes source failure, quality refusal, coverage and unavailable nati
   expect(concisePointReason('Outside supported area')).toBe('Outside coverage')
   expect(concisePointReason('Native time selection unavailable')).toBe('Native time unavailable')
 })
+
+
+it('keeps the GOES cloud-mask map out of point failures and never requests a point', async () => {
+  const layer={id:'noaa-goes19-demand-cloud-mask',kind:'raster',raster_available:true,field:'cloud_mask',title:'GOES-19 observed cloud mask'} as import('../types').LayerItem
+  render(<PointDataPanel {...props} layers={[layer]} stack={[{id:layer.id,visible:true,opacity:1}]} />)
+  await settle()
+  expect(loadPoint).not.toHaveBeenCalled()
+  expect(screen.queryByText('Point unsupported')).not.toBeInTheDocument()
+  expect(screen.queryByText('GOES-19 observed cloud mask')).not.toBeInTheDocument()
+})
+
+it('uses hidden loaded temperature without additional requests on styling', async()=>{
+  const {TemperatureProvider}=await import('./precipitationColours')
+  const pc=cap('s','precipitation_rate')
+  const catalog=[{...sources[0],capabilities:[cap(),pc],fields:[...sources[0].fields!,{key:'precipitation_rate',family:'precipitation'}]}] as CatalogSource[]
+  const data=response();const temperature=data.snapshot.servedFields[0]
+  temperature.attribution.runTime='2026-09-08T00:00:00Z'
+  const precipitation={...temperature,field:'precipitation_rate',value:10,text:'10 mm h-1',units:'mm h-1',attribution:{...temperature.attribution,fieldKey:'precipitation_rate',family:'precipitation'}}
+  vi.mocked(loadPoint).mockResolvedValue({...data,snapshot:{...data.snapshot,servedFields:[temperature,precipitation]}})
+  const stack=[selected(),selected('s','precipitation_rate')]
+  const {rerender}=render(<TemperatureProvider><PointDataPanel {...props} catalog={catalog} stack={stack}/></TemperatureProvider>)
+  await settle()
+  expect(loadPoint).toHaveBeenCalledTimes(1)
+  expect(screen.getByLabelText(/Temperature-based colours · 17.0°C/)).toBeInTheDocument()
+  rerender(<TemperatureProvider><PointDataPanel {...props} catalog={catalog} stack={stack.map(s=>({...s,visible:true,opacity:.2}))}/></TemperatureProvider>)
+  await settle()
+  expect(loadPoint).toHaveBeenCalledTimes(1)
+  fireEvent.click(screen.getByRole('button',{name:'Details for point reading s · precipitation rate'}))
+  expect(screen.getAllByText(/Same source → HRDPS/).length).toBeGreaterThan(0)
+})

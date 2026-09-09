@@ -5,12 +5,13 @@ import type { ScaleMark } from './scrubberAxis'
 export const TIME_RANGES = [
   { id: 'near', label: 'Near term · −1h / +6h', back: 60, forward: 360, tick: 60 },
   { id: 'day', label: 'Day · −6h / +24h', back: 360, forward: 1440, tick: 180 },
+  { id: 'history', label: 'Past week · −7d / now', back: 10080, forward: 0, tick: 1440 },
   { id: 'outlook', label: 'Outlook · −24h / +14d', back: 1440, forward: 20160, tick: 1440 },
 ] as const
 export type TimeRange = typeof TIME_RANGES[number]['id']
 export function containingRange(selectedMs: number, referenceMs: number): TimeRange {
   const offset = (selectedMs - referenceMs) / 60_000
-  return TIME_RANGES.find(range => offset >= -range.back && offset <= range.forward)?.id ?? 'outlook'
+  return [...TIME_RANGES.filter(range => range.id !== 'history'), ...TIME_RANGES.filter(range => range.id === 'history')].find(range => offset >= -range.back && offset <= range.forward)?.id ?? 'outlook'
 }
 export function displayWindow(range: TimeRange, referenceMs: number, start: number, end: number) {
   const preset = TIME_RANGES.find(item => item.id === range) ?? TIME_RANGES[0]

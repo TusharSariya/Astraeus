@@ -2,6 +2,7 @@ import { useId, type ReactNode } from 'react'
 
 // Only typographic shortening of explicit display names; quantities and qualifiers stay intact.
 export function compactLayerName(title: string) {
+  if(title.startsWith('Canadian radar composite precipitation rate'))return 'Canadian radar · precipitation'
   return title.replace(/^(HRDPS(?:-WEonG)?|RDPS|GDPS|GFS|GEFS|GEPS|GOES-East|GOES-West)\s+(?!·)/, '$1 · ')
 }
 

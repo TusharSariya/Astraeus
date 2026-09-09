@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { MapSamplesLink, MapEvidenceDetails, openMapFeature, mapLayerEvidence, featureEvidenceKey } from './MapEvidenceDetails'
@@ -58,4 +58,17 @@ it('jumps past Map controls into samples without changing Focus or inspecting a 
   expect(inspect).not.toHaveBeenCalled()
   await user.tab()
   expect(screen.getByRole('button', { name: 'Inspect FIXTURE from Station reports' })).toHaveFocus()
+})
+
+
+it('opens a lazily constructed native cell inspector without expanding the whole frame', () => {
+  const inspect = vi.fn()
+  const nativeGrid = { region: [-70,40,-40,55], latitudes: [47.5], longitudes: [-52.7, -52.6], latitude_edges: [47.55, 47.45], longitude_edges: [-52.75, -52.65, -52.55], percentages: [[0, 50]], native_time: at, provenance: { run: at } } as unknown as NonNullable<DrawEvidence['nativeGrid']>
+  render(<MapEvidenceDetails layers={[]} drawn={[{...draw,features:undefined,nativeGrid}]} location={{id:'p',name:'Point',kind:'map',latitude:47.5,longitude:-52.7}} instant={Date.parse(at)} statuses={[]} responseSourceIds={new Set()} onSelect={vi.fn()} onInspect={inspect} />)
+  expect(screen.queryByText('percentage')).not.toBeInTheDocument()
+  act(() => openMapFeature(draw.id, 1))
+  expect(document.querySelector('details')?.open).toBe(true)
+  expect(inspect).toHaveBeenCalledTimes(1)
+  expect(inspect.mock.lastCall?.[0].details['Returned feature properties'].percentage).toBe(50)
+  expect(screen.getAllByRole('row')).toHaveLength(2)
 })

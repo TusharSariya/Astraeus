@@ -1,7 +1,8 @@
+import { useLoadedTemperatures, temperatureSample, temperatureFor, valueTarget, temperatureDescription, precipitationScale, precipitationColour, PrecipitationLegend } from './precipitationColours'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CatalogSource, LayerItem, LayerSelection, LocationPoint, PointFieldSelection, ServedFieldValue } from '../types'
 import { familyTitle } from '../fieldFamily'
-import { selectionPoints, pointIdentity, pointFamily, pointLabel, pointFieldLabel, pointUnavailable, matchesPoint, variantIdentity } from './pointSelections'
+import { mapOnlyLayer, selectionPoints, pointIdentity, pointFamily, pointLabel, pointFieldLabel, pointUnavailable, matchesPoint, variantIdentity } from './pointSelections'
 import { pointRequest, usePointRequests } from './pointRequests'
 import { EvidenceInspector, type InspectedEvidence } from './EvidenceInspector'
 import type { DrawEvidence } from './MapStack'
@@ -41,6 +42,7 @@ export function selectedReadings(stack: LayerSelection[], layers: LayerItem[], c
     const points = selectionPoints(entry, layers, catalog)
     if (!points.length) {
       const layer = layers.find(l => l.id === entry.id)
+      if (mapOnlyLayer(layer, catalog)) continue
       rows.set(entry.id, { key: entry.id, owners: [entry.id], label: layer?.title ?? entry.id, family: layer?.family ?? 'ungrouped', layerId: entry.id })
     }
     for (const point of points) {
@@ -62,6 +64,10 @@ export function PointDataPanel({ stack, layers, catalog, location, instant, draw
   const rows = useMemo(() => selectedReadings(stack, layers, catalog), [stack, layers, catalog])
   const requests = rows.flatMap(row => row.point && focusReady && !pointUnavailable(row.point, catalog, runs) ? [pointRequest(location, instant, row.point)] : [])
   const results = usePointRequests(requests)
+  const {publish} = useLoadedTemperatures()
+  const temperatureSamples = useMemo(() => Object.values(results).flatMap(state => state.result?.source !== 'fixture' ? state.result?.snapshot.servedFields.flatMap(v => {const t=temperatureSample(v,location.latitude,location.longitude);return t?[t]:[]}) ?? [] : []), [results,location.latitude,location.longitude])
+  useEffect(() => {publish({latitude:location.latitude,longitude:location.longitude,instant,samples:temperatureSamples})},[publish,temperatureSamples,location.latitude,location.longitude,instant])
+  const temperatureChoice = (owners:string[])=>stack.find(s=>owners.includes(s.id))?.temperatureSource ?? 'auto'
   const [clock, setClock] = useState(Date.now)
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 60000); return () => clearInterval(timer) }, [])
   const [minimized, setMinimized] = useState(readMinimized)
@@ -110,6 +116,7 @@ export function PointDataPanel({ stack, layers, catalog, location, instant, draw
         'Selected level':p.level ?? 'Not selected', 'Selected member / statistic':p.variant ?? 'Not selected',
         'Returned native time': values.map(v => v.attribution.validTime),
         'Offset seconds': values.map(v => v.attribution.validTime ? (Date.parse(v.attribution.validTime)-instant)/1000 : null),
+        'Temperature-based colours':values.filter(v=>precipitationScale(v.attribution.fieldKey ?? v.field,v.units)).map(v=>({association:temperatureChoice(row.owners)==='auto'?'Same source → HRDPS':temperatureChoice(row.owners),temperature:temperatureDescription(temperatureFor(valueTarget(v,location.latitude,location.longitude),temperatureSamples,runs['eccc-hrdps'],Date.now(),temperatureChoice(row.owners)))})),
         'Returned readings':values.map(v => ({field:v.field,value:valueAllowed(v) ? v.text : null,units:v.units,provenance:v.attribution.responseProvenance})),
         'Response notices':state?.result?.snapshot.notices ?? [], Availability:status } }
       : { ...mapLayerEvidence(row.layerId!, layers.find(l => l.id === row.layerId), frame), text:`Numeric point values unavailable. ${frame?.description ?? 'No frame drawn.'}` }
@@ -160,7 +167,7 @@ export function PointDataPanel({ stack, layers, catalog, location, instant, draw
               <button className={`point-data-reading${omitted ? ' point-data-omitted' : ''}`} ref={node => { if (node) buttons.current.set(row.key,node); else buttons.current.delete(row.key) }} onFocus={event => { focused.current = {key:row.key,node:event.currentTarget} }} onBlur={() => { focused.current = null }} aria-label={`Details for point reading ${row.label}`} aria-description={[row.point?.sourceId, ...values.map(v => `${compactValue(v)} · ${v.attribution.validTime ?? 'Native time not supplied'}`), omitted ? reason : null].filter(Boolean).join('. ')} onClick={event => { setDetail({key:row.key,opener:event.currentTarget,scroll:contents.current?.scrollTop ?? 0}); if(contents.current) contents.current.scrollTop = 0 }}>
                 {omitted ? <><span>{row.point ? [row.point.sourceId,pointFieldLabel(row.point),row.point.variant?.member ? `Member ${row.point.variant.member}` : row.point.variant?.statistic].filter(Boolean).join(' · ') : row.label}</span><small title={reason}>{concisePointReason(reason)}</small></> : (values.length ? values : [null]).map((value,index) => <span className="point-data-line" key={index}>
                   <span className="point-data-source">{row.point?.sourceId === 'google-weathernext-3-statistics' ? 'weathernext-3' : row.point?.sourceId}<small>{[qualifier,value?.attribution.member ? `Member ${value.attribution.member}` : row.point?.variant?.member && row.point.variant.member !== 'all' ? `Member ${row.point.variant.member}` : null].filter(Boolean).join(' · ')}</small></span>
-                  <span className="point-data-value">{value ? compactValue(value) : loading ? 'Loading…' : '—'}</span>
+                  <span className="point-data-value">{value && (()=>{const scale=precipitationScale(value.attribution.fieldKey ?? value.field,value.units);if(!scale)return null;const t=temperatureFor(valueTarget(value,location.latitude,location.longitude),temperatureSamples,runs['eccc-hrdps'],Date.now(),temperatureChoice(row.owners));return <span title={`Temperature-based colours · ${temperatureDescription(t)}`} aria-label={`Temperature-based colours · ${temperatureDescription(t)}`} style={{display:'inline-block',width:10,height:10,border:'1px solid currentColor',marginRight:4,background:`rgba(${precipitationColour(value.value,t?.celsius??null,scale).slice(0,3).join(',')},${value.value===0?0:1})`}}/>})()}{value ? compactValue(value) : loading ? 'Loading…' : '—'}</span>
                   <time dateTime={value?.attribution.validTime ?? undefined}>{value ? relativeValidTime(value.attribution.validTime,clock) : ''}</time>
                 </span>)}
               </button>
@@ -168,6 +175,7 @@ export function PointDataPanel({ stack, layers, catalog, location, instant, draw
           })}</ul>
         </section>)}
       </div>
+      {detail && activeDetail?.values.map(v=>{const scale=precipitationScale(v.attribution.fieldKey ?? v.field,v.units);return scale?<PrecipitationLegend key={v.field} scale={scale}/>:null})}
       {detail && <EvidenceInspector preventFocusScroll evidence={activeDetail?.evidence ?? {key:detail.key,label:'Retained reading',text:'This reading is no longer selected.'}} onClose={closeDetail} />}
     </div>
   </aside>

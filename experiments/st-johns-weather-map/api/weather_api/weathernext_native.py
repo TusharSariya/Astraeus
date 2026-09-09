@@ -28,6 +28,10 @@ class NativeUnavailable(RuntimeError):
     pass
 
 
+class NativeBudgetExceeded(ValueError):
+    pass
+
+
 @dataclass(frozen=True)
 class ObjectIdentity:
     bucket: str
@@ -66,13 +70,22 @@ class NativeReading:
     # Statistics are surface arrays; no pressure-level/member axis exists.
     pressure_level: None = None
     member: None = None
+    grid: dict | None = None
+    native_times: tuple[str, ...] | None = None
+    unavailable_fields: tuple[str, ...] = ()
+    unread_objects: tuple[ObjectIdentity, ...] = ()
 
 
 class NativeStatisticsReader:
     def __init__(self, transport: ObjectTransport, *, limits: NativeLimits = NativeLimits()):
         self.transport, self.limits = transport, limits
 
-    def read_point(self, selection: WeatherNextSelection, *, now: datetime, acquisition_scope: str = HISTORICAL) -> NativeReading:
+    def read_grid(self, selection: WeatherNextSelection, *, now: datetime, acquisition_scope: str = HISTORICAL, region: str = "avalon") -> NativeReading:
+        if selection.fields != ("total_cloud_cover_mean",):
+            raise NativeUnavailable("Only total cloud mean supports grid delivery")
+        return self.read_point(selection, now=now, acquisition_scope=acquisition_scope, regional=region)
+
+    def read_point(self, selection: WeatherNextSelection, *, now: datetime, acquisition_scope: str = HISTORICAL, regional: bool = False, inventory: bool = False) -> NativeReading:
         import time
         try:
             validate_scope(selection, now, acquisition_scope)
@@ -89,17 +102,22 @@ class NativeStatisticsReader:
                 raise ValueError("deadline")
             return value
 
+        unread_objects = []
+        unavailable_fields = []
+
         def fetch(relative, cap):
             nonlocal operations, received
             if operations + 2 > self.limits.operations:
-                raise ValueError("operation budget")
+                raise NativeBudgetExceeded("operation budget")
             operations += 2
             name = f"{prefix}/{relative}"
             item = self.transport.describe(BUCKET, name, timeout=remaining())
             if (item.bucket != BUCKET or item.name != name or not item.generation.isdecimal()
-                    or not item.etag or type(item.size) is not int or not 0 < item.size <= cap
-                    or received + item.size > self.limits.received_bytes):
-                raise ValueError("object identity or byte budget")
+                    or not item.etag or type(item.size) is not int or item.size <= 0):
+                raise ValueError("object identity")
+            if item.size > cap or received + item.size > self.limits.received_bytes:
+                unread_objects.append(item)
+                raise NativeBudgetExceeded("native acquisition byte limit")
             body = self.transport.read(item, max_bytes=item.size, timeout=remaining())
             remaining()
             if not isinstance(body, bytes) or len(body) != item.size:
@@ -154,7 +172,7 @@ class NativeStatisticsReader:
 
                 coordinates = {}
                 names = {"init_time", "lead_time"}
-                for field in selection.fields:
+                for field in (() if inventory else selection.fields):
                     grid = _expected_grid(field)
                     names.update((f"lat_{grid}", f"lon_{grid}"))
                 for name in sorted(names):
@@ -191,13 +209,23 @@ class NativeStatisticsReader:
                     raise ValueError("native time units or initialization")
                 lead = (selection.valid_time - initialization).total_seconds() / 3600
                 leads = coordinates["lead_time"]
-                if np.any(np.diff(leads) != 1):
+                if (len(leads) > 360 or len(leads) == 0 or np.any(leads < 1) or np.any(leads > 360)
+                        or np.any(leads != np.floor(leads)) or np.any(np.diff(leads) != 1)):
                     raise ValueError("nonhourly lead axis")
+                if inventory:
+                    for field in selection.fields:
+                        grid = _expected_grid(field)
+                        value = node(field, ["lead_time", f"lat_{grid}", f"lon_{grid}"])
+                        if value["shape"][0] != len(leads) or value["attributes"]["units"] != _expected_unit(field):
+                            raise ValueError("inventory field identity")
+                    times = tuple((initialization + timedelta(hours=float(h))).isoformat() for h in leads)
+                    return NativeReading(initialization, selection.valid_time, (), tuple(identities), received, native_times=times)
                 matches = np.flatnonzero(leads == lead)
                 if len(matches) != 1:
                     raise ValueError("exact lead missing")
                 ti = int(matches[0])
                 output = []
+                regional_grid = None
                 for field in selection.fields:
                     grid = _expected_grid(field)
                     dimensions = ["lead_time", f"lat_{grid}", f"lon_{grid}"]
@@ -224,7 +252,56 @@ class NativeStatisticsReader:
                     index = (ti, yi, xi)
                     chunks = value["chunk_grid"]["configuration"]["chunk_shape"]
                     relative = field + "/c/" + "/".join(str(i // c) for i, c in zip(index, chunks))
-                    raw = float(decode(field, value, relative, index))
+                    if regional:
+                        # Midpoints use the complete native axes, before clipping or
+                        # selecting cells. Preserve latitude order and native precision.
+                        normalized = (lon.astype("float64") + 180) % 360 - 180
+                        def region_axis(axis, low, high):
+                            axis = axis.astype("float64")
+                            if len(axis) < 2 or not np.allclose(abs(np.diff(axis)), .1, atol=.00005, rtol=0):
+                                raise ValueError("native 0.1 degree spacing")
+                            edges = np.concatenate(([axis[0] + (axis[0]-axis[1])/2],
+                                (axis[:-1]+axis[1:])/2, [axis[-1]+(axis[-1]-axis[-2])/2]))
+                            indices = np.flatnonzero((np.maximum(edges[:-1],edges[1:]) > low) &
+                                                    (np.minimum(edges[:-1],edges[1:]) < high))
+                            if not 1 < len(indices) <= 302 or np.any(np.diff(indices) != 1):
+                                raise ValueError("regional axis coverage")
+                            selected_edges = edges[indices[0]:indices[-1]+2]
+                            if min(selected_edges)>low or max(selected_edges)<high:
+                                raise ValueError("incomplete regional coverage")
+                            return indices, selected_edges
+                        if regional not in (True, "avalon", "atlantic"): raise ValueError("unsupported grid region")
+                        west,south,east,north = (-70,40,-40,55) if regional=="atlantic" else (-55,46.5,-51,48.5)
+                        ys, yedges = region_axis(lat, south, north)
+                        xs, xedges = region_axis(lon, west % 360, east % 360)
+                        xedges = (xedges + 180) % 360 - 180
+                        matrix = np.empty((len(ys),len(xs)), dtype="float32")
+                        # Intersect each needed native chunk once; never one RPC per cell.
+                        for yc in sorted(set(int(y)//chunks[1] for y in ys)):
+                            ypart = ys[ys//chunks[1] == yc]
+                            for xc in sorted(set(int(x)//chunks[2] for x in xs)):
+                                xpart = xs[xs//chunks[2] == xc]
+                                path = f"{field}/c/{ti//chunks[0]}/{yc}/{xc}"
+                                block = decode(field,value,path,(ti,slice(int(ypart[0]),int(ypart[-1])+1),slice(int(xpart[0]),int(xpart[-1])+1)))
+                                matrix[np.ix_(ypart-ys[0],xpart-xs[0])] = block
+                        fill = value.get("fill_value")
+                        fill = None if fill is None else float(np.asarray(fill,dtype="float32"))
+                        valid = np.isfinite(matrix) & (matrix != fill if fill is not None else True)
+                        if np.any((matrix[valid]<0)|(matrix[valid]>1)):
+                            raise ValueError("cloud range")
+                        regional_grid = {"latitudes":lat[ys].astype(float).tolist(), "longitudes":normalized[xs].tolist(),
+                            "latitude_edges":yedges.tolist(), "longitude_edges":xedges.tolist(),
+                            "percentages":[[float(v)*100 if ok else None for v,ok in zip(row,mask)] for row,mask in zip(matrix,valid)]}
+                        # The representative point only supplies shared typed provenance.
+                        raw = float(matrix[yi-ys[0],xi-xs[0]])
+                    else:
+                        try:
+                            raw = float(decode(field, value, relative, index))
+                        except NativeBudgetExceeded:
+                            if len(selection.fields) == 1:
+                                raise
+                            unavailable_fields.append(field)
+                            continue
                     fill = value.get("fill_value")
                     if fill is not None:
                         # JSON decimals must be compared at the native precision.
@@ -235,6 +312,6 @@ class NativeStatisticsReader:
                     output.append(WeatherNextValue(field, result, unit, field.rsplit("_", 1)[1], grid,
                                                   float(lat[yi]), float((lon[xi] + 180) % 360 - 180)))
                 remaining()
-                return NativeReading(initialization, selection.valid_time, tuple(output), tuple(identities), received)
+                return NativeReading(initialization, selection.valid_time, tuple(output), tuple(identities), received, grid=regional_grid, unavailable_fields=tuple(unavailable_fields), unread_objects=tuple(unread_objects))
         except Exception:
             raise NativeUnavailable("WeatherNext native metadata, object, or decoding failed") from None

@@ -23,7 +23,7 @@ from ingest.adapters.eccc_datamart import (
     RDPS_DEMAND_VARS,
 )
 from .native_runs import NativeRunInventory, RunUnavailable
-from ingest.contract import FetchWindow, RunCandidate
+from ingest.contract import FetchWindow, RunCandidate, ATLANTIC_CONTEXT_BOUNDS
 from .models import RDPSAcquisition, RDPSDemandRequest, RDPSDemandUnavailable
 
 RDPS_POINT_FIELDS = (
@@ -213,12 +213,12 @@ class RDPSQueryCoordinator:
         self._refreshes: dict[tuple, Future] = {}
 
     def query(self, selected_time: datetime, *, fields: tuple[str, ...] = RDPS_POINT_FIELDS,
-              run_id: str | None = None, refresh: bool = False) -> RDPSQueryEntry:
+              run_id: str | None = None, refresh: bool = False, region: str = "avalon") -> RDPSQueryEntry:
         if not refresh:
-            return self._query(selected_time, fields=fields, run_id=run_id)
+            return self._query(selected_time, fields=fields, run_id=run_id, region=region)
         # Coalesce the complete refresh before the coordinator's existing
         # acquisition lock, including discovery and the native payload read.
-        request = (selected_time, tuple(fields), run_id)
+        request = (selected_time, tuple(fields), run_id, region)
         with self._refresh_lock:
             future = self._refreshes.get(request)
             owner = future is None
@@ -230,7 +230,7 @@ class RDPSQueryCoordinator:
         if not owner:
             return future.result()
         try:
-            entry = self._query(selected_time, fields=fields, run_id=run_id, refresh=True)
+            entry = self._query(selected_time, fields=fields, run_id=run_id, refresh=True, region=region)
             future.set_result(entry)
             return entry
         except BaseException as error:
@@ -241,7 +241,9 @@ class RDPSQueryCoordinator:
                 self._refreshes.pop(request, None)
 
     def _query(self, selected_time: datetime, *, fields: tuple[str, ...] = RDPS_POINT_FIELDS,
-               run_id: str | None = None, refresh: bool = False) -> RDPSQueryEntry:
+               run_id: str | None = None, refresh: bool = False, region: str = "avalon") -> RDPSQueryEntry:
+        if region not in ("avalon", "atlantic") or (region=="atlantic" and fields!=("total_cloud_opacity",)):
+            raise ValueError("RDPS unsupported regional field request")
         if selected_time.tzinfo is None:
             raise ValueError("RDPS selected time must include an offset")
         fields = tuple(sorted(set(fields)))
@@ -254,6 +256,7 @@ class RDPSQueryCoordinator:
         # This gate precedes even bounded directory discovery: listings are
         # provider payload too, so an unsupported runtime never opens one.
         self._adapter.demand_operation_bounds(len(fields))
+        request_bounds = ATLANTIC_CONTEXT_BOUNDS if region=="atlantic" else self._adapter.bounds
         with self._lock:
             try:
                 candidate = self._run_inventory.resolve(run_id, refresh=refresh) if run_id is not None else self._discover(selected_time, refresh=refresh)
@@ -268,7 +271,7 @@ class RDPSQueryCoordinator:
                     if prior.run_time is not None:
                         lead = int((selected_time - prior.run_time).total_seconds() // 3600)
                         prior_key = RDPSRequestKey(str(prior.detail["cycle_url"]), prior.provider_run_id,
-                            lead, fields, tuple(sorted(self._adapter.bounds.items())))
+                            lead, fields, tuple(sorted(request_bounds.items())))
                         expired = self._cache.expired_acquisition(prior_key)
                 raise RDPSQueryUnavailable(RDPSDemandUnavailable(
                     reason="refresh_failed" if expired else "query_failed",
@@ -283,7 +286,7 @@ class RDPSQueryCoordinator:
             if lead not in available or not 0 <= lead < 85:
                 raise ValueError("RDPS has no exact native lead for the selection")
             key = RDPSRequestKey(str(candidate.detail["cycle_url"]), candidate.provider_run_id,
-                                  lead, tuple(fields), tuple(sorted(self._adapter.bounds.items())))
+                                  lead, tuple(fields), tuple(sorted(request_bounds.items())))
             self._prepared[key] = candidate
             try:
                 return self._cache.query(key, refresh=refresh)

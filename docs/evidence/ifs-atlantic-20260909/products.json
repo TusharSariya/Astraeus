@@ -1,0 +1,50 @@
+{
+  "cyclone-control": {
+    "error": "bounded decoder exited 1: Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/work/api/weather_api/ifs_track_worker.py\", line 59, in <module>\n    body=json.dumps(decode(json.loads(sys.stdin.buffer.read())),allow_nan=False).encode()\n                    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/api/weather_api/ifs_track_worker.py\", line 25, in decode\n    if not members or len(members)>51 or any(n not in map(str,range(51)) for n in members):raise ValueError('track_members_invalid')\n                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: track_members_invalid\n"
+  },
+  "cyclone-ensemble": {
+    "error": "bounded decoder exited 1: Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/work/api/weather_api/ifs_track_worker.py\", line 59, in <module>\n    body=json.dumps(decode(json.loads(sys.stdin.buffer.read())),allow_nan=False).encode()\n                    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/api/weather_api/ifs_track_worker.py\", line 25, in decode\n    if not members or len(members)>51 or any(n not in map(str,range(51)) for n in members):raise ValueError('track_members_invalid')\n                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: track_members_invalid\n"
+  },
+  "probability": {
+    "digest": "d258b052f81f7c4a8e577eb6b6573e23f7fa836275d49afe4c90bad72a4dbb46",
+    "native": "2026-09-10T00:00:00+00:00",
+    "receipts": [
+      {
+        "url": "https://data.ecmwf.int/forecasts/20260909/00z/ifs/0p25/enfo/20260909000000-240h-enfo-ep.index",
+        "effective_url": "https://data.ecmwf.int/forecasts/20260909/00z/ifs/0p25/enfo/20260909000000-240h-enfo-ep.index",
+        "http_status": 200,
+        "request_headers": {
+          "Accept-Encoding": "identity"
+        },
+        "response_headers": {
+          "content-type": "application/json",
+          "etag": "00000000-0958-a7e3-0000-000000000000",
+          "last-modified": "Wed, 09 Sep 2026 08:01:00 GMT",
+          "content-length": "327453"
+        },
+        "completed_at": "2026-09-09T13:40:22.078783+00:00",
+        "byte_size": 327453,
+        "sha256": "01ca46c38bd3999d3f2d7dd89f20faa2a2220af71a1b3c31e1ba0c58586b9e7e"
+      },
+      {
+        "url": "https://data.ecmwf.int/forecasts/20260909/00z/ifs/0p25/enfo/20260909000000-240h-enfo-ep.grib2",
+        "effective_url": "https://data.ecmwf.int/forecasts/20260909/00z/ifs/0p25/enfo/20260909000000-240h-enfo-ep.grib2",
+        "http_status": 206,
+        "request_headers": {
+          "Accept-Encoding": "identity",
+          "Range": "bytes=0-454423"
+        },
+        "response_headers": {
+          "content-type": "application/grib",
+          "content-range": "bytes 0-454423/722076108",
+          "etag": "00000000-0958-a7e2-0000-000000000000",
+          "last-modified": "Wed, 09 Sep 2026 08:01:00 GMT",
+          "content-length": "454424"
+        },
+        "completed_at": "2026-09-09T13:40:42.627209+00:00",
+        "byte_size": 454424,
+        "sha256": "5eb8cff236f3ed08bb55e7fe9b851f845511102b8b1f5453a10949b4c50dd417"
+      }
+    ]
+  }
+}

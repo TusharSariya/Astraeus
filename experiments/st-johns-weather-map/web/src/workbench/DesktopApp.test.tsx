@@ -46,7 +46,7 @@ it('does not query a default Series point while a named site awaits registered g
   render(<App />)
   await screen.findByRole('heading', { name: 'Series' })
   await waitFor(() => expect(screen.getByText(/Registered site signal-hill awaits registry metadata/)).toBeInTheDocument())
-  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/point/series'))).toBe(false)
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith('/point/comparison'))).toBe(false)
 })
 
 it('reads a same-second Focus change exactly and clears old point evidence on failure', async () => {
@@ -71,14 +71,14 @@ it('shares loaded native pages with Sources and clears its open inspector on fix
   const original = vi.mocked(fetch).getMockImplementation()!
   let nativeReads = 0
   vi.mocked(fetch).mockImplementation(async (...args) => {
-    if (!String(args[0]).endsWith('/point/series')) return original(...args)
+    if (!String(args[0]).endsWith('/point/comparison')) return original(...args)
     nativeReads++
     const selection = JSON.parse(String(args[1]?.body))
-    return new Response(JSON.stringify({ selection, snapshot: { id: 'shared-fixed', selected_at: at, expires_at: '2026-09-07T12:05:00Z', change_token: 'opaque', identities: [] }, complete: true, next_cursor: null, notices: [], series: selection.selectors.map((s: { id: string; source_id: string; field: string; run: string }) => ({ selector_id: s.id, source_id: s.source_id, field: s.field, requested_run: s.run, availability: 'available', reason: 'Fixed native fixture', samples: [{ field: s.field, key: s.field, family: 'temperature', value: 1234, provenance: { source_id: s.source_id, evidence_class: 'retrieved', data_mode: 'fixture', valid_time: at, normalized_units: 'degC', quality: { status: 'good', flags: [] } } }] })) }))
+    return Response.json({id:'shared-fixed',selection,selected_at:at,expires_at:'2026-09-07T12:05:00Z',complete:true,next_cursor:null,completed_positions:1,total_positions:1,coverage:[],curves:[{id:'eccc-hrdps:temperature_2m',source_id:'eccc-hrdps',product_id:'hrdps',group:'temperature',field:'temperature_2m',definition:'temperature',units:'degC',samples:[{time:at,run_id:'native',evidence:{key:'temperature_2m',field:'temperature_2m',value:1234,provenance:{source_id:'eccc-hrdps',evidence_class:'retrieved',data_mode:'fixture',valid_time:at,normalized_units:'degC',quality:{status:'good',flags:[]}}}}]}]})
   })
   render(<App />)
   fireEvent.click(screen.getByRole('button', { name: 'Series' }))
-  await vi.waitFor(() => expect(screen.getAllByRole('img', { name: /native samples/ })).toHaveLength(2))
+  await vi.waitFor(() => expect(screen.getByRole('img', {name:/Temperature; native timestamps/})).toBeInTheDocument())
   fireEvent.click(screen.getByRole('button', { name: 'Sources' }))
   await vi.waitFor(() => expect(screen.getByRole('region', { name: 'Finite native Series evidence' })).toBeInTheDocument())
   fireEvent.click(screen.getAllByText(/Native values, gaps and run identity/)[0])

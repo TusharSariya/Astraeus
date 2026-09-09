@@ -1,3 +1,6 @@
+import { TemperatureProvider } from './workbench/precipitationColours'
+import { useDemandCloudTimes } from './workbench/demandCloudTimes'
+import { useSourceTimes, timeMarkers } from './workbench/sourceTimes'
 import { PointDataPanel, openPointData } from './workbench/PointDataPanel'
 import { useActivity, activityEvidence, type ActivityResponse } from './workbench/ActivityView'
 import { captureInspectorReturn, restoreInspectorReturn, type InspectorReturn } from './workbench/inspectorReturn'
@@ -6,7 +9,8 @@ import { mapRunRefusals } from './workbench/layerIdentity'
 import { SkyView, skyEvidence } from './workbench/SkyView'
 import { loadRegisteredCameras, type CameraRegistry } from './workbench/registeredCameras'
 import { sourceEvidence, useSourcesView } from './workbench/SourcesView'
-import { useNativeSeries, type SharedSeriesSelection } from './workbench/NativeSeries'
+import { type SharedSeriesSelection } from './workbench/NativeSeries'
+import { comparisonMarkers, useForecastComparison } from './workbench/ForecastComparison'
 import { loadRegisteredSites, nearestRegisteredSite, type RegisteredSites } from './workbench/registeredSites'
 import { WorkbenchShell } from './workbench/WorkbenchShell'
 import { FocusBar } from './workbench/FocusBar'
@@ -14,7 +18,7 @@ import { parseFocusUrl, serializeFocusUrl, type View } from './workbench/focusUr
 import { EvidenceInspector, EvidenceLedger, evidenceKey, type InspectedEvidence } from './workbench/EvidenceInspector'
 import { MapStack, MapLegends, NOWCAST_STACK, type DrawEvidence } from './workbench/MapStack'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, isObservationPointProduct, pointProductFor, pointProductsFor, reading, snapInstant, stepInstant, stJohnsTime, unionFrameInstants } from './api'
+import { ALL_CLOUD_BANDS, type CloudBand, type CloudBands, DEFAULT_INTERPOLATION_METHOD, type InterpolationMethodItem, type TafResponse, cloudBandOf, filterCloudLayers, frameMarkers, loadAstronomy, loadCapAlerts, loadCatalog, loadLayers, loadMethods, loadPoint, loadProfile, loadSourceStatus, loadSpaceWeather, loadStory, loadTaf, loadTimeline, nlTime, nonPrimarySourceIds, isObservationPointProduct, pointProductFor, pointProductsFor, reading, snapInstant, stepInstant, stJohnsTime } from './api'
 import { advanceClock, fasterSpeed, slowerSpeed, type PlaybackDirection, type PlaybackSpeed } from './playback'
 import { stationCoverage, stations, unavailableSnapshot } from './fixtures'
 import { MapPanel, type MapEvidenceRow } from './MapPanel'
@@ -383,6 +387,8 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [view, setView] = useState<View>(initialFocus.view)
   const [dock, setDock] = useState<View | null>(initialFocus.dock)
   const [site, setSite] = useState<string | null>(initialFocus.site)
+  const [seriesWindow, setSeriesWindow] = useState<{start:number;end:number} | null>(null)
+  const seriesVisible = !legacyOpen && (view === 'Series' || dock === 'Series')
   const [seriesEvidence, setSeriesEvidence] = useState<SharedSeriesSelection | null>(null)
   const [runChoices, setRunChoices] = useState(initialFocus.runs)
   const [registeredSites, setRegisteredSites] = useState<RegisteredSites | null>(null)
@@ -526,11 +532,11 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     () => windowFromTimeline(timeline, reference),
     [timeline, reference],
   )
-  const evidenceStartMs = reference.getTime() - evidenceWindow.backMinutes * 60_000
+  const evidenceStartMs = reference.getTime() - (timeRange === 'history' ? 10080 : evidenceWindow.backMinutes) * 60_000
   const evidenceEndMs = reference.getTime() + evidenceWindow.forwardMinutes * 60_000
   const visibleWindow = displayWindow(timeRange, reference.getTime(), evidenceStartMs, evidenceEndMs)
-  const windowStartMs = legacyOpen ? evidenceStartMs : visibleWindow.start
-  const windowEndMs = legacyOpen ? evidenceEndMs : visibleWindow.end
+  const windowStartMs = seriesVisible && seriesWindow ? seriesWindow.start : legacyOpen ? evidenceStartMs : visibleWindow.start
+  const windowEndMs = seriesVisible && seriesWindow ? seriesWindow.end - 1 : legacyOpen ? evidenceEndMs : visibleWindow.end
   const BACK_MINUTES = (reference.getTime() - windowStartMs) / 60_000
   const FORWARD_MINUTES = (windowEndMs - reference.getTime()) / 60_000
 
@@ -551,14 +557,22 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   // panels retain their completed point-evidence minute selection.
   const spaceWeatherEvidenceAt = legacyOpen ? tafEvidenceAt : new Date(selectedMs).toISOString()
 
+  const wn3Times = useSourceTimes(selections, windowStartMs, windowEndMs)
+  const cloudTimes = useDemandCloudTimes(selections, windowStartMs, windowEndMs)
+  const sourceTimes = useMemo(()=>[...wn3Times,...cloudTimes],[wn3Times,cloudTimes])
+  const markers = useMemo(
+    () => timeMarkers(frameMarkers(layers, selections, windowStartMs, windowEndMs), sourceTimes),
+    [layers, selections, windowStartMs, windowEndMs, sourceTimes],
+  )
+
   // The axis a scrub snaps onto when display interpolation is off: the union
   // of the active visible layers' published frame instants in the window.
   // Empty (free five-minute scrubbing) when interpolation is on or nothing
   // active publishes a frame. Toggling a layer changes this axis but never
   // moves the current selection — only a scrub action snaps.
   const snapInstants = useMemo(
-    () => (interpolate ? [] : unionFrameInstants(layers, selections, windowStartMs, windowEndMs)),
-    [interpolate, layers, selections, windowStartMs, windowEndMs],
+    () => (interpolate || seriesVisible ? [] : markers.markers.map(marker => marker.ms)),
+    [interpolate, markers, seriesVisible],
   )
   const snapping = snapInstants.length > 0
   const clampMs = useCallback((ms: number) => Math.max(windowStartMs, Math.min(windowEndMs, ms)), [windowStartMs, windowEndMs])
@@ -640,14 +654,6 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     }, 250)
     return () => { window.clearTimeout(timer); controller.abort() }
   }, [tafEvidenceAt])
-
-  // Published frames of the active layers: the ticks under the scrubber and
-  // the jump targets. Exactly what /layers returned, never an invented
-  // instant; a layer with no time axis is named rather than left out.
-  const markers = useMemo(
-    () => frameMarkers(layers, selections, windowStartMs, windowEndMs),
-    [layers, selections, windowStartMs, windowEndMs],
-  )
 
   const selectMethod = useCallback((methodId: string) => {
     setMethod(methodId)
@@ -783,7 +789,11 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   useEffect(() => {
     const controller = new AbortController()
     setLayersLoading(true)
-    Promise.all([undefined, 'GFS', 'CAP'].map(product => loadLayers(product, controller.signal))).then(results => {
+    Promise.all([undefined, 'GFS', 'CAP', 'GOES-19', 'RDPS'].map(async product => {
+      const result=await loadLayers(product,controller.signal)
+      if(!controller.signal.aborted && (product==='GOES-19'||product==='RDPS'))setLayers(previous=>[...new Map([...previous,...result.layers].map(layer=>[layer.id,layer])).values()])
+      return result
+    })).then(results => {
       if (!controller.signal.aborted) {
         setLayers([...new Map(results.flatMap(result => result.layers).map(layer => [layer.id, layer])).values()])
         setLayerNotices([...new Set(results.flatMap(result => result.notices))])
@@ -1224,7 +1234,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   )
 
   const drawn = useMemo(() => mapDrawReceipts.filter((row) => row.selection?.latitude === location.latitude && row.selection.longitude === location.longitude && row.selection.instant === selectedMs), [mapDrawReceipts, location.latitude, location.longitude, selectedMs])
-  const runRefusals = useMemo(() => mapRunRefusals(layers, runChoices), [layers, runChoices])
+  const runRefusals = useMemo(() => ({...mapRunRefusals(layers, runChoices), ...Object.fromEntries(selections.filter(entry=>entry.points?.some(p=>runChoices[p.sourceId] && runChoices[p.sourceId]!=='latest')).map(entry=>[entry.id,'This grid endpoint cannot request a named run. Choose Latest available explicitly.']))}), [layers, runChoices, selections])
   const benchMap = (
     <>
               <MapPanel
@@ -1275,15 +1285,18 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
               )}
     </>
   )
+  const seriesFrames = comparisonMarkers(seriesEvidence && seriesEvidence.selection.latitude === location.latitude && seriesEvidence.selection.longitude === location.longitude ? seriesEvidence : null)
+  const dockMarkers = seriesVisible ? seriesFrames : markers
   const benchTimeline = (
             <TimelineDock compact
               desktop={{
-                range: timeRange, onRange: range => { pausePlayback(); setTimeRange(range) },
+                comparison: seriesVisible,
+                range: seriesVisible ? 'day' : timeRange, onRange: range => { pausePlayback(); setTimeRange(range) },
                 onInterval: setSpeed,
                 onStep: direction => { pausePlayback(); setSelectedMs(current => clampMs(current + direction * speed * 60_000)) },
-                onFrame: direction => { const next = frameNeighbour(markers.markers.map(marker => marker.ms), selectedMs, direction); if (next !== null) jumpToTime(new Date(next)) },
+                onFrame: direction => { const next = frameNeighbour(dockMarkers.markers.map(marker => marker.ms), selectedMs, direction); if (next !== null) jumpToTime(new Date(next)) },
                 onReveal: () => setTimeRange(containingRange(selectedMs, reference.getTime())),
-                layers, selections, drawn, reference, evidenceStartMs, evidenceEndMs, expanded: tracksOpen,
+                layers, selections, drawn, sourceTimes: seriesVisible ? [] : sourceTimes, reference, evidenceStartMs, evidenceEndMs, expanded: tracksOpen,
                 onExpanded: open => { setTracksOpen(open); if (open) setStoryOpen(false) },
               }}
               offsetMinutes={offsetMinutes}
@@ -1298,7 +1311,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
               onQuickJump={(offsetHours) => selectMinutes(offsetHours * 60)}
               windowStartMs={windowStartMs}
               windowEndMs={windowEndMs}
-              markers={markers}
+              markers={dockMarkers}
               onJumpToInstant={(ms) => jumpToTime(new Date(ms))}
               timeline={timeline}
               timelineError={timelineNotice}
@@ -1876,12 +1889,12 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       {mode === 'expert' && <footer><span>POC // St. John’s · Avalon · Grand Banks</span><p>Experimental evidence display. Not a calibrated probability, warning service, or navigation product.</p></footer>}
     </div>
   )
-  const currentSeriesEvidence = seriesEvidence && !playing && seriesEvidence.selection.latitude === location.latitude && seriesEvidence.selection.longitude === location.longitude && Date.parse(seriesEvidence.selection.start) === selectedMs ? seriesEvidence : null
+  const currentSeriesEvidence = seriesEvidence && !playing && seriesEvidence.selection.latitude === location.latitude && seriesEvidence.selection.longitude === location.longitude ? seriesEvidence : null
   useEffect(() => {
     setInspected((current) => current?.key.startsWith('source:')
       ? sourceEvidence(current.key.slice(7), catalog, sourceStatuses, snapshot.servedFields, layers, currentSeriesEvidence, snapshot.observationUnavailable)
       : current?.key.startsWith('layer:') ? mapLayerEvidence(current.key.slice(6), layers.find((layer) => layer.id === current.key.slice(6)), drawn.find((row) => row.id === current.key.slice(6)))
-      : current?.key.startsWith('map-feature:') && !drawn.some((row) => row.features?.some((_, index) => featureEvidenceKey(row, index) === current.key)) && current.details?.['Feature unavailable'] !== true
+      : current?.key.startsWith('map-feature:') && !drawn.some((row) => row.nativeGrid && Number.isInteger(current.details?.['Native cell index']) ? featureEvidenceKey(row,Number(current.details?.['Native cell index']))===current.key : row.features?.some((_, index) => featureEvidenceKey(row, index) === current.key)) && current.details?.['Feature unavailable'] !== true
         ? { ...current, text: 'This native feature is no longer in the current Map draw. Its old values are withheld; inspect the current frame explicitly.', attribution: undefined, details: { 'Feature unavailable': true } }
       : current?.key.startsWith('native:') && (!currentSeriesEvidence || currentSeriesEvidence.expired || !current.key.startsWith(`native:${currentSeriesEvidence.snapshot.id}:`)) && current.details?.['Selection unavailable'] !== true
         ? { ...current, text: 'Native selection expired or changed. Values are withheld; open Series and explicitly refresh to acquire another selection.', attribution: undefined, details: { 'Selection unavailable': true, 'Finite native selection': current.details?.['Finite native selection'] ?? null } } : current)
@@ -1890,11 +1903,11 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     instant: selectedMs, catalogError, statusError: sourceStatusError, onInspect: inspect })
   const [activityResponse, setActivityResponse] = useState<ActivityResponse | null>(null)
   const [activitySeries, setActivitySeries] = useState<{ field: string; source: string; revision: number } | null>(null)
-  const nativeSeries = useNativeSeries({ catalog, jumpTo: activitySeries, location, instant: selectedMs, fields: snapshot.servedFields, runs: runChoices,
-    onEvidence: setSeriesEvidence, enabled: !legacyOpen && (view === 'Series' || dock === 'Series'), selectionMoving: playing,
-    focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInspect: inspect,
-    onRun: (source, run) => setRunChoices((current) => ({ ...current, [source]: run })),
-    onLatest: (source) => setRunChoices((current) => { const next = { ...current }; delete next[source]; return next }),
+  const nativeSeries = useForecastComparison({ jumpTo: activitySeries, location, instant: selectedMs,
+    onWindow: setSeriesWindow, onEvidence: setSeriesEvidence, enabled: !legacyOpen && (view === 'Series' || dock === 'Series'), selectionMoving: playing,
+    focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude),
+    onInstant: value => { pausePlayback(); setSelectedMs(value) },
+    onLocation: point => { setSite(null); setLocation(point) },
   })
   const activity = useActivity({ windowEnd: windowEndMs, location, instant: selectedMs, siteId: site,
     enabled: !legacyOpen && (view === 'Activity' || dock === 'Activity'), moving: playing,
@@ -1939,10 +1952,10 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
       onPoint={(product, opener) => { pausePlayback(); setSelectedProduct(product); window.dispatchEvent(new CustomEvent('bench-map-evidence', { detail: { opener, returnToLayers: true } })) }}
       onSeries={(field, source) => { setActivitySeries({ field, source, revision: Date.now() }); setView('Series'); if (dock === 'Series') setDock(null); window.dispatchEvent(new Event('bench-timeline-activate')) }}
       onSource={(source, opener) => inspect(sourceEvidence(source.id, catalog, sourceStatuses, snapshot.servedFields, layers), opener)} layers={layers} stack={selections} onChange={setSelections} drawn={drawn} onInspect={inspect} loading={layersLoading} error={layersError} notices={layerNotices} />}
-    legends={<MapLegends layers={layers} stack={selections} />}
+    legends={<MapLegends layers={layers} stack={selections} drawn={drawn} />}
     evidence={<><p className="discovery-selected-point">Point product: {selectedProduct ?? 'API selection'} · {dataPathCopy[dataSource]}</p><MapEvidenceDetails layers={layers} drawn={drawn} location={location} instant={selectedMs} statuses={sourceStatuses} responseSourceIds={responseSourceIds} onSelect={(point) => { setSite(null); setLocation(point) }} onInspect={inspect} /><details className="bench-point-ledger" open={!!selectedProduct}><summary>Point evidence ledger</summary>{ledger}</details></>}
     views={{
-      Map: <div className="bench-map-layout">{benchMap}<PointDataPanel stack={selections} layers={layers} catalog={catalog} location={location} instant={selectedMs} drawn={drawn} runs={runChoices} focusReady={!site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude)} /></div>,
+      Map: <TemperatureProvider><div className="bench-map-layout">{benchMap}<PointDataPanel stack={selections} layers={layers} catalog={catalog} location={location} instant={selectedMs} drawn={drawn} runs={runChoices} focusReady={!site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude)} /></div></TemperatureProvider>,
       Series: nativeSeries,
       Sky: <SkyView {...skyProps} />,
       Activity: activity,

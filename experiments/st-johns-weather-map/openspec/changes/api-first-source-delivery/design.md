@@ -34,3 +34,9 @@ fixed fixture responses from the actual Pydantic/API models. A pinned
 openapi-typescript development dependency generates the client definitions.
 Backend and frontend tests consume the same fixture JSON. Generated material is
 checked for drift; live captures remain outside Git.
+
+The September 9 IFS Atlantic experiment adds selected field/level/product/run/
+variant delivery and typed native grid results under
+`ifs-atlantic-selection/specs/source-delivery/spec.md`. Existing WeatherNext grid
+responses retain their schema; IFS values, axes, edges, masks and receipt-manifest
+references are additive. Catalogued product support is distinct from retrieval.

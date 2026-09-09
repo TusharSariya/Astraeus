@@ -41,3 +41,14 @@ above do not close full-view or source-integration obligations.
 
 Activity delivery and remaining field/geometry limitations are recorded in the
 September 7 Activity section of [implementation evidence](implementation-evidence.md).
+
+## September 9 multiple-model forecast comparison
+
+- [x] Amend the isolated experimental comparison and WeatherNext batching contracts from the owner's supplied plan.
+- [x] Add typed progressive comparison alongside the unchanged finite Series endpoint, shared cache accounting, bounded acquisition, cancellation and fixed expiry.
+- [x] Reuse native advertised runs/frames and point readers; separate HRDPS inventory from decoder resource checks and support advertised nonzero first leads.
+- [x] Batch WeatherNext selected statistics through its default worker, preserving completed fields when another field reaches the existing budget.
+- [x] Add mapped API, client, Linux-worker, generated-contract and browser verification; rebuild the local app.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006.
+Evidence and source-specific limits: [September 9 comparison evidence](../../../../../docs/evidence/forecast-comparison-20260909/README.md).

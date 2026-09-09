@@ -1,0 +1,104 @@
+{
+  "cyclone-control": {
+    "run": "ifs:cyclone-control:2026090906",
+    "tracks": 0,
+    "members": [
+      "51"
+    ],
+    "receipts": [
+      {
+        "url": "https://data.ecmwf.int/forecasts/20260909/06z/ifs/0p25/oper/20260909060000-144h-oper-tf.bufr",
+        "effective_url": "https://data.ecmwf.int/forecasts/20260909/06z/ifs/0p25/oper/20260909060000-144h-oper-tf.bufr",
+        "http_status": 200,
+        "request_headers": {
+          "Accept-Encoding": "identity"
+        },
+        "response_headers": {
+          "content-type": "application/bufr",
+          "etag": "00000000-0959-957f-0000-000000000000",
+          "last-modified": "Wed, 09 Sep 2026 12:12:00 GMT",
+          "content-length": "18299"
+        },
+        "byte_size": 18299,
+        "sha256": "6dbda6a3fbdf52e0a06f47a313490af04adfd15eedd5fea22bb6a165e530f440",
+        "completed_at": "2026-09-09T13:47:36.630376Z"
+      }
+    ]
+  },
+  "cyclone-ensemble": {
+    "run": "ifs:cyclone-ensemble:2026090906",
+    "tracks": 1,
+    "members": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12",
+      "13",
+      "14",
+      "15",
+      "16",
+      "17",
+      "18",
+      "19",
+      "20",
+      "21",
+      "22",
+      "23",
+      "24",
+      "25",
+      "26",
+      "27",
+      "28",
+      "29",
+      "30",
+      "31",
+      "32",
+      "33",
+      "34",
+      "35",
+      "36",
+      "37",
+      "38",
+      "39",
+      "40",
+      "41",
+      "42",
+      "43",
+      "44",
+      "45",
+      "46",
+      "47",
+      "48",
+      "49",
+      "50",
+      "51"
+    ],
+    "receipts": [
+      {
+        "url": "https://data.ecmwf.int/forecasts/20260909/06z/ifs/0p25/enfo/20260909060000-144h-enfo-tf.bufr",
+        "effective_url": "https://data.ecmwf.int/forecasts/20260909/06z/ifs/0p25/enfo/20260909060000-144h-enfo-tf.bufr",
+        "http_status": 200,
+        "request_headers": {
+          "Accept-Encoding": "identity"
+        },
+        "response_headers": {
+          "content-type": "application/bufr",
+          "etag": "00000000-0959-a1d9-0000-000000000000",
+          "last-modified": "Wed, 09 Sep 2026 13:16:00 GMT",
+          "content-length": "438812"
+        },
+        "byte_size": 438812,
+        "sha256": "ff41edbd6653c4140c623ec4b69122208b5bbc3dd57c0f1ce77f0266a573e6c0",
+        "completed_at": "2026-09-09T13:47:47.389076Z"
+      }
+    ]
+  }
+}

@@ -51,7 +51,8 @@ class ECMWFQueryUnavailable(ValueError):
 
 class ECMWFHTTP:
     """Source-local bounded receipt transport reused by Open Data range helpers."""
-    def __init__(self, client=None, *, now=lambda: datetime.now(UTC), clock=time.monotonic):
+    def __init__(self, client=None, *, now=lambda: datetime.now(UTC), clock=time.monotonic, budget=None):
+        self.budget = budget
         self.client = client or httpx.Client(timeout=30, follow_redirects=False,
             headers={"User-Agent": "astraeus-weather-experiment/0.1", "Accept-Encoding": "identity"})
         self.now, self.clock = now, clock
@@ -60,8 +61,23 @@ class ECMWFHTTP:
         self.deadline = self.clock() + MAX_ACQUISITION_SECONDS
 
     def read(self, url, *, limit, byte_range=None):
+        if self.budget is not None:
+            with self.budget.receive_lock:
+                return self._read(url, limit=limit, byte_range=byte_range)
+        return self._read(url, limit=limit, byte_range=byte_range)
+
+    def _read(self, url, *, limit, byte_range=None):
         if self.clock() >= self.deadline:
             raise ECMWFQueryUnavailable("ECMWF acquisition deadline exceeded")
+        if self.budget is not None:
+            self.budget.check()
+            limit = self.budget.allowance(limit)
+            if limit > 65536:
+                limit = (limit // 65536) * 65536
+            if byte_range is not None:
+                self.budget.start_record()
+                if byte_range[1] - byte_range[0] + 1 > limit:
+                    raise ECMWFQueryUnavailable("IFS byte_budget_exhausted")
         headers = {"Accept-Encoding": "identity"}
         if byte_range is not None:
             headers["Range"] = f"bytes={byte_range[0]}-{byte_range[1]}"
@@ -82,12 +98,16 @@ class ECMWFHTTP:
                 if not match or tuple(map(int, match.groups()[:2])) != byte_range or int(match[3]) <= byte_range[1]:
                     raise ECMWFQueryUnavailable("ECMWF range identity mismatch")
             body = bytearray()
-            for chunk in response.iter_bytes(65536):
+            for chunk in response.iter_bytes(min(65536, limit)):
+                if self.budget is not None:
+                    self.budget.charge(len(chunk))
                 if self.clock() >= self.deadline:
                     raise ECMWFQueryUnavailable("ECMWF acquisition deadline exceeded")
                 body.extend(chunk)
                 if len(body) > limit:
                     raise ECMWFQueryUnavailable("ECMWF received body exceeds bound")
+                if self.budget is not None and len(body) == limit and declared is None:
+                    raise ECMWFQueryUnavailable("ECMWF unbounded body reached input allowance")
             completed = self.now()
             self.completed_monotonic = self.clock()
             if declared is not None and len(body) != int(declared):
@@ -98,7 +118,7 @@ class ECMWFHTTP:
             receipt = {"url": url, "effective_url": str(response.url), "http_status": response.status_code,
                 "request_headers": headers, "response_headers": {k: v for k, v in response.headers.items() if k in safe},
                 "completed_at": completed.isoformat(), "byte_size": len(body), "sha256": hashlib.sha256(body).hexdigest()}
-        if len(self.receipts) >= MAX_DISCOVERY_REQUESTS + 1 + len(FIELDS):
+        if len(self.receipts) >= (8192 if self.budget is not None else MAX_DISCOVERY_REQUESTS + 1 + len(FIELDS)):
             raise ECMWFQueryUnavailable("ECMWF request budget exhausted")
         self.receipts.append(receipt)
         return bytes(body)

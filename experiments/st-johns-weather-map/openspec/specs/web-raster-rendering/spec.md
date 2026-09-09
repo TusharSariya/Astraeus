@@ -95,3 +95,55 @@ proxied forecast layers scrubbed cold at once is 252 calls, which exceeds it.
 - **THEN** the layer reports that imagery was not retrieved because the request
   budget was reached
 - **AND** the interface does not present the gap as an absence of weather
+
+### Requirement: Experimental numeric precipitation uses loaded temperature for display colours
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006
+
+This experimental display amendment does not change normative status or derive a
+precipitation-type product. Numeric precipitation SHALL use Temperature-based
+colours with automatic association Same source → HRDPS. Matching screen-level
+temperature SHALL come from already loaded evidence at the same location and
+native valid time; same-source evidence SHALL also match product, run and variant.
+HRDPS fallback SHALL respect the selected run. Missing, expired, failed or
+incompatible temperatures SHALL NOT be interpolated or silently reused.
+
+Above 0°C intensity SHALL use green → yellow → red, and at or below 0°C light-blue
+→ dark-blue. Without temperature, intensity colouring SHALL remain and the UI
+SHALL state Temperature unavailable. Values, native units, missing cells and
+explicit no echo SHALL remain distinct. Rate, interval amount and snowfall-depth
+scales SHALL remain separate. Inspection SHALL expose the temperature value,
+source and timestamp. The cutoff SHALL NOT claim confirmed rain or snow.
+
+Provider imagery SHALL retain provider styling and legends until numeric cells
+support recolouring; the provider-only legend rule applies to those images.
+Numeric display scales SHALL describe their actual palette and units. Styling
+SHALL reuse loaded data without temperature downloads or new science requests.
+Temperature visibility SHALL NOT determine whether loaded evidence can be used.
+
+#### Scenario: Loaded temperature association
+- **WHEN** matching same-source and HRDPS temperatures are loaded
+- **THEN** the same-source selected run wins, with HRDPS used only as fallback
+- **AND** missing, time/run mismatched and expired temperatures are unavailable
+
+#### Scenario: Numeric intensity and missing coverage
+- **WHEN** numeric rates, interval amounts or snowfall depths are displayed
+- **THEN** 0°C uses the blue palette and positive temperature uses green-yellow-red
+- **AND** values and units remain unchanged, missing cells remain neutral and zero remains distinct
+
+#### Scenario: Styling and inspection
+- **WHEN** visibility or opacity changes at a settled selection
+- **THEN** loaded temperature is reused without additional science requests
+- **AND** maps, legends and inspection remain accessible at normal and 200% zoom
+
+#### Scenario: Provider radar must never enter the white cloud shader
+- **WHEN** provider-rendered radar has published-artifact sample provenance and interpolation is enabled
+- **THEN** its image retains provider RGB colours and never enters the scalar cloud-alpha shader
+- **AND** image provenance remains distinct from stored sample provenance
+
+#### Scenario: Reader selects a temperature source
+- **WHEN** the reader changes Temperature source in a precipitation layer
+- **THEN** Auto (same source → HRDPS), Same source only, HRDPS and declared temperature sources are selectable
+- **AND** the selection is retained in URLs and saved stacks without new science requests
+- **AND** an explicit source never falls back silently; unavailable loaded data is disclosed
+- **AND** provider-only radar is labelled Provider colours, with the temperature choice applying only to numeric samples until numeric map data is available

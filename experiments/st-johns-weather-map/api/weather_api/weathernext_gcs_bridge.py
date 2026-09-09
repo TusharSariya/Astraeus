@@ -105,7 +105,7 @@ def read_local_experimental_point(selection: WeatherNextSelection, **kwargs):
 
 
 def _read_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentity,
-                          acquisition_scope: str, now: datetime | None = None, transport=None, command=None, timeout=90, max_received_bytes=CAP):
+                          acquisition_scope: str, now: datetime | None = None, transport=None, command=None, timeout=90, max_received_bytes=CAP, regional=False, inventory=False):
     """Root identity must be explicitly supplied; no listing or current-run guess.
 
     No source registration/cache. Caller gets native reading plus response hashes.
@@ -120,7 +120,7 @@ def _read_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentit
     expected_prefix=f'weathernext_3_0_0_statistics/zarr/2026_to_present/{selection.initialization:%Y%m%d_%H}hr_01_preds/predictions.zarr/'
     if (root_identity.bucket != BUCKET or root_identity.name != expected_prefix+'zarr.json'
             or not root_identity.generation.isdecimal() or not root_identity.etag or not 0<root_identity.size<=256*1024
-            or len(selection.fields)!=1 or not 0<timeout<=90):
+            or not 1 <= len(selection.fields) <= 24 or not 0<timeout<=90):
         raise BridgeUnavailable('WeatherNext explicit root or point bound')
     transport=transport or AccountedGCSTransport(token_provider=GcloudProfileToken('astraeus'),max_received_bytes=max_received_bytes)
     started=time.monotonic()
@@ -137,7 +137,7 @@ def _read_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentit
                                  stderr=subprocess.DEVNULL,start_new_session=True)
         selector.register(process.stdout,selectors.EVENT_READ)
         request={'initialization':selection.initialization.isoformat(),'valid_time':selection.valid_time.isoformat(),
-                 'latitude':selection.latitude,'longitude':selection.longitude,'fields':selection.fields,'now':now.isoformat(),'max_received_bytes':max_received_bytes,'acquisition_scope':acquisition_scope}
+                 'latitude':selection.latitude,'longitude':selection.longitude,'fields':selection.fields,'now':now.isoformat(),'max_received_bytes':max_received_bytes,'acquisition_scope':acquisition_scope,'regional':regional,'inventory':inventory}
         os.set_blocking(process.stdin.fileno(),False)
         def send(value):
             body=memoryview(json.dumps(value,allow_nan=False).encode()+b'\n')
@@ -158,7 +158,7 @@ def _read_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentit
             part=os.read(process.stdout.fileno(),65536)
             if not part: raise BridgeUnavailable('WeatherNext worker exited')
             pending+=part
-            if len(pending)>65536: raise BridgeUnavailable('WeatherNext worker output bound')
+            if len(pending)>(2*1024*1024 if regional else 65536): raise BridgeUnavailable('WeatherNext worker output bound')
             if b'\n' not in pending: continue
             line,pending=pending.split(b'\n',1)
             message=json.loads(line)
@@ -167,14 +167,15 @@ def _read_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentit
                 reading=message['reading']
                 if (reading['initialization']!=selection.initialization.isoformat()
                         or reading['valid_time']!=selection.valid_time.isoformat()
-                        or [v['field'] for v in reading['values']]!=list(selection.fields)
+                        or (set(v['field'] for v in reading['values']) | set(reading.get('unavailable_fields',[]))) != (set() if inventory else set(selection.fields))
+                        or len(reading['values']) + len(reading.get('unavailable_fields',[])) != (0 if inventory else len(selection.fields))
                         or reading['received_bytes']!=payload_bytes):
                     raise BridgeUnavailable('WeatherNext result identity')
-                return {'reading':reading,'receipt':{'evidence_class':'bounded_native_gcs_point','acquisition_scope':acquisition_scope,'completed_at':datetime.now(UTC).isoformat(),
+                return {'reading':reading,'receipt':{'evidence_class':'bounded_native_gcs_grid' if regional else 'bounded_native_gcs_point','acquisition_scope':acquisition_scope,'completed_at':datetime.now(UTC).isoformat(),
                         'elapsed_seconds':time.monotonic()-started,'worker_operations':calls,'payload_bytes':payload_bytes,
                         'http_response_bytes':getattr(transport,'received_bytes',None),'http_objects':getattr(transport,'operations',[])}}
             calls+=1
-            if calls>30: raise BridgeUnavailable('WeatherNext worker operation cap')
+            if calls>(10 if inventory else 30): raise BridgeUnavailable('WeatherNext worker operation cap')
             if op=='describe':
                 name=message['name']
                 if message['bucket']!=BUCKET or not name.startswith(expected_prefix): raise BridgeUnavailable('WeatherNext worker path')

@@ -53,6 +53,7 @@ from .jobs import job_store
 from .ephemeris import EPHEMERIS_ID, EPHEMERIS_SHA256
 from .registry_api import router as registry_router
 from .desktop_series import router as series_router
+from .forecast_comparison import router as comparison_router
 from .activity import router as activity_router
 from .models import (
     CatalogResponse,
@@ -286,6 +287,9 @@ def require_core_coverage(latitude: float, longitude: float) -> None:
 
 app.include_router(registry_router, prefix=PREFIX)
 app.include_router(series_router, prefix=PREFIX)
+app.include_router(comparison_router, prefix=PREFIX)
+from .ifs_selection import router as ifs_router
+app.include_router(ifs_router, prefix=PREFIX)
 app.include_router(activity_router, prefix=PREFIX)
 
 
@@ -1006,6 +1010,8 @@ def _layer_catalogue(product: str | None = None) -> LayersResponse:
     from .aqhi_query import demand_layer as aqhi_demand_layer  # noqa: PLC0415
     from .swob_query import demand_layer as swob_demand_layer  # noqa: PLC0415
 
+    from .demand_clouds import layers as cloud_layers
+    demand_cloud_layers = cloud_layers(Layer)
     ovation_demand_layer = aurora.demand_layer(Layer, z_index=Z_INDEX_BY_KIND["raster"])
     aqhi_layer = aqhi_demand_layer(Layer, z_index=Z_INDEX_BY_KIND["point"])
     swob_layer = swob_demand_layer(Layer, z_index=Z_INDEX_BY_KIND["point"])
@@ -1014,6 +1020,8 @@ def _layer_catalogue(product: str | None = None) -> LayersResponse:
             data_mode=DataMode.LIVE, layers=[ovation_demand_layer],
             notices=["OVATION is a selected-time demand layer; listing made no provider request and advertises no native frame"],
         )
+    if product is not None and product.upper() in {"GOES-19", "RDPS"}:
+        return LayersResponse(data_mode=DataMode.LIVE, layers=[l for l in demand_cloud_layers if l.product==product.upper()], notices=["On-demand cloud imagery; listing acquires no frames"])
     if product is not None and product.upper() not in {"GFS", "HRDPS"}:
         return LayersResponse(
             data_mode=DataMode.UNAVAILABLE, layers=[],
@@ -1046,7 +1054,7 @@ def _layer_catalogue(product: str | None = None) -> LayersResponse:
     store = live_store()
     if store is None:
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [*demand_cloud_layers, ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["no live artifact store is reachable; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1056,7 +1064,7 @@ def _layer_catalogue(product: str | None = None) -> LayersResponse:
     except Exception:
         LOGGER.exception("published artifacts could not be listed for the layer index")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [*demand_cloud_layers, ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1071,7 +1079,7 @@ def _layer_catalogue(product: str | None = None) -> LayersResponse:
         # The aged-out names travel on both branches: a proxied layer is not
         # this deployment's stored evidence, so its presence says nothing about
         # whether the stored evidence aged out.
-        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [*demand_cloud_layers, ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)), notices=notices, aged_out_sources=aged_out)
 
     try:
@@ -1079,7 +1087,7 @@ def _layer_catalogue(product: str | None = None) -> LayersResponse:
     except Exception:
         LOGGER.exception("published layer coverage could not be read")
         proxied, proxy_notices = _proxied_forecast_layers()
-        layers = [ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
+        layers = [*demand_cloud_layers, ovation_demand_layer, aqhi_layer, swob_layer, *_with_run_attribution(proxied, [], {}, None, now())]
         return LayersResponse(
             data_mode=DataMode.LIVE, layers=sorted(layers, key=lambda item: (item.z_index, item.id)),
             notices=["the legacy artifact store raised while reading coverage; OVATION remains requestable and listing made no provider request", *proxy_notices],
@@ -1199,6 +1207,7 @@ def _layer_catalogue(product: str | None = None) -> LayersResponse:
 
     # OVATION is a selected-time demand grid. Listing its requestable layer
     # never fetches a provider document or implies that a native frame exists.
+    layers.extend(demand_cloud_layers)
     layers.append(ovation_demand_layer)
     layers.append(aqhi_layer)
     layers.append(swob_layer)
@@ -2063,6 +2072,17 @@ def get_layer_raster(
         headers["X-Weather-Content-Digest"] = entry.content_digest
         return Response(content=image.payload, media_type=image.content_type, headers=headers)
 
+    from .demand_clouds import GOES, RDPS, raster as cloud_raster
+    if layer_id in (GOES, RDPS):
+        if configured_mode()!=LIVE_MODE: raise HTTPException(status_code=503,detail='Cloud demand requires live mode')
+        try:
+            payload,headers=cloud_raster(layer_id,moment,bounds=bounds,width=width,height=height,crs=requested_crs)
+            return Response(content=payload,media_type='image/png',headers=headers)
+        except grids.FrameNotStored as error:
+            raise HTTPException(status_code=422,detail=str(error)) from None
+        except Exception as error:
+            raise HTTPException(status_code=503,detail=f'Selected cloud frame unavailable: {type(error).__name__}') from None
+
     grid_spec = grids.rendered_grid_spec(layer_id)
     if grid_spec is not None:
         return _rendered_grid_raster(grid_spec, moment=moment, bounds=bounds, width=width, height=height, crs=requested_crs)
@@ -2388,6 +2408,11 @@ def get_layer_legend(
     legend is the renderer's own declared colormap - the ramp the pixels were
     actually drawn with - and the headers say so.
     """
+    from .demand_clouds import GOES, RDPS, WHITE, white_legend
+    if layer_id==GOES:
+        return Response(content=goes_satellite.legend_png(),media_type='image/png',headers={**goes_satellite.legend_headers(),'X-Weather-Layer-Id':GOES})
+    if layer_id==RDPS:
+        return Response(content=white_legend(),media_type='image/png',headers={'X-Weather-Layer-Id':RDPS,'X-Weather-Legend-Basis':'renderer_colormap','X-Weather-Legend-Semantics':WHITE+' Ramp over neutral grey backdrop; violet-grey indicates missing.'})
     if layer_id == goes_satellite.LAYER_ID:
         return Response(content=goes_satellite.legend_png(), media_type="image/png", headers=goes_satellite.legend_headers())
 
@@ -2453,7 +2478,13 @@ def get_point(
     request this API cannot answer, and answering it with the nearest entry -
     or with a silent null - would hide which construction produced the number.
     """
-    require_core_coverage(latitude, longitude)
+    if (product or '').upper() in {'WEATHERNEXT 3 LOCAL', 'WEATHERNEXT 3 HISTORICAL'}:
+        from .source_grid import REGIONS
+        west, south, east, north = REGIONS['atlantic']
+        if not (south <= latitude <= north and west <= longitude <= east):
+            raise HTTPException(status_code=422, detail={'code': 'outside_supported_area', 'message': 'Coordinate is outside the Atlantic WeatherNext coverage'})
+    else:
+        require_core_coverage(latitude, longitude)
     if run is not None and (product is None or product.upper() != "GEPS REDUCTIONS"):
         raise HTTPException(status_code=422, detail="This point product does not support explicit run selection")
     if statistic is not None and statistic not in ENSEMBLE_STATISTIC_ENTRIES:
@@ -3264,3 +3295,49 @@ def ready() -> ReadyResponse:
             ready=ready_now, checks=checks, aged_out_sources=aged_out, notices=notices,
         )
     return ReadyResponse(data_mode=DataMode.UNAVAILABLE, ready=False, checks={"data_mode_configured": False, "registry_catalog": bool(registry_source_records()), "job_store": True, "live_store": False, "evidence_boundary": False})
+
+
+from .source_grid import SourceGridResponse
+
+@app.get(f"{PREFIX}/sources/{{source_id}}/grid", response_model=SourceGridResponse)
+def source_grid(source_id: str, product: str, field: str, selected_time: datetime, region: Literal["avalon", "atlantic"] = "avalon"):
+    from .source_grid import SOURCE, FIELD, frame, selected_service
+    if source_id != SOURCE or field != FIELD or product not in ('WeatherNext 3 historical','WeatherNext 3 local'):
+        raise HTTPException(status_code=422,detail='This source/product/field does not support native grid delivery')
+    if selected_time.tzinfo is None:
+        raise HTTPException(status_code=422,detail='Selected time requires an explicit UTC offset')
+    if configured_mode()!=LIVE_MODE:
+        raise HTTPException(status_code=503,detail='WeatherNext grid requires the configured live internal experiment')
+    try:
+        return frame(selected_service(product,selected_time),selected_time,region)
+    except Exception as error:
+        status=403 if getattr(error,'http_status',None) in (401,403) else 503
+        raise HTTPException(status_code=status,detail='WeatherNext credentials required' if status==403 else 'WeatherNext grid unavailable for selected native time') from None
+
+from .source_times import SourceTimesResponse
+
+@app.get(f"{PREFIX}/sources/{{source_id}}/times", response_model=SourceTimesResponse)
+def source_times(source_id: str, product: str, field: str, start: datetime, end: datetime):
+    from .source_times import inventory
+    from .source_grid import SOURCE, FIELD
+    if source_id != SOURCE or field != FIELD or product not in ('WeatherNext 3 historical','WeatherNext 3 local'):
+        raise HTTPException(status_code=422, detail='This source/product/field does not support native time inventory')
+    if start.tzinfo is None or end.tzinfo is None or not start < end <= start + timedelta(days=15):
+        raise HTTPException(status_code=422, detail='Time inventory requires an aware window of at most 15 days')
+    if configured_mode() != LIVE_MODE:
+        raise HTTPException(status_code=503, detail='WN3 time inventory requires the live internal experiment')
+    try:
+        return inventory(product, start, end)
+    except Exception as error:
+        raise HTTPException(status_code=403 if getattr(error,'http_status',None) in (401,403) else 503,
+                            detail='WN3 native time inventory unavailable') from None
+
+
+from .demand_clouds import DemandLayerTimes, LayerId as DemandCloudLayerId
+
+@app.get(f"{PREFIX}/layers/{{layer_id}}/times",response_model=DemandLayerTimes)
+def demand_layer_times(layer_id: DemandCloudLayerId,start: datetime,end: datetime):
+    from .demand_clouds import inventory
+    if configured_mode()!=LIVE_MODE:raise HTTPException(status_code=503,detail='Cloud inventory requires live mode')
+    try:return inventory(layer_id,start,end)
+    except ValueError as error:raise HTTPException(status_code=422,detail=str(error)) from None

@@ -36,10 +36,13 @@ def main():
         if type(cap) is not int or not 0<cap<=64*1024**2: raise ValueError('worker byte cap')
         selection = WeatherNextSelection(datetime.fromisoformat(request['initialization']),datetime.fromisoformat(request['valid_time']),
                                          request['latitude'],request['longitude'],tuple(request['fields']))
-        result = NativeStatisticsReader(Transport(),limits=NativeLimits(metadata_bytes=256*1024,received_bytes=cap,
-                                         decoded_chunk_bytes=128*1024**2,operations=30,seconds=85)).read_point(
+        reader = NativeStatisticsReader(Transport(),limits=NativeLimits(metadata_bytes=256*1024,received_bytes=cap,
+                                         decoded_chunk_bytes=128*1024**2,operations=30,seconds=85))
+        result = (reader.read_grid if request.get("regional", False) else reader.read_point)(
                                          selection,now=datetime.fromisoformat(request['now']),
-                                         acquisition_scope=request.get('acquisition_scope','historical'))
+                                         acquisition_scope=request.get('acquisition_scope','historical'),
+                                         **({'inventory': True} if request.get('inventory') else {}),
+                                         **({'region': 'atlantic' if request.get('regional')=='atlantic' else 'avalon'} if request.get('regional') else {}))
         output=asdict(result)
         output['initialization']=result.initialization.isoformat()
         output['valid_time']=result.valid_time.isoformat()

@@ -43,7 +43,7 @@ export interface FieldCatalogueCopy {
 export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
   "version": "1.0.0",
   "asOf": "2026-09-02",
-  "fingerprint": "eddee4f80d715009c461b459e9afc236360ed9e3d4d77a7c010e9adbec3f895f",
+  "fingerprint": "4a32e1c47319838e2a1c4e9a0c6abc1fbedda336d678a065bd07acfa72f66188",
   "families": [
     {
       "name": "air_quality",
@@ -142,6 +142,100 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
         "specific": "Mass of water vapour per mass of moist air.",
         "weathernext3_dewpoint_temperature_2m": "WeatherNext 3 native dewpoint_temperature_2m; provider statistic and sampling head remain distinct.",
         "weathernext3_station_head_dewpoint_temperature_2m": "WeatherNext 3 native station_head_dewpoint_temperature_2m; provider statistic and sampling head remain distinct."
+      }
+    },
+    {
+      "name": "ifs_native",
+      "title": "IFS native quantities",
+      "note": "Compare only identical product quantity, native units, level, event and temporal definition.",
+      "groups": {
+        "ifs_100u_sfc": "100 metre U wind component",
+        "ifs_100v_sfc": "100 metre V wind component",
+        "ifs_10fg_sfc": "Maximum 10 metre wind gust since previous post-processing",
+        "ifs_10fgg10_sfc": "10 metre wind gust of at least 10 m/s",
+        "ifs_10fgg15_sfc": "10 metre wind gust of at least 15 m/s",
+        "ifs_10fgg25_sfc": "10 metre wind gust of at least 25 m/s",
+        "ifs_10u_sfc": "10 metre U wind component",
+        "ifs_10v_sfc": "10 metre V wind component",
+        "ifs_2d_sfc": "2 metre dewpoint temperature",
+        "ifs_2t_sfc": "2 metre temperature",
+        "ifs_asn_sfc": "Snow albedo",
+        "ifs_cdww_sfc": "Coefficient of drag with waves",
+        "ifs_d_pl": "Divergence",
+        "ifs_ewss_sfc": "Time-integrated eastward turbulent surface stress",
+        "ifs_gh_pl": "Orography",
+        "ifs_h1012_sfc": "Significant wave height of all waves with periods within the inclusive range from 10 to 12 seconds",
+        "ifs_h1214_sfc": "Significant wave height of all waves with periods within the inclusive range from 12 to 14 seconds",
+        "ifs_h1417_sfc": "Significant wave height of all waves with periods within the inclusive range from 14 to 17 seconds",
+        "ifs_h1721_sfc": "Significant wave height of all waves with periods within the inclusive range from 17 to 21 seconds",
+        "ifs_h2125_sfc": "Significant wave height of all waves with periods within the inclusive range from 21 to 25 seconds",
+        "ifs_h2530_sfc": "Significant wave height of all waves with periods within the inclusive range from 25 to 30 seconds",
+        "ifs_lsm_sfc": "Land-sea mask",
+        "ifs_mn2t3_sfc": "Minimum temperature at 2 metres in the last 3 hours",
+        "ifs_mn2t6_sfc": "Minimum temperature at 2 metres in the last 6 hours",
+        "ifs_mp2_sfc": "Mean zero-crossing wave period",
+        "ifs_msl_sfc": "Mean sea level pressure",
+        "ifs_mucape_sfc": "Most-unstable CAPE",
+        "ifs_mwd_sfc": "Mean wave direction",
+        "ifs_mwp_sfc": "Mean wave period",
+        "ifs_mx2t3_sfc": "Maximum temperature at 2 metres in the last 3 hours",
+        "ifs_mx2t6_sfc": "Maximum temperature at 2 metres in the last 6 hours",
+        "ifs_nsss_sfc": "Time-integrated northward turbulent surface stress",
+        "ifs_pp1d_sfc": "Peak wave period",
+        "ifs_ptsa_gt_1p5stdev_pl": "Probability of temperature standardized anomaly greater than 1.5 standard deviation",
+        "ifs_ptsa_gt_1stdev_pl": "Probability of temperature standardized anomaly greater than 1 standard deviation",
+        "ifs_ptsa_gt_2stdev_pl": "Probability of temperature standardized anomaly greater than 2 standard deviation",
+        "ifs_ptsa_lt_1p5stdev_pl": "Probability of temperature standardized anomaly less than -1.5 standard deviation",
+        "ifs_ptsa_lt_1stdev_pl": "Probability of temperature standardized anomaly less than -1 standard deviation",
+        "ifs_ptsa_lt_2stdev_pl": "Probability of temperature standardized anomaly less than -2 standard deviation",
+        "ifs_ptype_sfc": "Precipitation type",
+        "ifs_q_pl": "Specific humidity",
+        "ifs_r_pl": "Relative humidity",
+        "ifs_ro_sfc": "Runoff",
+        "ifs_rsn_sfc": "Snow density",
+        "ifs_sd_sfc": "Snow depth",
+        "ifs_sdor_sfc": "Standard deviation of sub-gridscale orography",
+        "ifs_sf_sfc": "Snowfall",
+        "ifs_sithick_sfc": "Sea ice thickness",
+        "ifs_skt_sfc": "Skin temperature",
+        "ifs_slor_sfc": "Slope of sub-gridscale orography",
+        "ifs_sot_sol": "Soil temperature",
+        "ifs_sp_sfc": "Surface pressure",
+        "ifs_ssr_sfc": "Surface net short-wave (solar) radiation",
+        "ifs_ssrd_sfc": "Surface short-wave (solar) radiation downwards",
+        "ifs_str_sfc": "Surface net long-wave (thermal) radiation",
+        "ifs_strd_sfc": "Surface long-wave (thermal) radiation downwards",
+        "ifs_sve_sfc": "Eastward surface sea water velocity",
+        "ifs_svn_sfc": "Northward surface sea water velocity",
+        "ifs_swh_sfc": "Significant height of combined wind waves and swell",
+        "ifs_swhg2_sfc": "Significant wave height of at least 2 m",
+        "ifs_swhg4_sfc": "Significant wave height of at least 4 m",
+        "ifs_swhg6_sfc": "Significant wave height of at least 6 m",
+        "ifs_swhg8_sfc": "Significant wave height of at least 8 m",
+        "ifs_t_pl": "Temperature",
+        "ifs_tcc_sfc": "Total cloud cover",
+        "ifs_tcw_sfc": "Total column water",
+        "ifs_tcwv_sfc": "Total column vertically-integrated water vapour",
+        "ifs_tp_sfc": "Total precipitation",
+        "ifs_tpg1_sfc": "Total precipitation of at least 1 mm",
+        "ifs_tpg10_sfc": "Total precipitation of at least 10 mm",
+        "ifs_tpg100_sfc": "Total precipitation of at least 100 mm",
+        "ifs_tpg20_sfc": "Total precipitation of at least 20 mm",
+        "ifs_tpg25_sfc": "Total precipitation of at least 25 mm",
+        "ifs_tpg5_sfc": "Total precipitation of at least 5 mm",
+        "ifs_tpg50_sfc": "Total precipitation of at least 50 mm",
+        "ifs_tprate_sfc": "Total precipitation rate",
+        "ifs_ttr_sfc": "Top net long-wave (thermal) radiation",
+        "ifs_u_pl": "U component of wind",
+        "ifs_v_pl": "V component of wind",
+        "ifs_vo_pl": "Vorticity (relative)",
+        "ifs_vsw_sol": "Volumetric soil moisture",
+        "ifs_w_pl": "Vertical velocity",
+        "ifs_wmb_sfc": "Model bathymetry",
+        "ifs_ws_pl": "Wind speed",
+        "ifs_z_pl": "Geopotential",
+        "ifs_z_sfc": "Geopotential",
+        "ifs_zos_sfc": "Sea surface height"
       }
     },
     {
@@ -1017,6 +1111,789 @@ export const FIELD_CATALOGUE_COPY: FieldCatalogueCopy = {
       "level": "planetary",
       "comparabilityGroup": "planetary_index",
       "description": "GFZ's hourly Hp60 index."
+    },
+    {
+      "key": "ifs_100u_sfc",
+      "family": "ifs_native",
+      "quantity": "100 metre U wind component",
+      "units": "m s**-1",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_100u_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_100v_sfc",
+      "family": "ifs_native",
+      "quantity": "100 metre V wind component",
+      "units": "m s**-1",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_100v_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_10fg_sfc",
+      "family": "ifs_native",
+      "quantity": "Maximum 10 metre wind gust since previous post-processing",
+      "units": "m s**-1",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_10fg_sfc",
+      "description": "Experimental native IFS maximum; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_10fgg10_sfc",
+      "family": "ifs_native",
+      "quantity": "10 metre wind gust of at least 10 m/s",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_10fgg10_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_10fgg15_sfc",
+      "family": "ifs_native",
+      "quantity": "10 metre wind gust of at least 15 m/s",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_10fgg15_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_10fgg25_sfc",
+      "family": "ifs_native",
+      "quantity": "10 metre wind gust of at least 25 m/s",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_10fgg25_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_10u_sfc",
+      "family": "ifs_native",
+      "quantity": "10 metre U wind component",
+      "units": "m s**-1",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_10u_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_10v_sfc",
+      "family": "ifs_native",
+      "quantity": "10 metre V wind component",
+      "units": "m s**-1",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_10v_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_2d_sfc",
+      "family": "ifs_native",
+      "quantity": "2 metre dewpoint temperature",
+      "units": "K",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_2d_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_2t_sfc",
+      "family": "ifs_native",
+      "quantity": "2 metre temperature",
+      "units": "K",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_2t_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_asn_sfc",
+      "family": "ifs_native",
+      "quantity": "Snow albedo",
+      "units": "(0 - 1)",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_asn_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_cdww_sfc",
+      "family": "ifs_native",
+      "quantity": "Coefficient of drag with waves",
+      "units": "dimensionless",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_cdww_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_d_pl",
+      "family": "ifs_native",
+      "quantity": "Divergence",
+      "units": "s**-1",
+      "level": "pl",
+      "comparabilityGroup": "ifs_d_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ewss_sfc",
+      "family": "ifs_native",
+      "quantity": "Time-integrated eastward turbulent surface stress",
+      "units": "N m**-2 s",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_ewss_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_gh_pl",
+      "family": "ifs_native",
+      "quantity": "Orography",
+      "units": "m",
+      "level": "pl",
+      "comparabilityGroup": "ifs_gh_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_h1012_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of all waves with periods within the inclusive range from 10 to 12 seconds",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_h1012_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_h1214_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of all waves with periods within the inclusive range from 12 to 14 seconds",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_h1214_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_h1417_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of all waves with periods within the inclusive range from 14 to 17 seconds",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_h1417_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_h1721_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of all waves with periods within the inclusive range from 17 to 21 seconds",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_h1721_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_h2125_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of all waves with periods within the inclusive range from 21 to 25 seconds",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_h2125_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_h2530_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of all waves with periods within the inclusive range from 25 to 30 seconds",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_h2530_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_lsm_sfc",
+      "family": "ifs_native",
+      "quantity": "Land-sea mask",
+      "units": "(0 - 1)",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_lsm_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_mn2t3_sfc",
+      "family": "ifs_native",
+      "quantity": "Minimum temperature at 2 metres in the last 3 hours",
+      "units": "K",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_mn2t3_sfc",
+      "description": "Experimental native IFS minimum; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_mn2t6_sfc",
+      "family": "ifs_native",
+      "quantity": "Minimum temperature at 2 metres in the last 6 hours",
+      "units": "K",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_mn2t6_sfc",
+      "description": "Experimental native IFS minimum; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_mp2_sfc",
+      "family": "ifs_native",
+      "quantity": "Mean zero-crossing wave period",
+      "units": "s",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_mp2_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_msl_sfc",
+      "family": "ifs_native",
+      "quantity": "Mean sea level pressure",
+      "units": "Pa",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_msl_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_mucape_sfc",
+      "family": "ifs_native",
+      "quantity": "Most-unstable CAPE",
+      "units": "J kg**-1",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_mucape_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_mwd_sfc",
+      "family": "ifs_native",
+      "quantity": "Mean wave direction",
+      "units": "Degree true",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_mwd_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_mwp_sfc",
+      "family": "ifs_native",
+      "quantity": "Mean wave period",
+      "units": "s",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_mwp_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_mx2t3_sfc",
+      "family": "ifs_native",
+      "quantity": "Maximum temperature at 2 metres in the last 3 hours",
+      "units": "K",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_mx2t3_sfc",
+      "description": "Experimental native IFS maximum; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_mx2t6_sfc",
+      "family": "ifs_native",
+      "quantity": "Maximum temperature at 2 metres in the last 6 hours",
+      "units": "K",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_mx2t6_sfc",
+      "description": "Experimental native IFS maximum; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_nsss_sfc",
+      "family": "ifs_native",
+      "quantity": "Time-integrated northward turbulent surface stress",
+      "units": "N m**-2 s",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_nsss_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_pp1d_sfc",
+      "family": "ifs_native",
+      "quantity": "Peak wave period",
+      "units": "s",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_pp1d_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ptsa_gt_1p5stdev_pl",
+      "family": "ifs_native",
+      "quantity": "Probability of temperature standardized anomaly greater than 1.5 standard deviation",
+      "units": "%",
+      "level": "pl",
+      "comparabilityGroup": "ifs_ptsa_gt_1p5stdev_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ptsa_gt_1stdev_pl",
+      "family": "ifs_native",
+      "quantity": "Probability of temperature standardized anomaly greater than 1 standard deviation",
+      "units": "%",
+      "level": "pl",
+      "comparabilityGroup": "ifs_ptsa_gt_1stdev_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ptsa_gt_2stdev_pl",
+      "family": "ifs_native",
+      "quantity": "Probability of temperature standardized anomaly greater than 2 standard deviation",
+      "units": "%",
+      "level": "pl",
+      "comparabilityGroup": "ifs_ptsa_gt_2stdev_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ptsa_lt_1p5stdev_pl",
+      "family": "ifs_native",
+      "quantity": "Probability of temperature standardized anomaly less than -1.5 standard deviation",
+      "units": "%",
+      "level": "pl",
+      "comparabilityGroup": "ifs_ptsa_lt_1p5stdev_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ptsa_lt_1stdev_pl",
+      "family": "ifs_native",
+      "quantity": "Probability of temperature standardized anomaly less than -1 standard deviation",
+      "units": "%",
+      "level": "pl",
+      "comparabilityGroup": "ifs_ptsa_lt_1stdev_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ptsa_lt_2stdev_pl",
+      "family": "ifs_native",
+      "quantity": "Probability of temperature standardized anomaly less than -2 standard deviation",
+      "units": "%",
+      "level": "pl",
+      "comparabilityGroup": "ifs_ptsa_lt_2stdev_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ptype_sfc",
+      "family": "ifs_native",
+      "quantity": "Precipitation type",
+      "units": "(Code table 4.201)",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_ptype_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_q_pl",
+      "family": "ifs_native",
+      "quantity": "Specific humidity",
+      "units": "kg kg**-1",
+      "level": "pl",
+      "comparabilityGroup": "ifs_q_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_r_pl",
+      "family": "ifs_native",
+      "quantity": "Relative humidity",
+      "units": "%",
+      "level": "pl",
+      "comparabilityGroup": "ifs_r_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ro_sfc",
+      "family": "ifs_native",
+      "quantity": "Runoff",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_ro_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_rsn_sfc",
+      "family": "ifs_native",
+      "quantity": "Snow density",
+      "units": "kg m**-3",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_rsn_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_sd_sfc",
+      "family": "ifs_native",
+      "quantity": "Snow depth",
+      "units": "m of water equivalent",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_sd_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_sdor_sfc",
+      "family": "ifs_native",
+      "quantity": "Standard deviation of sub-gridscale orography",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_sdor_sfc",
+      "description": "Experimental native IFS static; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_sf_sfc",
+      "family": "ifs_native",
+      "quantity": "Snowfall",
+      "units": "m of water equivalent",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_sf_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_sithick_sfc",
+      "family": "ifs_native",
+      "quantity": "Sea ice thickness",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_sithick_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_skt_sfc",
+      "family": "ifs_native",
+      "quantity": "Skin temperature",
+      "units": "K",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_skt_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_slor_sfc",
+      "family": "ifs_native",
+      "quantity": "Slope of sub-gridscale orography",
+      "units": "Numeric",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_slor_sfc",
+      "description": "Experimental native IFS static; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_sot_sol",
+      "family": "ifs_native",
+      "quantity": "Soil temperature",
+      "units": "K",
+      "level": "sol",
+      "comparabilityGroup": "ifs_sot_sol",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_sp_sfc",
+      "family": "ifs_native",
+      "quantity": "Surface pressure",
+      "units": "Pa",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_sp_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ssr_sfc",
+      "family": "ifs_native",
+      "quantity": "Surface net short-wave (solar) radiation",
+      "units": "J m**-2",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_ssr_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ssrd_sfc",
+      "family": "ifs_native",
+      "quantity": "Surface short-wave (solar) radiation downwards",
+      "units": "J m**-2",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_ssrd_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_str_sfc",
+      "family": "ifs_native",
+      "quantity": "Surface net long-wave (thermal) radiation",
+      "units": "J m**-2",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_str_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_strd_sfc",
+      "family": "ifs_native",
+      "quantity": "Surface long-wave (thermal) radiation downwards",
+      "units": "J m**-2",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_strd_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_sve_sfc",
+      "family": "ifs_native",
+      "quantity": "Eastward surface sea water velocity",
+      "units": "m s**-1",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_sve_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_svn_sfc",
+      "family": "ifs_native",
+      "quantity": "Northward surface sea water velocity",
+      "units": "m s**-1",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_svn_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_swh_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant height of combined wind waves and swell",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_swh_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_swhg2_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of at least 2 m",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_swhg2_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_swhg4_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of at least 4 m",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_swhg4_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_swhg6_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of at least 6 m",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_swhg6_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_swhg8_sfc",
+      "family": "ifs_native",
+      "quantity": "Significant wave height of at least 8 m",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_swhg8_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_t_pl",
+      "family": "ifs_native",
+      "quantity": "Temperature",
+      "units": "K",
+      "level": "pl",
+      "comparabilityGroup": "ifs_t_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tcc_sfc",
+      "family": "ifs_native",
+      "quantity": "Total cloud cover",
+      "units": "(0 - 1)",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tcc_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tcw_sfc",
+      "family": "ifs_native",
+      "quantity": "Total column water",
+      "units": "kg m**-2",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tcw_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tcwv_sfc",
+      "family": "ifs_native",
+      "quantity": "Total column vertically-integrated water vapour",
+      "units": "kg m**-2",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tcwv_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tp_sfc",
+      "family": "ifs_native",
+      "quantity": "Total precipitation",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tp_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tpg1_sfc",
+      "family": "ifs_native",
+      "quantity": "Total precipitation of at least 1 mm",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tpg1_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tpg10_sfc",
+      "family": "ifs_native",
+      "quantity": "Total precipitation of at least 10 mm",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tpg10_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tpg100_sfc",
+      "family": "ifs_native",
+      "quantity": "Total precipitation of at least 100 mm",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tpg100_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tpg20_sfc",
+      "family": "ifs_native",
+      "quantity": "Total precipitation of at least 20 mm",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tpg20_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tpg25_sfc",
+      "family": "ifs_native",
+      "quantity": "Total precipitation of at least 25 mm",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tpg25_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tpg5_sfc",
+      "family": "ifs_native",
+      "quantity": "Total precipitation of at least 5 mm",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tpg5_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tpg50_sfc",
+      "family": "ifs_native",
+      "quantity": "Total precipitation of at least 50 mm",
+      "units": "%",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tpg50_sfc",
+      "description": "Experimental native IFS probability_interval; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_tprate_sfc",
+      "family": "ifs_native",
+      "quantity": "Total precipitation rate",
+      "units": "kg m**-2 s**-1",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_tprate_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ttr_sfc",
+      "family": "ifs_native",
+      "quantity": "Top net long-wave (thermal) radiation",
+      "units": "J m**-2",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_ttr_sfc",
+      "description": "Experimental native IFS accumulation; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_u_pl",
+      "family": "ifs_native",
+      "quantity": "U component of wind",
+      "units": "m s**-1",
+      "level": "pl",
+      "comparabilityGroup": "ifs_u_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_v_pl",
+      "family": "ifs_native",
+      "quantity": "V component of wind",
+      "units": "m s**-1",
+      "level": "pl",
+      "comparabilityGroup": "ifs_v_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_vo_pl",
+      "family": "ifs_native",
+      "quantity": "Vorticity (relative)",
+      "units": "s**-1",
+      "level": "pl",
+      "comparabilityGroup": "ifs_vo_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_vsw_sol",
+      "family": "ifs_native",
+      "quantity": "Volumetric soil moisture",
+      "units": "m**3 m**-3",
+      "level": "sol",
+      "comparabilityGroup": "ifs_vsw_sol",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_w_pl",
+      "family": "ifs_native",
+      "quantity": "Vertical velocity",
+      "units": "Pa s**-1",
+      "level": "pl",
+      "comparabilityGroup": "ifs_w_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_wmb_sfc",
+      "family": "ifs_native",
+      "quantity": "Model bathymetry",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_wmb_sfc",
+      "description": "Experimental native IFS static; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_ws_pl",
+      "family": "ifs_native",
+      "quantity": "Wind speed",
+      "units": "m s**-1",
+      "level": "pl",
+      "comparabilityGroup": "ifs_ws_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_z_pl",
+      "family": "ifs_native",
+      "quantity": "Geopotential",
+      "units": "m**2 s**-2",
+      "level": "pl",
+      "comparabilityGroup": "ifs_z_pl",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_z_sfc",
+      "family": "ifs_native",
+      "quantity": "Geopotential",
+      "units": "m**2 s**-2",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_z_sfc",
+      "description": "Experimental native IFS static; product, level and event remain explicit."
+    },
+    {
+      "key": "ifs_zos_sfc",
+      "family": "ifs_native",
+      "quantity": "Sea surface height",
+      "units": "m",
+      "level": "sfc",
+      "comparabilityGroup": "ifs_zos_sfc",
+      "description": "Experimental native IFS instant; product, level and event remain explicit."
     },
     {
       "key": "k_index",

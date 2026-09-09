@@ -45,6 +45,7 @@ class SourceCapability(ContractModel):
     variants: list[SourceVariant] = Field(min_length=1)
     levels: list[str] = Field(min_length=1)
     point: bool
+    grid: bool = False
     point_product: str | None = None
     native_series: bool
     point_time_kind: Literal["observation", "forecast"] | None = None
@@ -105,7 +106,7 @@ class SourceAcquisition(ContractModel):
     retrieval_time: AwareDatetime
     expires_at: AwareDatetime
     normalized_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-    transport_receipts: tuple[SourceTransferReceipt, ...] = Field(max_length=12)
+    transport_receipts: tuple[SourceTransferReceipt, ...] = Field(max_length=30)
 
     @model_validator(mode="after")
     def bounded_receipt(self):

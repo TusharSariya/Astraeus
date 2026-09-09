@@ -1,0 +1,33 @@
+.forecast-comparison { padding: 1rem; min-width: 0; }
+.comparison-toolbar, .comparison-legend { display: flex; flex-wrap: wrap; gap: .65rem; align-items: end; margin-bottom: .8rem; }
+.comparison-toolbar label { display: flex; flex-direction: column; gap: .25rem; font-size: .8rem; }
+.comparison-toolbar details { position: relative; }
+.comparison-toolbar summary { cursor: pointer; padding: .45rem; border: 1px solid #73808f; border-radius: .3rem; }
+.comparison-toolbar fieldset, .comparison-toolbar form { padding: .7rem; max-width: 22rem; }
+.comparison-toolbar fieldset label { flex-direction: row; align-items: center; margin: .4rem 0; }
+.comparison-toolbar input { max-width: 100%; min-height: 2rem; }
+.comparison-legend button { display: flex; gap: .45rem; align-items: center; border-bottom-width: 3px; }
+.comparison-legend button[aria-pressed=false] { opacity: .65; }
+.comparison-legend span { display: inline-block; width: .65rem; height: .65rem; border-radius: 50%; }
+.comparison-chart { border-top: 1px solid #53606f; margin-top: .85rem; padding-top: .75rem; min-width: 0; }
+.comparison-chart h3 { margin: 0 0 .35rem; font-size: 1rem; }
+.comparison-chart h3 small { font-weight: normal; margin-left: .5rem; }
+.comparison-chart svg { width: 100%; height: 184px; display: block; overflow: visible; cursor: crosshair; touch-action: pan-y; }
+.comparison-chart svg text { fill: currentColor; font-size: 13px; }
+.comparison-grid { stroke: #73808f; stroke-opacity: .24; fill: none; }
+.comparison-axis { stroke: #73808f; fill: none; }
+.comparison-shared-cursor { stroke: currentColor; stroke-dasharray: 3 3; fill: none; }
+.comparison-values { display: flex; flex-wrap: wrap; gap: .4rem 1rem; font-size: .78rem; min-height: 1.5rem; }
+.comparison-values span { max-width: 100%; }
+.comparison-expired { border: 1px solid #e69f00; padding: .75rem; }
+.comparison-charts.expired { border-left: 3px solid #e69f00; padding-left: .5rem; }
+.comparison-details { margin-top: 1rem; overflow-x: auto; }
+.comparison-details pre { max-width: 35rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comparison-details table { border-collapse: collapse; font-size: .8rem; width: 100%; }
+.comparison-details th, .comparison-details td { text-align: left; padding: .4rem; vertical-align: top; border-bottom: 1px solid #53606f; }
+.forecast-comparison :focus-visible { outline: 2px solid #56b4e9; outline-offset: 3px; }
+@media (max-width: 650px) { .forecast-comparison { padding: .6rem; } .comparison-toolbar > label { flex: 1 1 12rem; } .comparison-chart svg { min-height: 9rem; } }
+
+.forecast-comparison { --comparison-model-0:#009e73; --comparison-model-1:#e69f00; --comparison-model-2:#b56ce2; --comparison-model-3:#56b4e9; --comparison-model-4:#e76f8a; --comparison-model-5:#aaaaff; }
+html[data-theme='light'] .forecast-comparison { --comparison-model-0:#007b59; --comparison-model-1:#985b00; --comparison-model-2:#9141b3; --comparison-model-3:#007ca9; --comparison-model-4:#b53756; --comparison-model-5:#5656b8; }
+html[data-theme='night'] .forecast-comparison { --comparison-model-0:#ff9689; --comparison-model-1:#ff665b; --comparison-model-2:#d94c42; --comparison-model-3:#ffb0a0; --comparison-model-4:#b63830; --comparison-model-5:#f88070; }

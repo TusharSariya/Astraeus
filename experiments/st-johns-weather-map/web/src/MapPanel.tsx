@@ -1,7 +1,11 @@
+import { ifsPrecipitationScale, featurePrecipitation, useLoadedTemperatures, temperatureFor, temperatureDescription, precipitationColour, PrecipitationLegend, gridTemperature } from './workbench/precipitationColours'
+import type { Layer } from "@deck.gl/core"
+import { useIFSGrids, ifsPolygon, ifsColor } from "./workbench/IFSLayers"
+import { useSourceGrids, gridIndices, gridPolygon, cloudColor } from './workbench/sourceGrid'
 import type { DrawEvidence } from './workbench/MapStack'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CollisionFilterExtension, type CollisionFilterExtensionProps } from '@deck.gl/extensions'
-import { GeoJsonLayer, type GeoJsonLayerProps, ScatterplotLayer, TextLayer } from '@deck.gl/layers'
+import { PolygonLayer, GeoJsonLayer, type GeoJsonLayerProps, ScatterplotLayer, TextLayer, LineLayer } from '@deck.gl/layers'
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import maplibregl, { type Map as MapLibreMap } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -138,6 +142,7 @@ const RENDERED_REQUEST_MAX_EDGE_PX = 1024
 
 function isLocallyRendered(layer: LayerItem): boolean {
   return layer.evidence_basis === 'published_artifact' && layer.raster_available === true
+    && (layerGroup(layer) === 'rendered_grid' || layerGroup(layer) === 'satellite')
 }
 
 function requestExtentFor(layer: LayerItem, extent: ViewExtent): ViewExtent {
@@ -341,7 +346,7 @@ function describeLead(frameTime: string, now: number): string | null {
 
 /** Everything the API returned for one layer, drawn as published. Geometry comes
  *  from the response; only the colour, which carries no value, is chosen here. */
-function evidenceLayers(layer: LayerItem, features: GeoJsonFeature[], opacity: number, onInspect?: (index: number) => void) {
+function evidenceLayers(layer: LayerItem, features: GeoJsonFeature[], opacity: number, temperatures: import('./workbench/precipitationColours').TemperatureSample[] = [], choice='auto', onInspect?: (index: number) => void) {
   const [r, g, b] = colourFor(layer.kind)
   const alpha = Math.round(Math.max(0, Math.min(1, opacity)) * 255)
   return [
@@ -355,7 +360,8 @@ function evidenceLayers(layer: LayerItem, features: GeoJsonFeature[], opacity: n
       stroked: true,
       filled: true,
       pointType: 'circle',
-      getFillColor: [r, g, b, alpha],
+      getFillColor: f => {const reading=featurePrecipitation(f as unknown as GeoJsonFeature,temperatures,choice);return reading?precipitationColour(reading.value,reading.temperature?.celsius??null,reading.scale,opacity):(f.properties?.radar_echo===0?[0,0,0,0]:[r,g,b,alpha])},
+      updateTriggers: {getFillColor:[opacity,temperatures,choice]},
       getLineColor: [r, g, b, 255],
       lineWidthMinPixels: 2,
       pointRadiusMinPixels: 6,
@@ -380,10 +386,20 @@ export function MapPanel({
   layers, layersError, layersLoading, selections: requestedSelections, runRefusals = EMPTY_RUN_REFUSALS, onToggleLayer, onSetOpacity, onJumpToTime, layerNotices, evidence, sourceStatuses, responseSourceIds, theme = 'dark', initialDrawerOpen = false, onDrawEvidence, onFeatureInspect, compactDisclosure = false,
 }: MapPanelProps) {
   const selections = useMemo(() => requestedSelections.filter((entry) => !runRefusals[entry.id]), [requestedSelections, runRefusals])
+  const [ifsInspection,setIFSInspection]=useState<string|null>(null)
+  const loadedIFSGrids = useIFSGrids(selections,validTime.getTime(),true)
+  const ifsGrids = useMemo(()=>loadedIFSGrids.filter(r=>selections.find(s=>s.id===r.id)?.visible),[loadedIFSGrids,selections])
+  const {loaded: loadedTemperatures} = useLoadedTemperatures()
+  const currentTemperatures = loadedTemperatures?.instant===validTime.getTime() && loadedTemperatures.latitude===selected.latitude && loadedTemperatures.longitude===selected.longitude ? loadedTemperatures.samples : []
+  const ifsTemperature = (frame: import('./workbench/IFSLayers').IFSGrid,index:number,choice='auto') => (['auto','same-source','ecmwf-ifs'].includes(choice)?gridTemperature(frame,index,loadedIFSGrids.flatMap(r=>r.frame?[r.frame]:[])):null) ?? temperatureFor({latitude:frame.latitudes[Math.floor(index/frame.longitudes.length)],longitude:frame.longitudes[index%frame.longitudes.length],source:'ecmwf-ifs',product:frame.selection_product,run:frame.run_time,time:frame.native_time,variant:JSON.stringify([frame.member,frame.statistic])},currentTemperatures,undefined,Date.now(),choice)
+
+  const gridStates = useSourceGrids(selections,validTime.getTime())
+  const gridRows = useMemo(() => gridStates.map(row => ({...row,indices:row.frame ? gridIndices(row.frame) : []})),[gridStates])
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const stationPickAtRef = useRef(0)
   const overlayRef = useRef<MapboxOverlay | null>(null)
+  const [overlayRevision,setOverlayRevision] = useState(0)
   const onFeatureInspectRef = useRef(onFeatureInspect)
   onFeatureInspectRef.current = onFeatureInspect
   const onSelectRef = useRef(onSelect)
@@ -472,7 +488,7 @@ export function MapPanel({
     if (previous && previous.objectUrl !== image.objectUrl) URL.revokeObjectURL(previous.objectUrl)
     held.delete(key)
     held.set(key, image)
-    while (held.size > IMAGE_CACHE_PER_LAYER) {
+    while (held.size > (layerId==='noaa-goes19-demand-cloud-mask'?4:IMAGE_CACHE_PER_LAYER) || (layerId==='noaa-goes19-demand-cloud-mask' && [...held.values()].reduce((total,item)=>total+(item.provenance.byteSize??0),0)>64*1024*1024)) {
       const [oldestKey, oldest] = held.entries().next().value as [string, RasterImage]
       held.delete(oldestKey)
       URL.revokeObjectURL(oldest.objectUrl)
@@ -668,6 +684,7 @@ export function MapPanel({
       })
       overlayRef.current = overlay
       map.addControl(overlay as unknown as maplibregl.IControl)
+      setOverlayRevision(version=>version+1)
       // The overlay has no keyboard interaction; its reports have the Map sample table.
       // Keep MapLibre's named, keyboard-operable canvas available.
       const overlayCanvas = overlay.getCanvas?.()
@@ -678,6 +695,9 @@ export function MapPanel({
     })
 
     map.on('click', (event) => {
+      // MapLibre can dispatch before deck.gl's native feature pick. Let both
+      // handlers finish before treating this as an arbitrary Focus selection.
+      setTimeout(() => {
       if (performance.now() - stationPickAtRef.current < 120) return
       onSelectRef.current({
         id: `map-${event.lngLat.lat.toFixed(4)}-${event.lngLat.lng.toFixed(4)}`,
@@ -686,6 +706,7 @@ export function MapPanel({
         longitude: event.lngLat.lng,
         kind: 'map',
       })
+      }, 0)
     })
 
     mapRef.current = map
@@ -725,6 +746,9 @@ export function MapPanel({
     else map.once('load', apply)
     return () => { map.off('load', apply) }
   }, [theme])
+
+  // Display controls must not reacquire the same science features.
+  const featureRequestKey = JSON.stringify(resolved.map(({layer,featureResolution})=>({layer,featureResolution})))
 
   // One fetch per active layer per frame. A layer whose frame did not resolve is
   // recorded as such and never requested, so nothing is drawn off-time.
@@ -777,7 +801,7 @@ export function MapPanel({
       cancelled = true
       controller.abort()
     }
-  }, [frameKey, resolved])
+  }, [featureRequestKey])
 
   // One image per visible layer per drawable frame, over the extent the reader
   // is looking at. Nothing is requested for a layer that declares no imagery,
@@ -1217,15 +1241,43 @@ export function MapPanel({
   useEffect(() => {
     const drawn = resolved.flatMap(({ layer, entry }) => {
       const state = states[layer.id]
-      return state && state.status === 'drawn' ? evidenceLayers(layer, state.features, entry.opacity, (index) => { if (onFeatureInspectRef.current) { stationPickAtRef.current = performance.now(); onFeatureInspectRef.current(layer.id, index) } }) : []
+      return state && state.status === 'drawn' ? evidenceLayers(layer, state.features, entry.opacity, currentTemperatures, entry.temperatureSource ?? 'auto', (index) => { if (onFeatureInspectRef.current) { stationPickAtRef.current = performance.now(); onFeatureInspectRef.current(layer.id, index) } }) : []
     })
     overlayRef.current?.setProps({
       layers: [
         ...stationLayers(label, selected, (point) => onSelectRef.current(point), () => { stationPickAtRef.current = performance.now() }, coverageFor),
         ...drawn,
+        ...ifsGrids.flatMap<Layer>(row=>{
+          if(row.tracks){
+            const options=requestedSelections.find(s=>s.id===row.id)
+            const features=row.tracks.tracks.filter(t=>!options?.ifs?.member||options.ifs.member==='all'||t.member===options.ifs.member).flatMap(t=>t.points.slice(1).flatMap((p,i)=>{
+              const a=t.points[i];if([a,p].some(v=>v.latitude<40||v.latitude>55||v.longitude< -70||v.longitude> -40))return []
+              return [{type:'Feature' as const,properties:{storm:t.storm_id,member:t.member,time:p.time},geometry:{type:'LineString' as const,coordinates:[[a.longitude,a.latitude],[p.longitude,p.latitude]]}}]
+            }))
+            return [new GeoJsonLayer({id:`ifs-tracks-${row.id}`,data:{type:'FeatureCollection',features},getLineColor:[240,180,60,255*(options?.opacity??.7)],getLineWidth:2,lineWidthUnits:'pixels',pickable:true,onClick:({object})=>{if(object)setIFSInspection(JSON.stringify(object.properties))}})]
+          }
+          if(!row.frame)return []
+          const frame=row.frame, options=requestedSelections.find(s=>s.id===row.id),values=frame.values.flat(),finite=values.filter((v):v is number=>v!==null),min=Math.min(...finite),max=Math.max(...finite)
+          if(options?.ifs?.rendering==='direction')return [new TextLayer<number>({id:`ifs-direction-${row.id}`,data:values.map((_,i)=>i).filter(i=>values[i]!==null),getPosition:i=>[frame.longitudes[i%frame.longitudes.length],frame.latitudes[Math.floor(i/frame.longitudes.length)]],getText:()=> '↑',getAngle:i=>-Number(values[i]),getSize:14,getColor:[255,255,255,255*(options.opacity??.7)]})]
+          return [new PolygonLayer<number>({id:`ifs-${row.id}`,data:values.map((_,i)=>i),filled:true,stroked:false,pickable:true,
+            getPolygon:i=>ifsPolygon(frame,i),getFillColor:i=>{const scale=ifsPrecipitationScale(frame);return scale?precipitationColour(values[i],ifsTemperature(frame,i,options?.temperatureSource)?.celsius??null,scale,options?.opacity??.7):ifsColor(values[i],options?.opacity??.7,min,max,options?.ifs?.rendering??'scalar')},
+            updateTriggers:{getFillColor:[options?.opacity,options?.temperatureSource,loadedIFSGrids,loadedTemperatures]},onClick:({index})=>{if(index>=0){const y=Math.floor(index/frame.longitudes.length),x=index%frame.longitudes.length;setIFSInspection(`${ifsPrecipitationScale(frame)?`Temperature-based colours · ${temperatureDescription(ifsTemperature(frame,index,options?.temperatureSource))} · `:''}${frame.field} · ${values[index]??'Missing'} ${frame.units} · member ${frame.member??frame.statistic} · ${frame.latitudes[y]}, ${frame.longitudes[x]} · ${frame.native_time}`);onSelectRef.current({id:'point',name:`IFS ${values[index]??'missing'} ${frame.units}`,kind:'map',sourceIds:['ecmwf-ifs'],latitude:frame.latitudes[y],longitude:frame.longitudes[x]})}}})]
+        }),
+        ...gridRows.flatMap(row => {
+          const opacity=requestedSelections.find(s=>s.id===row.id)?.opacity ?? 0
+          if(!row.frame)return []
+          const frame=row.frame, value=(i:number)=>frame.percentages[Math.floor(i/frame.longitudes.length)][i%frame.longitudes.length]
+          const missing=row.indices.filter(i=>value(i)===null)
+          return [new PolygonLayer<number>({id:`grid-${row.id}`,data:row.indices,filled:true,stroked:false,pickable:true,opacity:1,
+            getPolygon:i=>gridPolygon(frame,i),getFillColor:i=>cloudColor(value(i),opacity),updateTriggers:{getFillColor:[opacity]},
+            onClick:({index})=>{if(index>=0){stationPickAtRef.current=performance.now();onFeatureInspectRef.current?.(row.id,index)}}}),
+            new LineLayer<number>({id:`grid-missing-${row.id}`,data:missing,pickable:false,getColor:[160,160,160,180*opacity],getWidth:2,
+              getSourcePosition:i=>gridPolygon(frame,i)[0],getTargetPosition:i=>gridPolygon(frame,i)[2]})]
+
+        }),
       ],
     })
-  }, [label, selected, states, resolved, coverageFor])
+  }, [overlayRevision, label, selected, states, resolved, coverageFor, gridRows, ifsGrids, loadedIFSGrids, loadedTemperatures, requestedSelections])
 
   useEffect(() => {
     if (selected.kind === 'map') mapRef.current?.easeTo({ center: [selected.longitude, selected.latitude], duration: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 450 })
@@ -1304,6 +1356,15 @@ export function MapPanel({
   }
 
   const drawEvidence = useMemo<DrawEvidence[]>(() => requestedSelections.map((entry) => {
+    if(entry.ifs){
+      const row=ifsGrids.find(r=>r.id===entry.id),ready=!!(row?.frame||row?.tracks),visible=entry.visible&&entry.opacity>0
+      return {id:entry.id,title:entry.ifs.title,sourceId:'ecmwf-ifs',selection:{latitude:selected.latitude,longitude:selected.longitude,instant:validTime.getTime()},
+        drawn:visible&&ready,status:!visible?'hidden':ready?'drawn':row?.error?'unavailable':'loading',
+        description:row?.error??(ready?`Native IFS ${entry.ifs.product} · ${row?.frame?.native_time??row?.tracks?.run_time}. See IFS legend for values and retrieval receipts.`:row?.progress??'Loading native IFS evidence'),
+        times:row?.frame?[row.frame.native_time]:[],evidenceClass:'retrieved'}
+    }
+    const grid=gridRows.find(row=>row.id===entry.id)
+    if (grid) return {id:entry.id,title:`WN3 ${grid.product.endsWith('historical')?'historical':'forecast'} total-cloud mean`,sourceId:'google-weathernext-3-statistics',selection:{latitude:selected.latitude,longitude:selected.longitude,instant:validTime.getTime()},drawn:!!grid.frame,status:grid.frame?'drawn':grid.error?'unavailable':'loading',description:grid.error ?? (grid.frame?'Ensemble-mean cloud cover. Alpha = cloud fraction × layer opacity (display mapping, not physical optical opacity). Hatched neutral cells are missing; clear cells remain inspectable.':'Loading selected native cloud grid…'),times:grid.frame?[grid.frame.native_time]:[],evidenceClass:'retrieved',nativeGrid:grid.frame,images:grid.frame?[{frame:grid.frame.native_time,weight:1,request:{selected_time:validTime.toISOString()},provenance:grid.frame.provenance}]:[]}
     const selection = { latitude: selected.latitude, longitude: selected.longitude, instant: validTime.getTime() }
     if (runRefusals[entry.id]) return { selection, id: entry.id, drawn: false, description: runRefusals[entry.id], times: [] }
     const layer = layers.find((layer) => layer.id === entry.id)
@@ -1332,8 +1393,9 @@ export function MapPanel({
         captureIdentity: motion?.responseHeaders?.['Artifact-Revision'] ?? motion?.responseHeaders?.['Capture-Id'] ?? (slots.length === 1 ? slots[0].image.provenance.responseHeaders?.['Artifact-Revision'] ?? slots[0].image.provenance.responseHeaders?.['Capture-Id'] ?? null : null),
         methodVersion: motion?.responseHeaders?.['Derivation-Version'] ?? (slots.length === 1 ? slots[0].image.provenance.responseHeaders?.['Derivation-Version'] ?? null : null) },
       features: actualFeatures,
+      precipitation: actualFeatures.map(f=>featurePrecipitation(f,currentTemperatures,entry.temperatureSource)),
     }
-  }), [requestedSelections, runRefusals, layers, rasters, states, frameKey, flowVersion, interpolationMethod, methodStatus, renderErrors, selected.latitude, selected.longitude, validTime])
+  }), [loadedTemperatures, ifsGrids, gridRows, requestedSelections, runRefusals, layers, rasters, states, frameKey, flowVersion, interpolationMethod, methodStatus, renderErrors, selected.latitude, selected.longitude, validTime])
   useEffect(() => { onDrawEvidence?.(drawEvidence) }, [drawEvidence, onDrawEvidence])
 
   const onLegendError = (layer: LayerItem) => {
@@ -1475,13 +1537,15 @@ export function MapPanel({
         <summary>{drawEvidence.filter((row) => row.drawn).length} of {requestedSelections.length} layers drawn · {drawEvidence.some((row) => row.drawn && row.evidenceClass === 'generated_display') ? 'GENERATED display' : interpolate ? 'display interpolation enabled' : 'generated display off'} · {drawEvidence.filter((row) => !row.drawn).length} not drawn · frame details</summary>
         <table><caption>Actual Map evidence</caption><thead><tr><th scope="col">Layer</th><th scope="col">Drawn</th><th scope="col">Frame and reason</th></tr></thead><tbody>{drawEvidence.map((row) => <tr key={row.id}><th scope="row">{row.id}</th><td>{row.drawn ? 'Yes' : 'No'}</td><td>{row.description}<br />Actual frame times: {row.times.join(', ') || 'None drawn'}</td></tr>)}</tbody></table>
       </details>}
-      <div className="map-caption">
+      {gridRows.length===0 && ifsGrids.length===0 && <div className="map-caption">
         <span>{label}</span>
         <strong>{field}</strong>
         {comparison && <small>{comparison}</small>}
-      </div>
+      </div>}
 
       <div ref={containerRef} className="map-canvas" data-testid="map-canvas" />
+      {gridRows.length>0 && <aside className="map-caption native-cloud-legend" aria-label="Ensemble-mean cloud cover legend"><strong>WN3 ensemble-mean cloud cover</strong><span>0% clear · 50% · 100% · ▧ Missing</span><details><summary>Display mapping &amp; frame</summary><small>Alpha = cloud fraction × layer opacity; display mapping, not physical optical opacity.</small>{gridRows.map(row=><small key={row.id}>{row.product}: {row.error ?? (row.frame ? row.frame.native_time : 'Loading selected frame…')}</small>)}</details></aside>}
+      {ifsGrids.length>0&&<aside className="map-caption native-cloud-legend ifs-native-legend" aria-label="IFS native layer legends">{ifsGrids.map(row=>{const values=row.frame?.values.flat().filter((v):v is number=>v!==null)??[];const layer=requestedSelections.find(s=>s.id===row.id);return <details key={row.id}><summary>{layer?.ifs?.title??row.id}</summary><p>{row.error??row.progress}</p>{row.frame&&<>{ifsPrecipitationScale(row.frame)&&<PrecipitationLegend scale={ifsPrecipitationScale(row.frame)!}/>} {!ifsPrecipitationScale(row.frame)&&!['direction','categorical'].includes(layer?.ifs?.rendering??'')&&<span aria-label="Native value colour scale" style={{height:8,background:layer?.ifs?.rendering==='cloud'?'linear-gradient(to right,transparent,white)':'linear-gradient(to right,rgb(0,120,255),rgb(255,120,0))'}}/>}<p>{layer?.ifs?.rendering==='categorical'?`Codes: ${[...new Set(values)].sort((a,b)=>a-b).join(', ')}`:layer?.ifs?.rendering==='direction'?'Arrows show native bearings':`${Math.min(...values).toPrecision(4)} to ${Math.max(...values).toPrecision(4)} ${row.frame.units}`} · ▧ Missing</p><p>{row.frame.native_time} · {row.frame.statistic??`Member ${row.frame.member}`} · {row.frame.run_id}</p><a href={row.frame.receipt_manifest} target="_blank" rel="noreferrer">Retrieval receipts</a></>}</details>})}{ifsInspection&&<p>{ifsInspection}</p>}</aside>}
       {fixtureMode && <span className="surface-watermark">FIXTURE</span>}
       {referenceMapError && <p className="reference-map-status" role="status" aria-live="polite">Reference map unavailable · weather evidence remains available</p>}
 

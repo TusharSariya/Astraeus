@@ -1,0 +1,2426 @@
+{
+  "version": "ifs-open-data-50r1-2026-09-09",
+  "source": "https://www.ecmwf.int/en/forecasts/datasets/open-data",
+  "ecCodes_version": "2.48.0",
+  "bounds": [
+    -70,
+    40,
+    -40,
+    55
+  ],
+  "excluded": [
+    "t20d",
+    "sav300",
+    "seasonal",
+    "AIFS",
+    "CAMS"
+  ],
+  "products": [
+    {
+      "id": "atmosphere-control",
+      "stream": "oper",
+      "record_type": "fc",
+      "file_type": "fc",
+      "format": "grib2",
+      "members": [],
+      "control_product": null
+    },
+    {
+      "id": "atmosphere-ensemble",
+      "stream": "enfo",
+      "record_type": "pf",
+      "file_type": "ef",
+      "format": "grib2",
+      "members": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50"
+      ],
+      "control_product": "atmosphere-control"
+    },
+    {
+      "id": "wave-control",
+      "stream": "wave",
+      "record_type": "fc",
+      "file_type": "fc",
+      "format": "grib2",
+      "members": [],
+      "control_product": null
+    },
+    {
+      "id": "wave-ensemble",
+      "stream": "waef",
+      "record_type": "pf",
+      "file_type": "ef",
+      "format": "grib2",
+      "members": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50"
+      ],
+      "control_product": "wave-control"
+    },
+    {
+      "id": "ensemble-mean",
+      "stream": "enfo",
+      "record_type": "em",
+      "file_type": "em",
+      "format": "grib2",
+      "members": [],
+      "control_product": null
+    },
+    {
+      "id": "ensemble-standard-deviation",
+      "stream": "enfo",
+      "record_type": "es",
+      "file_type": "es",
+      "format": "grib2",
+      "members": [],
+      "control_product": null
+    },
+    {
+      "id": "daily-probability",
+      "stream": "enfo",
+      "record_type": "ep",
+      "file_type": "ep",
+      "format": "grib2",
+      "members": [],
+      "control_product": null
+    },
+    {
+      "id": "temperature-probability",
+      "stream": "enfo",
+      "record_type": "ep",
+      "file_type": "ep",
+      "format": "grib2",
+      "members": [],
+      "control_product": null
+    },
+    {
+      "id": "wave-probability",
+      "stream": "waef",
+      "record_type": "ep",
+      "file_type": "ep",
+      "format": "grib2",
+      "members": [],
+      "control_product": null
+    },
+    {
+      "id": "cyclone-control",
+      "stream": "oper",
+      "record_type": "tf",
+      "file_type": "tf",
+      "format": "bufr",
+      "members": [],
+      "control_product": null
+    },
+    {
+      "id": "cyclone-ensemble",
+      "stream": "enfo",
+      "record_type": "tf",
+      "file_type": "tf",
+      "format": "bufr",
+      "members": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50"
+      ],
+      "control_product": null
+    }
+  ],
+  "fields": [
+    {
+      "id": "asn:sfc",
+      "parameter": "asn",
+      "param_ids": [
+        32
+      ],
+      "name": "Snow albedo",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "(0 - 1)",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "rsn:sfc",
+      "parameter": "rsn",
+      "param_ids": [
+        33
+      ],
+      "name": "Snow density",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "kg m**-3",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "10fg:sfc",
+      "parameter": "10fg",
+      "param_ids": [
+        49,
+        228028
+      ],
+      "name": "Maximum 10 metre wind gust since previous post-processing",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m s**-1",
+      "temporal": "maximum",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "aliases": [
+        "10fg3"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 10
+    },
+    {
+      "id": "mx2t6:sfc",
+      "parameter": "mx2t6",
+      "param_ids": [
+        121
+      ],
+      "name": "Maximum temperature at 2 metres in the last 6 hours",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "K",
+      "temporal": "maximum",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 2
+    },
+    {
+      "id": "mn2t6:sfc",
+      "parameter": "mn2t6",
+      "param_ids": [
+        122
+      ],
+      "name": "Minimum temperature at 2 metres in the last 6 hours",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "K",
+      "temporal": "minimum",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 2
+    },
+    {
+      "id": "z:pl",
+      "parameter": "z",
+      "param_ids": [
+        129
+      ],
+      "name": "Geopotential",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "m**2 s**-2",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "z:sfc",
+      "parameter": "z",
+      "param_ids": [
+        129
+      ],
+      "name": "Geopotential",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m**2 s**-2",
+      "temporal": "static",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "t:pl",
+      "parameter": "t",
+      "param_ids": [
+        130
+      ],
+      "name": "Temperature",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "K",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble",
+        "ensemble-mean",
+        "ensemble-standard-deviation"
+      ],
+      "product_levels": {
+        "ensemble-mean": [
+          250,
+          500,
+          850
+        ],
+        "ensemble-standard-deviation": [
+          250,
+          500,
+          850
+        ]
+      }
+    },
+    {
+      "id": "u:pl",
+      "parameter": "u",
+      "param_ids": [
+        131
+      ],
+      "name": "U component of wind",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "m s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "v:pl",
+      "parameter": "v",
+      "param_ids": [
+        132
+      ],
+      "name": "V component of wind",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "m s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "q:pl",
+      "parameter": "q",
+      "param_ids": [
+        133
+      ],
+      "name": "Specific humidity",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "kg kg**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "sp:sfc",
+      "parameter": "sp",
+      "param_ids": [
+        134
+      ],
+      "name": "Surface pressure",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "Pa",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "w:pl",
+      "parameter": "w",
+      "param_ids": [
+        135
+      ],
+      "name": "Vertical velocity",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "Pa s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "tcw:sfc",
+      "parameter": "tcw",
+      "param_ids": [
+        136
+      ],
+      "name": "Total column water",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "kg m**-2",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "entireAtmosphere",
+      "native_level": 0
+    },
+    {
+      "id": "tcwv:sfc",
+      "parameter": "tcwv",
+      "param_ids": [
+        137
+      ],
+      "name": "Total column vertically-integrated water vapour",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "kg m**-2",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "entireAtmosphere",
+      "native_level": 0
+    },
+    {
+      "id": "vo:pl",
+      "parameter": "vo",
+      "param_ids": [
+        138
+      ],
+      "name": "Vorticity (relative)",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "sd:sfc",
+      "parameter": "sd",
+      "param_ids": [
+        141
+      ],
+      "name": "Snow depth",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m of water equivalent",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "sf:sfc",
+      "parameter": "sf",
+      "param_ids": [
+        144
+      ],
+      "name": "Snowfall",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m of water equivalent",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "msl:sfc",
+      "parameter": "msl",
+      "param_ids": [
+        151
+      ],
+      "name": "Mean sea level pressure",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "Pa",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble",
+        "ensemble-mean",
+        "ensemble-standard-deviation"
+      ],
+      "native_level_type": "meanSea",
+      "native_level": 0
+    },
+    {
+      "id": "d:pl",
+      "parameter": "d",
+      "param_ids": [
+        155
+      ],
+      "name": "Divergence",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "gh:pl",
+      "parameter": "gh",
+      "param_ids": [
+        156
+      ],
+      "name": "Orography",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble",
+        "ensemble-mean",
+        "ensemble-standard-deviation"
+      ],
+      "product_levels": {
+        "ensemble-mean": [
+          300,
+          500,
+          1000
+        ],
+        "ensemble-standard-deviation": [
+          300,
+          500,
+          1000
+        ]
+      }
+    },
+    {
+      "id": "r:pl",
+      "parameter": "r",
+      "param_ids": [
+        157
+      ],
+      "name": "Relative humidity",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "sdor:sfc",
+      "parameter": "sdor",
+      "param_ids": [
+        160
+      ],
+      "name": "Standard deviation of sub-gridscale orography",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "static",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "slor:sfc",
+      "parameter": "slor",
+      "param_ids": [
+        163
+      ],
+      "name": "Slope of sub-gridscale orography",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "Numeric",
+      "temporal": "static",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tcc:sfc",
+      "parameter": "tcc",
+      "param_ids": [
+        164
+      ],
+      "name": "Total cloud cover",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "(0 - 1)",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "cloud",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "entireAtmosphere",
+      "native_level": 0
+    },
+    {
+      "id": "10u:sfc",
+      "parameter": "10u",
+      "param_ids": [
+        165
+      ],
+      "name": "10 metre U wind component",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 10
+    },
+    {
+      "id": "10v:sfc",
+      "parameter": "10v",
+      "param_ids": [
+        166
+      ],
+      "name": "10 metre V wind component",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 10
+    },
+    {
+      "id": "2t:sfc",
+      "parameter": "2t",
+      "param_ids": [
+        167
+      ],
+      "name": "2 metre temperature",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "K",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 2
+    },
+    {
+      "id": "2d:sfc",
+      "parameter": "2d",
+      "param_ids": [
+        168
+      ],
+      "name": "2 metre dewpoint temperature",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "K",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 2
+    },
+    {
+      "id": "ssrd:sfc",
+      "parameter": "ssrd",
+      "param_ids": [
+        169
+      ],
+      "name": "Surface short-wave (solar) radiation downwards",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "J m**-2",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "lsm:sfc",
+      "parameter": "lsm",
+      "param_ids": [
+        172
+      ],
+      "name": "Land-sea mask",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "(0 - 1)",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "strd:sfc",
+      "parameter": "strd",
+      "param_ids": [
+        175
+      ],
+      "name": "Surface long-wave (thermal) radiation downwards",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "J m**-2",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "ssr:sfc",
+      "parameter": "ssr",
+      "param_ids": [
+        176
+      ],
+      "name": "Surface net short-wave (solar) radiation",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "J m**-2",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "str:sfc",
+      "parameter": "str",
+      "param_ids": [
+        177
+      ],
+      "name": "Surface net long-wave (thermal) radiation",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "J m**-2",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "ttr:sfc",
+      "parameter": "ttr",
+      "param_ids": [
+        179
+      ],
+      "name": "Top net long-wave (thermal) radiation",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "J m**-2",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "nominalTop",
+      "native_level": 0
+    },
+    {
+      "id": "ewss:sfc",
+      "parameter": "ewss",
+      "param_ids": [
+        180
+      ],
+      "name": "Time-integrated eastward turbulent surface stress",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "N m**-2 s",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "nsss:sfc",
+      "parameter": "nsss",
+      "param_ids": [
+        181
+      ],
+      "name": "Time-integrated northward turbulent surface stress",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "N m**-2 s",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "ro:sfc",
+      "parameter": "ro",
+      "param_ids": [
+        205
+      ],
+      "name": "Runoff",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tp:sfc",
+      "parameter": "tp",
+      "param_ids": [
+        228
+      ],
+      "name": "Total precipitation",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "accumulation",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "skt:sfc",
+      "parameter": "skt",
+      "param_ids": [
+        235
+      ],
+      "name": "Skin temperature",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "K",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "mx2t3:sfc",
+      "parameter": "mx2t3",
+      "param_ids": [
+        228026
+      ],
+      "name": "Maximum temperature at 2 metres in the last 3 hours",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "K",
+      "temporal": "maximum",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 2
+    },
+    {
+      "id": "mn2t3:sfc",
+      "parameter": "mn2t3",
+      "param_ids": [
+        228027
+      ],
+      "name": "Minimum temperature at 2 metres in the last 3 hours",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "K",
+      "temporal": "minimum",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 2
+    },
+    {
+      "id": "mucape:sfc",
+      "parameter": "mucape",
+      "param_ids": [
+        228235
+      ],
+      "name": "Most-unstable CAPE",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "J kg**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "mostUnstableParcel",
+      "native_level": 0
+    },
+    {
+      "id": "100u:sfc",
+      "parameter": "100u",
+      "param_ids": [
+        228246
+      ],
+      "name": "100 metre U wind component",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 100
+    },
+    {
+      "id": "100v:sfc",
+      "parameter": "100v",
+      "param_ids": [
+        228247
+      ],
+      "name": "100 metre V wind component",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "heightAboveGround",
+      "native_level": 100
+    },
+    {
+      "id": "ptype:sfc",
+      "parameter": "ptype",
+      "param_ids": [
+        260015
+      ],
+      "name": "Precipitation type",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "(Code table 4.201)",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "categorical",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tprate:sfc",
+      "parameter": "tprate",
+      "param_ids": [
+        260048
+      ],
+      "name": "Total precipitation rate",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "kg m**-2 s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "vsw:sol",
+      "parameter": "vsw",
+      "param_ids": [
+        260199
+      ],
+      "name": "Volumetric soil moisture",
+      "level_type": "sol",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "units": "m**3 m**-3",
+      "temporal": "instant",
+      "category": "soil",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "sot:sol",
+      "parameter": "sot",
+      "param_ids": [
+        260360
+      ],
+      "name": "Soil temperature",
+      "level_type": "sol",
+      "levels": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "units": "K",
+      "temporal": "instant",
+      "category": "soil",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ]
+    },
+    {
+      "id": "sithick:sfc",
+      "parameter": "sithick",
+      "param_ids": [
+        262000
+      ],
+      "name": "Sea ice thickness",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "ocean",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "zos:sfc",
+      "parameter": "zos",
+      "param_ids": [
+        262124
+      ],
+      "name": "Sea surface height",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "ocean",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "svn:sfc",
+      "parameter": "svn",
+      "param_ids": [
+        262139
+      ],
+      "name": "Northward surface sea water velocity",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m s**-1",
+      "temporal": "instant",
+      "category": "ocean",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "sve:sfc",
+      "parameter": "sve",
+      "param_ids": [
+        262140
+      ],
+      "name": "Eastward surface sea water velocity",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m s**-1",
+      "temporal": "instant",
+      "category": "ocean",
+      "rendering": "scalar",
+      "products": [
+        "atmosphere-control",
+        "atmosphere-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "h1012:sfc",
+      "parameter": "h1012",
+      "param_ids": [
+        140114
+      ],
+      "name": "Significant wave height of all waves with periods within the inclusive range from 10 to 12 seconds",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "h1214:sfc",
+      "parameter": "h1214",
+      "param_ids": [
+        140115
+      ],
+      "name": "Significant wave height of all waves with periods within the inclusive range from 12 to 14 seconds",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "h1417:sfc",
+      "parameter": "h1417",
+      "param_ids": [
+        140116
+      ],
+      "name": "Significant wave height of all waves with periods within the inclusive range from 14 to 17 seconds",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "h1721:sfc",
+      "parameter": "h1721",
+      "param_ids": [
+        140117
+      ],
+      "name": "Significant wave height of all waves with periods within the inclusive range from 17 to 21 seconds",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "h2125:sfc",
+      "parameter": "h2125",
+      "param_ids": [
+        140118
+      ],
+      "name": "Significant wave height of all waves with periods within the inclusive range from 21 to 25 seconds",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "h2530:sfc",
+      "parameter": "h2530",
+      "param_ids": [
+        140119
+      ],
+      "name": "Significant wave height of all waves with periods within the inclusive range from 25 to 30 seconds",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "wmb:sfc",
+      "parameter": "wmb",
+      "param_ids": [
+        140219
+      ],
+      "name": "Model bathymetry",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "static",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "mp2:sfc",
+      "parameter": "mp2",
+      "param_ids": [
+        140221
+      ],
+      "name": "Mean zero-crossing wave period",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "s",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "swh:sfc",
+      "parameter": "swh",
+      "param_ids": [
+        140229
+      ],
+      "name": "Significant height of combined wind waves and swell",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "m",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "mwd:sfc",
+      "parameter": "mwd",
+      "param_ids": [
+        140230
+      ],
+      "name": "Mean wave direction",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "Degree true",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "direction",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "pp1d:sfc",
+      "parameter": "pp1d",
+      "param_ids": [
+        140231
+      ],
+      "name": "Peak wave period",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "s",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "mwp:sfc",
+      "parameter": "mwp",
+      "param_ids": [
+        140232
+      ],
+      "name": "Mean wave period",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "s",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "cdww:sfc",
+      "parameter": "cdww",
+      "param_ids": [
+        140233
+      ],
+      "name": "Coefficient of drag with waves",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "dimensionless",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-control",
+        "wave-ensemble"
+      ],
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tpg1:sfc",
+      "parameter": "tpg1",
+      "param_ids": [
+        131060
+      ],
+      "name": "Total precipitation of at least 1 mm",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 1.0,
+        "units": "mm"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tpg5:sfc",
+      "parameter": "tpg5",
+      "param_ids": [
+        131061
+      ],
+      "name": "Total precipitation of at least 5 mm",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 5.0,
+        "units": "mm"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tpg10:sfc",
+      "parameter": "tpg10",
+      "param_ids": [
+        131062
+      ],
+      "name": "Total precipitation of at least 10 mm",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 10.0,
+        "units": "mm"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tpg20:sfc",
+      "parameter": "tpg20",
+      "param_ids": [
+        131063
+      ],
+      "name": "Total precipitation of at least 20 mm",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 20.0,
+        "units": "mm"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tpg25:sfc",
+      "parameter": "tpg25",
+      "param_ids": [
+        131098
+      ],
+      "name": "Total precipitation of at least 25 mm",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 25.0,
+        "units": "mm"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tpg50:sfc",
+      "parameter": "tpg50",
+      "param_ids": [
+        131099
+      ],
+      "name": "Total precipitation of at least 50 mm",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 50.0,
+        "units": "mm"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "tpg100:sfc",
+      "parameter": "tpg100",
+      "param_ids": [
+        131085
+      ],
+      "name": "Total precipitation of at least 100 mm",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 100.0,
+        "units": "mm"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "10fgg10:sfc",
+      "parameter": "10fgg10",
+      "param_ids": [
+        131100
+      ],
+      "name": "10 metre wind gust of at least 10 m/s",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 10.0,
+        "units": "m/s"
+      },
+      "native_level_type": "heightAboveGround",
+      "native_level": 10
+    },
+    {
+      "id": "10fgg15:sfc",
+      "parameter": "10fgg15",
+      "param_ids": [
+        131070
+      ],
+      "name": "10 metre wind gust of at least 15 m/s",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 15.0,
+        "units": "m/s"
+      },
+      "native_level_type": "heightAboveGround",
+      "native_level": 10
+    },
+    {
+      "id": "10fgg25:sfc",
+      "parameter": "10fgg25",
+      "param_ids": [
+        131072
+      ],
+      "name": "10 metre wind gust of at least 25 m/s",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "probability_interval",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "daily-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 25.0,
+        "units": "m/s"
+      },
+      "native_level_type": "heightAboveGround",
+      "native_level": 10
+    },
+    {
+      "id": "ptsa_gt_1stdev:pl",
+      "parameter": "ptsa_gt_1stdev",
+      "param_ids": [
+        133093
+      ],
+      "name": "Probability of temperature standardized anomaly greater than 1 standard deviation",
+      "level_type": "pl",
+      "levels": [
+        850
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "temperature-probability"
+      ],
+      "threshold": {
+        "comparison": ">",
+        "value": 1.0,
+        "units": "standard deviation"
+      }
+    },
+    {
+      "id": "ptsa_gt_1p5stdev:pl",
+      "parameter": "ptsa_gt_1p5stdev",
+      "param_ids": [
+        133094
+      ],
+      "name": "Probability of temperature standardized anomaly greater than 1.5 standard deviation",
+      "level_type": "pl",
+      "levels": [
+        850
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "temperature-probability"
+      ],
+      "threshold": {
+        "comparison": ">",
+        "value": 1.5,
+        "units": "standard deviation"
+      }
+    },
+    {
+      "id": "ptsa_gt_2stdev:pl",
+      "parameter": "ptsa_gt_2stdev",
+      "param_ids": [
+        133095
+      ],
+      "name": "Probability of temperature standardized anomaly greater than 2 standard deviation",
+      "level_type": "pl",
+      "levels": [
+        850
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "temperature-probability"
+      ],
+      "threshold": {
+        "comparison": ">",
+        "value": 2.0,
+        "units": "standard deviation"
+      }
+    },
+    {
+      "id": "ptsa_lt_1stdev:pl",
+      "parameter": "ptsa_lt_1stdev",
+      "param_ids": [
+        133096
+      ],
+      "name": "Probability of temperature standardized anomaly less than -1 standard deviation",
+      "level_type": "pl",
+      "levels": [
+        850
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "temperature-probability"
+      ],
+      "threshold": {
+        "comparison": "<",
+        "value": -1.0,
+        "units": "standard deviation"
+      }
+    },
+    {
+      "id": "ptsa_lt_1p5stdev:pl",
+      "parameter": "ptsa_lt_1p5stdev",
+      "param_ids": [
+        133097
+      ],
+      "name": "Probability of temperature standardized anomaly less than -1.5 standard deviation",
+      "level_type": "pl",
+      "levels": [
+        850
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "temperature-probability"
+      ],
+      "threshold": {
+        "comparison": "<",
+        "value": -1.5,
+        "units": "standard deviation"
+      }
+    },
+    {
+      "id": "ptsa_lt_2stdev:pl",
+      "parameter": "ptsa_lt_2stdev",
+      "param_ids": [
+        133098
+      ],
+      "name": "Probability of temperature standardized anomaly less than -2 standard deviation",
+      "level_type": "pl",
+      "levels": [
+        850
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "probability",
+      "rendering": "scalar",
+      "products": [
+        "temperature-probability"
+      ],
+      "threshold": {
+        "comparison": "<",
+        "value": -2.0,
+        "units": "standard deviation"
+      }
+    },
+    {
+      "id": "swhg2:sfc",
+      "parameter": "swhg2",
+      "param_ids": [
+        131074
+      ],
+      "name": "Significant wave height of at least 2 m",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 2.0,
+        "units": "m"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "swhg4:sfc",
+      "parameter": "swhg4",
+      "param_ids": [
+        131075
+      ],
+      "name": "Significant wave height of at least 4 m",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 4.0,
+        "units": "m"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "swhg6:sfc",
+      "parameter": "swhg6",
+      "param_ids": [
+        131076
+      ],
+      "name": "Significant wave height of at least 6 m",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 6.0,
+        "units": "m"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "swhg8:sfc",
+      "parameter": "swhg8",
+      "param_ids": [
+        131077
+      ],
+      "name": "Significant wave height of at least 8 m",
+      "level_type": "sfc",
+      "levels": [
+        0
+      ],
+      "units": "%",
+      "temporal": "instant",
+      "category": "wave",
+      "rendering": "scalar",
+      "products": [
+        "wave-probability"
+      ],
+      "threshold": {
+        "comparison": ">=",
+        "value": 8.0,
+        "units": "m"
+      },
+      "native_level_type": "surface",
+      "native_level": 0
+    },
+    {
+      "id": "ws:pl",
+      "parameter": "ws",
+      "param_ids": [
+        10
+      ],
+      "name": "Wind speed",
+      "level_type": "pl",
+      "levels": [
+        1000,
+        925,
+        850,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50,
+        10
+      ],
+      "units": "m s**-1",
+      "temporal": "instant",
+      "category": "atmosphere",
+      "rendering": "scalar",
+      "products": [
+        "ensemble-mean",
+        "ensemble-standard-deviation"
+      ],
+      "product_levels": {
+        "ensemble-mean": [
+          250,
+          850
+        ],
+        "ensemble-standard-deviation": [
+          250,
+          850
+        ]
+      }
+    }
+  ]
+}

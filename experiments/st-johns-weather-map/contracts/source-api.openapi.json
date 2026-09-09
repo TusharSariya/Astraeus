@@ -270,6 +270,511 @@
         "title": "ChangeResponse",
         "type": "object"
       },
+      "ComparisonCoverage": {
+        "additionalProperties": false,
+        "properties": {
+          "available_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available End"
+          },
+          "available_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available Start"
+          },
+          "failure_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Kind"
+          },
+          "native_times": {
+            "items": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "maxItems": 144,
+            "title": "Native Times",
+            "type": "array"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "empty",
+              "unknown",
+              "unsupported",
+              "credentials_required"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "state"
+        ],
+        "title": "ComparisonCoverage",
+        "type": "object"
+      },
+      "ComparisonCurve": {
+        "additionalProperties": false,
+        "properties": {
+          "definition": {
+            "title": "Definition",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonSample"
+            },
+            "title": "Samples",
+            "type": "array"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "string"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units"
+          }
+        },
+        "required": [
+          "id",
+          "source_id",
+          "product_id",
+          "group",
+          "field",
+          "definition"
+        ],
+        "title": "ComparisonCurve",
+        "type": "object"
+      },
+      "ComparisonPage": {
+        "additionalProperties": false,
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "completed_positions": {
+            "title": "Completed Positions",
+            "type": "integer"
+          },
+          "coverage": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonCoverage"
+            },
+            "title": "Coverage",
+            "type": "array"
+          },
+          "curves": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonCurve"
+            },
+            "title": "Curves",
+            "type": "array"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "selected_at": {
+            "format": "date-time",
+            "title": "Selected At",
+            "type": "string"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/ComparisonSelection-Output"
+          },
+          "total_positions": {
+            "title": "Total Positions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "selection",
+          "selected_at",
+          "expires_at",
+          "curves",
+          "coverage",
+          "next_cursor",
+          "complete",
+          "completed_positions",
+          "total_positions"
+        ],
+        "title": "ComparisonPage",
+        "type": "object"
+      },
+      "ComparisonSample": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceField"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interval_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval End"
+          },
+          "interval_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Start"
+          },
+          "lower": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceField"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "member_units": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Units"
+          },
+          "member_values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "maxProperties": 51,
+            "title": "Member Values",
+            "type": "object"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "time": {
+            "format": "date-time",
+            "title": "Time",
+            "type": "string"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvidenceField"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "time",
+          "run_id"
+        ],
+        "title": "ComparisonSample",
+        "type": "object"
+      },
+      "ComparisonSelection-Input": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "ensemble_spread": {
+            "default": false,
+            "title": "Ensemble Spread",
+            "type": "boolean"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonSource"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "variables": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Variables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "start",
+          "end"
+        ],
+        "title": "ComparisonSelection",
+        "type": "object"
+      },
+      "ComparisonSelection-Output": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "ensemble_spread": {
+            "default": false,
+            "title": "Ensemble Spread",
+            "type": "boolean"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonSource"
+            },
+            "maxItems": 6,
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          },
+          "variables": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Variables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "start",
+          "end"
+        ],
+        "title": "ComparisonSelection",
+        "type": "object"
+      },
+      "ComparisonSource": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "run": {
+            "default": "latest",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Run",
+            "type": "string"
+          },
+          "source_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Source Id",
+            "type": "string"
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceVariant"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source_id"
+        ],
+        "title": "ComparisonSource",
+        "type": "object"
+      },
       "Continuation": {
         "additionalProperties": false,
         "properties": {
@@ -363,6 +868,110 @@
         ],
         "title": "DataMode",
         "type": "string"
+      },
+      "DemandLayerTimes": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "const": "advertised_native_times",
+            "default": "advertised_native_times",
+            "title": "Basis",
+            "type": "string"
+          },
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "frames": {
+            "items": {
+              "$ref": "#/components/schemas/DemandTimeFrame"
+            },
+            "maxItems": 1200,
+            "title": "Frames",
+            "type": "array"
+          },
+          "layer_id": {
+            "enum": [
+              "noaa-goes19-demand-cloud-mask",
+              "eccc-rdps-demand-total-cloud"
+            ],
+            "title": "Layer Id",
+            "type": "string"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "layer_id",
+          "start",
+          "end",
+          "expires_at",
+          "frames",
+          "notices"
+        ],
+        "title": "DemandLayerTimes",
+        "type": "object"
+      },
+      "DemandTimeFrame": {
+        "additionalProperties": false,
+        "properties": {
+          "run_time": {
+            "format": "date-time",
+            "title": "Run Time",
+            "type": "string"
+          },
+          "valid_time": {
+            "format": "date-time",
+            "title": "Valid Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "valid_time",
+          "run_time"
+        ],
+        "title": "DemandTimeFrame",
+        "type": "object"
+      },
+      "DerivationStep": {
+        "additionalProperties": false,
+        "properties": {
+          "citation": {
+            "title": "Citation",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "version",
+          "citation"
+        ],
+        "title": "DerivationStep",
+        "type": "object"
       },
       "DerivedInput": {
         "additionalProperties": false,
@@ -1395,6 +2004,764 @@
         "title": "HolyroodReceipt",
         "type": "object"
       },
+      "IFSFieldSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "level": {
+            "default": 0,
+            "title": "Level",
+            "type": "integer"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "run": {
+            "default": "latest",
+            "title": "Run",
+            "type": "string"
+          },
+          "times": {
+            "items": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "maxItems": 144,
+            "minItems": 1,
+            "title": "Times",
+            "type": "array"
+          }
+        },
+        "required": [
+          "product",
+          "field",
+          "times"
+        ],
+        "title": "IFSFieldSelection",
+        "type": "object"
+      },
+      "IFSGrid": {
+        "additionalProperties": false,
+        "properties": {
+          "comparison": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison"
+          },
+          "control_mapping": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Control Mapping"
+          },
+          "digest": {
+            "title": "Digest",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "interval_end": {
+            "format": "date-time",
+            "title": "Interval End",
+            "type": "string"
+          },
+          "interval_start": {
+            "format": "date-time",
+            "title": "Interval Start",
+            "type": "string"
+          },
+          "latitude_edges": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 62,
+            "minItems": 3,
+            "title": "Latitude Edges",
+            "type": "array"
+          },
+          "latitudes": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 61,
+            "minItems": 2,
+            "title": "Latitudes",
+            "type": "array"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "longitude_edges": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 122,
+            "minItems": 3,
+            "title": "Longitude Edges",
+            "type": "array"
+          },
+          "longitudes": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 121,
+            "minItems": 2,
+            "title": "Longitudes",
+            "type": "array"
+          },
+          "member": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member"
+          },
+          "member_counts": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Counts"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "missing_member_bits": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing Member Bits"
+          },
+          "missing_members": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Members",
+            "type": "array"
+          },
+          "native_metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "title": "Native Metadata",
+            "type": "object"
+          },
+          "native_time": {
+            "format": "date-time",
+            "title": "Native Time",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "quantile": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quantile"
+          },
+          "receipt_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Receipt Ids",
+            "type": "array"
+          },
+          "receipt_manifest": {
+            "title": "Receipt Manifest",
+            "type": "string"
+          },
+          "refusal_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Refusal Reasons",
+            "type": "array"
+          },
+          "region": {
+            "maxItems": 4,
+            "minItems": 4,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Region",
+            "type": "array"
+          },
+          "retrieved_at": {
+            "format": "date-time",
+            "title": "Retrieved At",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "run_time": {
+            "format": "date-time",
+            "title": "Run Time",
+            "type": "string"
+          },
+          "selection_product": {
+            "title": "Selection Product",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "ecmwf-ifs",
+            "default": "ecmwf-ifs",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "statistic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Statistic"
+          },
+          "temporal": {
+            "title": "Temporal",
+            "type": "string"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          },
+          "units": {
+            "title": "Units",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "maxItems": 61,
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "product",
+          "selection_product",
+          "run_id",
+          "run_time",
+          "native_time",
+          "field",
+          "level",
+          "member",
+          "units",
+          "temporal",
+          "interval_start",
+          "interval_end",
+          "region",
+          "latitudes",
+          "longitudes",
+          "latitude_edges",
+          "longitude_edges",
+          "values",
+          "native_metadata",
+          "retrieved_at",
+          "expires_at",
+          "digest",
+          "receipt_ids",
+          "receipt_manifest"
+        ],
+        "title": "IFSGrid",
+        "type": "object"
+      },
+      "IFSItem": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "grid": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IFSGrid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "member": {
+            "title": "Member",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "time": {
+            "format": "date-time",
+            "title": "Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "product",
+          "field",
+          "level",
+          "run_id",
+          "time",
+          "member"
+        ],
+        "title": "IFSItem",
+        "type": "object"
+      },
+      "IFSPage": {
+        "additionalProperties": false,
+        "properties": {
+          "completed": {
+            "title": "Completed",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_bytes": {
+            "title": "Input Bytes",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IFSItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "receipt_manifest": {
+            "title": "Receipt Manifest",
+            "type": "string"
+          },
+          "record_acquisitions": {
+            "title": "Record Acquisitions",
+            "type": "integer"
+          },
+          "selected_at": {
+            "format": "date-time",
+            "title": "Selected At",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "selected_at",
+          "expires_at",
+          "completed",
+          "total",
+          "input_bytes",
+          "record_acquisitions",
+          "items",
+          "next_cursor",
+          "receipt_manifest"
+        ],
+        "title": "IFSPage",
+        "type": "object"
+      },
+      "IFSReceipts": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Offset"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/SourceTransferReceipt"
+            },
+            "maxItems": 12,
+            "title": "Receipts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "offset",
+          "receipts",
+          "next_offset"
+        ],
+        "title": "IFSReceipts",
+        "type": "object"
+      },
+      "IFSSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/IFSFieldSelection"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Fields",
+            "type": "array"
+          }
+        },
+        "required": [
+          "fields"
+        ],
+        "title": "IFSSelection",
+        "type": "object"
+      },
+      "IFSTrack": {
+        "additionalProperties": false,
+        "properties": {
+          "member": {
+            "title": "Member",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/IFSTrackPoint"
+            },
+            "maxItems": 122,
+            "title": "Points",
+            "type": "array"
+          },
+          "storm_id": {
+            "title": "Storm Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "storm_id",
+          "member",
+          "points"
+        ],
+        "title": "IFSTrack",
+        "type": "object"
+      },
+      "IFSTrackPage": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes_received": {
+            "title": "Bytes Received",
+            "type": "integer"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IFSTracks"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "expires_at",
+          "complete",
+          "bytes_received"
+        ],
+        "title": "IFSTrackPage",
+        "type": "object"
+      },
+      "IFSTrackPoint": {
+        "additionalProperties": false,
+        "properties": {
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "time": {
+            "format": "date-time",
+            "title": "Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "latitude",
+          "longitude"
+        ],
+        "title": "IFSTrackPoint",
+        "type": "object"
+      },
+      "IFSTrackSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "product": {
+            "enum": [
+              "cyclone-control",
+              "cyclone-ensemble"
+            ],
+            "title": "Product",
+            "type": "string"
+          },
+          "run": {
+            "default": "latest",
+            "title": "Run",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product"
+        ],
+        "title": "IFSTrackSelection",
+        "type": "object"
+      },
+      "IFSTracks": {
+        "additionalProperties": false,
+        "properties": {
+          "decoded_members": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Decoded Members",
+            "type": "array"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "product": {
+            "title": "Product",
+            "type": "string"
+          },
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/SourceTransferReceipt"
+            },
+            "title": "Receipts",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "run_time": {
+            "format": "date-time",
+            "title": "Run Time",
+            "type": "string"
+          },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/IFSTrack"
+            },
+            "maxItems": 13056,
+            "title": "Tracks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "product",
+          "run_id",
+          "run_time",
+          "tracks",
+          "decoded_members",
+          "expires_at",
+          "receipts"
+        ],
+        "title": "IFSTracks",
+        "type": "object"
+      },
       "MapCapability": {
         "additionalProperties": false,
         "properties": {
@@ -1906,6 +3273,13 @@
             "title": "Derivation Inputs",
             "type": "array"
           },
+          "derivation_steps": {
+            "items": {
+              "$ref": "#/components/schemas/DerivationStep"
+            },
+            "title": "Derivation Steps",
+            "type": "array"
+          },
           "derivation_version": {
             "anyOf": [
               {
@@ -2174,6 +3548,18 @@
           "source_id": {
             "title": "Source Id",
             "type": "string"
+          },
+          "source_receipt_manifest": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Receipt Manifest"
           },
           "swob_acquisition": {
             "anyOf": [
@@ -3238,7 +4624,7 @@
             "items": {
               "$ref": "#/components/schemas/SourceTransferReceipt"
             },
-            "maxItems": 12,
+            "maxItems": 30,
             "title": "Transport Receipts",
             "type": "array"
           },
@@ -3277,6 +4663,11 @@
           "field": {
             "title": "Field",
             "type": "string"
+          },
+          "grid": {
+            "default": false,
+            "title": "Grid",
+            "type": "boolean"
           },
           "levels": {
             "items": {
@@ -3455,6 +4846,143 @@
           "storage"
         ],
         "title": "SourceFieldEntry",
+        "type": "object"
+      },
+      "SourceGridResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "field": {
+            "const": "weathernext3_total_cloud_cover_mean",
+            "default": "weathernext3_total_cloud_cover_mean",
+            "title": "Field",
+            "type": "string"
+          },
+          "latitude_edges": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 303,
+            "minItems": 3,
+            "title": "Latitude Edges",
+            "type": "array"
+          },
+          "latitudes": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 302,
+            "minItems": 2,
+            "title": "Latitudes",
+            "type": "array"
+          },
+          "longitude_edges": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 303,
+            "minItems": 3,
+            "title": "Longitude Edges",
+            "type": "array"
+          },
+          "longitudes": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 302,
+            "minItems": 2,
+            "title": "Longitudes",
+            "type": "array"
+          },
+          "native_time": {
+            "format": "date-time",
+            "title": "Native Time",
+            "type": "string"
+          },
+          "percentages": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "maxItems": 302,
+            "title": "Percentages",
+            "type": "array"
+          },
+          "product": {
+            "enum": [
+              "WeatherNext 3 local",
+              "WeatherNext 3 historical"
+            ],
+            "title": "Product",
+            "type": "string"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/Provenance"
+          },
+          "region": {
+            "default": [
+              -55.0,
+              46.5,
+              -51.0,
+              48.5
+            ],
+            "maxItems": 4,
+            "minItems": 4,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Region",
+            "type": "array"
+          },
+          "selected_time": {
+            "format": "date-time",
+            "title": "Selected Time",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "google-weathernext-3-statistics",
+            "default": "google-weathernext-3-statistics",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "statistic": {
+            "const": "ensemble_mean",
+            "default": "ensemble_mean",
+            "title": "Statistic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "selected_time",
+          "native_time",
+          "latitudes",
+          "longitudes",
+          "latitude_edges",
+          "longitude_edges",
+          "percentages",
+          "provenance"
+        ],
+        "title": "SourceGridResponse",
         "type": "object"
       },
       "SourceRecord": {
@@ -3800,6 +5328,80 @@
         "title": "SourceStatusResponse",
         "type": "object"
       },
+      "SourceTimesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "field": {
+            "const": "weathernext3_total_cloud_cover_mean",
+            "default": "weathernext3_total_cloud_cover_mean",
+            "title": "Field",
+            "type": "string"
+          },
+          "frames": {
+            "items": {
+              "$ref": "#/components/schemas/TimeFrame"
+            },
+            "maxItems": 720,
+            "title": "Frames",
+            "type": "array"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/TimeObject"
+            },
+            "maxItems": 6,
+            "title": "Objects",
+            "type": "array"
+          },
+          "product": {
+            "enum": [
+              "WeatherNext 3 local",
+              "WeatherNext 3 historical"
+            ],
+            "title": "Product",
+            "type": "string"
+          },
+          "source_id": {
+            "const": "google-weathernext-3-statistics",
+            "default": "google-weathernext-3-statistics",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product",
+          "start",
+          "end",
+          "expires_at",
+          "frames",
+          "objects",
+          "notices"
+        ],
+        "title": "SourceTimesResponse",
+        "type": "object"
+      },
       "SourceTransferReceipt": {
         "additionalProperties": false,
         "properties": {
@@ -3943,6 +5545,61 @@
         "title": "SourceVariant",
         "type": "object"
       },
+      "TimeFrame": {
+        "additionalProperties": false,
+        "properties": {
+          "run_time": {
+            "format": "date-time",
+            "title": "Run Time",
+            "type": "string"
+          },
+          "valid_time": {
+            "format": "date-time",
+            "title": "Valid Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "valid_time",
+          "run_time"
+        ],
+        "title": "TimeFrame",
+        "type": "object"
+      },
+      "TimeObject": {
+        "additionalProperties": false,
+        "properties": {
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "etag": {
+            "title": "Etag",
+            "type": "string"
+          },
+          "generation": {
+            "title": "Generation",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bucket",
+          "name",
+          "generation",
+          "etag",
+          "size"
+        ],
+        "title": "TimeObject",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -4001,6 +5658,606 @@
           }
         },
         "summary": "Get Catalog"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/catalogue": {
+      "get": {
+        "operationId": "catalogue_api_experiments_weather_v0_ifs_catalogue_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Catalogue"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/runs/{product}": {
+      "get": {
+        "operationId": "inventory_api_experiments_weather_v0_ifs_runs__product__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inventory"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/selections": {
+      "post": {
+        "operationId": "select_api_experiments_weather_v0_ifs_selections_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IFSSelection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IFSPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Select"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/selections/{id}": {
+      "delete": {
+        "operationId": "cancel_api_experiments_weather_v0_ifs_selections__id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel"
+      },
+      "get": {
+        "operationId": "page_api_experiments_weather_v0_ifs_selections__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Cursor",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IFSPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Page"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/selections/{id}/grid": {
+      "get": {
+        "operationId": "loaded_grid_api_experiments_weather_v0_ifs_selections__id__grid_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "statistic",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Statistic"
+            }
+          },
+          {
+            "in": "query",
+            "name": "member",
+            "required": false,
+            "schema": {
+              "default": "0",
+              "title": "Member",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "quantile",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Quantile"
+            }
+          },
+          {
+            "in": "query",
+            "name": "threshold",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Threshold"
+            }
+          },
+          {
+            "in": "query",
+            "name": "comparison",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Comparison"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IFSGrid"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Loaded Grid"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/selections/{id}/receipts": {
+      "get": {
+        "operationId": "receipts_api_experiments_weather_v0_ifs_selections__id__receipts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IFSReceipts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Receipts"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/track-selections": {
+      "post": {
+        "operationId": "select_tracks_api_experiments_weather_v0_ifs_track_selections_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IFSTrackSelection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IFSTrackPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Select Tracks"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/track-selections/{id}": {
+      "delete": {
+        "operationId": "cancel_tracks_api_experiments_weather_v0_ifs_track_selections__id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Tracks"
+      },
+      "get": {
+        "operationId": "continue_tracks_api_experiments_weather_v0_ifs_track_selections__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IFSTrackPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Continue Tracks"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/tracks/{product}": {
+      "get": {
+        "operationId": "tracks_api_experiments_weather_v0_ifs_tracks__product__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "run",
+            "required": false,
+            "schema": {
+              "default": "latest",
+              "title": "Run",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IFSTracks"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tracks"
+      }
+    },
+    "/api/experiments/weather/v0/ifs/transfers/{id}": {
+      "get": {
+        "operationId": "transfers_api_experiments_weather_v0_ifs_transfers__id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "title": "Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IFSReceipts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transfers"
+      }
+    },
+    "/api/experiments/weather/v0/layers/{layer_id}/times": {
+      "get": {
+        "operationId": "demand_layer_times_api_experiments_weather_v0_layers__layer_id__times_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "layer_id",
+            "required": true,
+            "schema": {
+              "enum": [
+                "noaa-goes19-demand-cloud-mask",
+                "eccc-rdps-demand-total-cloud"
+              ],
+              "title": "Layer Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemandLayerTimes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Demand Layer Times"
       }
     },
     "/api/experiments/weather/v0/point": {
@@ -4267,6 +6524,84 @@
         "summary": "Get Point"
       }
     },
+    "/api/experiments/weather/v0/point/comparison": {
+      "post": {
+        "operationId": "comparison_api_experiments_weather_v0_point_comparison_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ComparisonSelection-Input"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Continuation"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComparisonPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Comparison"
+      }
+    },
+    "/api/experiments/weather/v0/point/comparison/{identity}": {
+      "delete": {
+        "operationId": "cancel_comparison_api_experiments_weather_v0_point_comparison__identity__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "title": "Identity",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Comparison"
+      }
+    },
     "/api/experiments/weather/v0/point/series": {
       "post": {
         "operationId": "read_series_api_experiments_weather_v0_point_series_post",
@@ -4479,6 +6814,164 @@
           }
         },
         "summary": "Get Source Status"
+      }
+    },
+    "/api/experiments/weather/v0/sources/{source_id}/grid": {
+      "get": {
+        "operationId": "source_grid_api_experiments_weather_v0_sources__source_id__grid_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "title": "Field",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "selected_time",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Selected Time",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "region",
+            "required": false,
+            "schema": {
+              "default": "avalon",
+              "enum": [
+                "avalon",
+                "atlantic"
+              ],
+              "title": "Region",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceGridResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Source Grid"
+      }
+    },
+    "/api/experiments/weather/v0/sources/{source_id}/times": {
+      "get": {
+        "operationId": "source_times_api_experiments_weather_v0_sources__source_id__times_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product",
+            "required": true,
+            "schema": {
+              "title": "Product",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "title": "Field",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "End",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceTimesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Source Times"
       }
     }
   }

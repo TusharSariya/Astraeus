@@ -1,0 +1,26 @@
+{
+  "run": "ifs:cyclone-control:2026090906",
+  "tracks": 0,
+  "members": [
+    "51"
+  ],
+  "receipts": [
+    {
+      "url": "https://data.ecmwf.int/forecasts/20260909/06z/ifs/0p25/oper/20260909060000-144h-oper-tf.bufr",
+      "effective_url": "https://data.ecmwf.int/forecasts/20260909/06z/ifs/0p25/oper/20260909060000-144h-oper-tf.bufr",
+      "http_status": 200,
+      "request_headers": {
+        "Accept-Encoding": "identity"
+      },
+      "response_headers": {
+        "content-type": "application/bufr",
+        "etag": "00000000-0959-957f-0000-000000000000",
+        "last-modified": "Wed, 09 Sep 2026 12:12:00 GMT",
+        "content-length": "18299"
+      },
+      "byte_size": 18299,
+      "sha256": "6dbda6a3fbdf52e0a06f47a313490af04adfd15eedd5fea22bb6a165e530f440",
+      "completed_at": "2026-09-09T13:47:36.630376Z"
+    }
+  ]
+}

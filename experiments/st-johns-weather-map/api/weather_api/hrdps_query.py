@@ -223,11 +223,11 @@ class HRDPSQueryCoordinator:
         )
 
     def run_inventory(self):
-        self._adapter.demand_operation_bounds(1)
+        # Directory discovery transfers bounded metadata and performs no decode.
         return self._run_inventory.candidates()
 
     def run_times(self, run_id: str):
-        self._adapter.demand_operation_bounds(1)
+        # Decode resource checks remain at the native acquisition boundary.
         candidate = self._run_inventory.resolve(run_id)
         return tuple(candidate.run_time + timedelta(hours=int(lead)) for lead in candidate.detail.get("available_hours", ()) if 0 <= int(lead) < 25)
 

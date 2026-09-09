@@ -705,10 +705,10 @@ class ECCCDataMartAdapter:
             except Exception:
                 continue
             hours = sorted({entry.rstrip("/") for entry in hour_entries if _LEAD_DIR.match(entry)})
-            if "000" not in hours:
+            if not hours:
                 continue
 
-            analysis_url = f"{cycle_url}000/"
+            analysis_url = f"{cycle_url}{hours[0]}/"
             try:
                 files = self._listing(client, analysis_url, suffixes=(".grib2",))
             except Exception:

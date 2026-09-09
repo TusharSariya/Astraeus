@@ -13,6 +13,7 @@ export function isSourceVariant(value: unknown): value is SourceVariant {
 export const isPointProductToken = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= 100 && value.trim() === value && !/[\u0000-\u001f\u007f-\u009f]/.test(value)
 export function isSourceCapability(value: unknown, sourceId: string): value is SourceCapability {
   return record(value) && value.source_id === sourceId && named(value.product_id) && named(value.field)
+    && (value.grid === undefined || typeof value.grid === 'boolean')
     && (value.point_product == null || isPointProductToken(value.point_product))
     && (value.point_time_kind == null || ['observation', 'forecast'].includes(String(value.point_time_kind)))
     && (value.directional_time_selection === undefined || typeof value.directional_time_selection === 'boolean')

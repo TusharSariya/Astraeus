@@ -40,13 +40,17 @@ export function layerPoints(layer: LayerItem | undefined, catalog: CatalogSource
     return matches.length === 1 ? [pointDefault(matches[0].capability)] : []
   }).filter((p, index, rows) => rows.findIndex(other => pointIdentity(other) === pointIdentity(p)) === index)
 }
+export function mapOnlyLayer(layer: LayerItem | undefined, catalog: CatalogSource[]) {
+  return layer?.kind === 'raster' && layer.raster_available !== false && layerPoints(layer, catalog).length === 0
+}
 export function selectionPoints(entry: LayerSelection, layers: LayerItem[], catalog: CatalogSource[]) {
   return entry.points ?? layerPoints(layers.find(layer => layer.id === entry.id), catalog)
 }
-export function selectionState(entry?: LayerSelection) { return !entry ? 'Off' : entry.visible && !entry.pointOnly ? 'Map + data' : 'Data only' }
-export function cycleSelection(stack: LayerSelection[], id: string, point?: PointFieldSelection, mapped?: PointFieldSelection[]): LayerSelection[] {
+export function selectionState(entry?: LayerSelection, mapOnly = false) { return !entry ? 'Off' : mapOnly ? entry.visible ? 'Map' : 'Hidden' : entry.visible && !entry.pointOnly ? 'Map + data' : 'Data only' }
+export function cycleSelection(stack: LayerSelection[], id: string, point?: PointFieldSelection, mapped?: PointFieldSelection[], grid = false, mapOnly = false): LayerSelection[] {
   const entry = stack.find(row => row.id === id)
-  if (!entry) return [...stack, { id, visible: !point, opacity: .85, ...(point ? { pointOnly: true, points: [point] } : mapped?.length ? { points: mapped } : {}) }]
+  if (!entry) return [...stack, { id, visible: !point || grid, opacity: .85, ...(point ? { ...(!grid ? {pointOnly: true} : {}), points: [point] } : mapped?.length ? { points: mapped } : {}) }]
+  if (mapOnly) return stack.filter(row => row.id !== id)
   if (entry.visible && !entry.pointOnly) return stack.map(row => row.id === id ? { ...row, visible: false } : row)
   return stack.filter(row => row.id !== id)
 }
@@ -87,5 +91,7 @@ export function parseSelection(value: unknown): LayerSelection {
     return v == null || (typeof v === 'object' && ['deterministic','observation','member','provider_statistic','derived_statistic','unknown'].includes(v.kind) && [v.member,v.statistic,v.comparison].every(x => x == null || typeof x === 'string') && [v.quantile,v.threshold].every(x => x == null || Number.isFinite(x)))
   }))) throw new Error('invalid point selection')
   if (e.pointOnly && (e.visible || e.points?.length !== 1 || e.id !== pointSelectionId(e.points[0]))) throw new Error('invalid point-only selection')
-  return { id: e.id, visible: e.visible, opacity: e.opacity, ...(e.pointOnly ? { pointOnly: true } : {}), ...(e.points ? { points: e.points } : {}) }
+  if (e.temperatureSource !== undefined && (typeof e.temperatureSource !== 'string' || !/^[a-z0-9-]{1,100}$/.test(e.temperatureSource))) throw new Error('invalid temperature source')
+  if (e.ifs && (![e.ifs.product,e.ifs.field,e.ifs.run,e.ifs.member,e.ifs.statistic,e.ifs.rendering,e.ifs.title].every(v=>typeof v==='string'&&v.length<=256)||!Number.isFinite(e.ifs.level))) throw new Error('invalid IFS selection')
+  return { ...(e.temperatureSource ? {temperatureSource:e.temperatureSource} : {}), ...(e.ifs ? {ifs:e.ifs} : {}), id: e.id, visible: e.visible, opacity: e.opacity, ...(e.pointOnly ? { pointOnly: true } : {}), ...(e.points ? { points: e.points } : {}) }
 }

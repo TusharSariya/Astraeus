@@ -23,7 +23,7 @@ export function discoveryEntries(catalog: CatalogSource[], layers: LayerItem[]):
     const mapped = layers.filter(layer => layerMapping(layer).fields.some(f => f.source_id === source.id) || source.discovery?.map_capabilities.some(c => c.layer_id === layer.id))
     mapped.forEach(layer => associated.add(layer.id))
     const caps = source.capabilities ?? [], meta = source.discovery
-    const interfaces = [...(mapped.length || meta?.map_capabilities.length ? ['Map'] : []), ...(caps.some(c => c.point && c.point_product) ? ['Point'] : []), ...(caps.some(c => c.native_series) ? ['Series'] : [])]
+    const interfaces = [...(mapped.length || meta?.map_capabilities.length ? ['Map'] : []), ...(caps.some(c => c.grid) && !mapped.length && !meta?.map_capabilities.length ? ['Map'] : []), ...(caps.some(c => c.point && c.point_product) ? ['Point'] : []), ...(caps.some(c => c.native_series) ? ['Series'] : [])]
     const facets: Record<Dimension, string[]> = {
       Subject: subjectsFor(source), Provider: [source.producer], 'Model/product': [source.product],
       Kind: meta?.kinds ?? [], Method: meta?.methods ?? [], 'Ensemble form': meta?.ensemble_forms ?? [], Interface: interfaces.length ? interfaces : ['Information only'],
@@ -75,7 +75,7 @@ export function discoveryRows(catalog: CatalogSource[], layers: LayerItem[]): Di
     const mapped = entry.layers.flatMap(layer => layerPoints(layer, catalog))
     const points: DiscoveryRow[] = pointCapabilities(entry.source ? [entry.source] : []).filter(({capability}) => !mapped.some(p => pointIdentity(p) === pointIdentity(pointDefault(capability)))).map(({capability}) => {
       const point = pointDefault(capability), title = pointLabel(point)
-      const facets = { ...entry.facets, Subject: [subjectForFamily(pointFamily(point, catalog))], Interface: ['Point'] }
+      const facets = { ...entry.facets, Subject: [subjectForFamily(pointFamily(point, catalog))], Interface: capability.grid ? ['Map','Point'] : ['Point'] }
       return { ...entry, id: pointSelectionId(point), point, title, facets,
         searchable: [title, point.field, point.sourceId, entry.source?.producer, entry.source?.product, ...Object.values(facets).flat()].join(' ').toLowerCase() }
     })

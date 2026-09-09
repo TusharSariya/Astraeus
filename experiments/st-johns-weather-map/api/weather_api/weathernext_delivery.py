@@ -70,7 +70,7 @@ def _time(value):
     return result.astimezone(UTC)
 
 
-def point_evidence(payload, selection, configuration, *, completed_at, data_mode='live', scope='historical'):
+def point_evidence(payload, selection, configuration, *, completed_at, data_mode='live', scope='historical', regional=False, selected_field=None):
     """Validate bridge identity before canonical K-to-degC representation."""
     if scope not in ('historical', 'internal_experimental_forecast'):
         raise ValueError('WeatherNext evidence scope')
@@ -81,10 +81,11 @@ def point_evidence(payload, selection, configuration, *, completed_at, data_mode
         raise ValueError('WeatherNext local acquisition scope')
     if (_time(raw['initialization'])!=selection.initialization or _time(raw['valid_time'])!=selection.valid_time
             or raw.get('member') is not None or raw.get('pressure_level') is not None
-            or len(raw['values'])!=1):
+            or ({v['field'] for v in raw['values']} | set(raw.get('unavailable_fields',[]))) != set(selection.fields)
+            or len(raw['values']) + len(raw.get('unavailable_fields',[])) != len(selection.fields)):
         raise ValueError('native point identity')
-    native=raw['values'][0]
-    mapping=BY_NATIVE[selection.fields[0]]
+    mapping=BY_NATIVE[selected_field or selection.fields[0]]
+    native=next(v for v in raw['values'] if v['field']==mapping.native)
     if (native['field']!=mapping.native or native['statistic']!=mapping.native.rsplit('_',1)[1] or native['unit']!=mapping.native_unit or native['grid']!=mapping.grid):
         raise ValueError('native temperature statistic identity')
     lat,lon=native['latitude'],native['longitude']
@@ -97,23 +98,25 @@ def point_evidence(payload, selection, configuration, *, completed_at, data_mode
     if value is not None and mapping.family == 'cloud_cover' and not 0 <= value <= 1:
         raise ValueError('native cloud fraction range')
     identities=[ObjectIdentity(**item) for item in raw['objects']]
-    if not identities or identities[0]!=configuration.root_identity or len(identities)>7:
+    if not identities or identities[0]!=configuration.root_identity or len(identities)>(15 if regional else 3+4*len(selection.fields)):
         raise ValueError('root receipt identity')
-    by_name={item.name:item for item in identities}
+    unread=[ObjectIdentity(**item) for item in raw.get('unread_objects',[])]
+    all_identities=identities+unread
+    by_name={item.name:item for item in all_identities}
     prefix=configuration.root_identity.name.rsplit('/',1)[0]+'/'
-    if (len(by_name)!=len(identities) or any(item.bucket!=BUCKET or not item.name.startswith(prefix)
-        or not item.generation.isdecimal() or not item.etag or type(item.size) is not int or item.size<=0 for item in identities)
+    if (len(by_name)!=len(all_identities) or len(all_identities)>3+4*len(selection.fields)+(12 if regional else 0) or any(item.bucket!=BUCKET or not item.name.startswith(prefix)
+        or not item.generation.isdecimal() or not item.etag or type(item.size) is not int or item.size<=0 for item in all_identities)
         or not any(item.name.startswith(prefix+mapping.native+'/c/') for item in identities)):
         raise ValueError('native object receipt')
     if sum(item.size for item in identities)!=raw['received_bytes'] or raw['received_bytes']>MAX_ACQUISITION_BYTES:
         raise ValueError('native receipt byte bounds')
     operations=receipt['http_objects']
-    if not 0<len(operations)<=12 or receipt['http_response_bytes']>MAX_ACQUISITION_BYTES:
+    if not 0<len(operations)<=(30 if regional else 6+8*len(selection.fields)) or receipt['http_response_bytes']>MAX_ACQUISITION_BYTES:
         raise ValueError('HTTP receipt bounds')
     if any(o['kind'] not in ('media','metadata') for o in operations) or len({(o['kind'],o['name']) for o in operations})!=len(operations):
         raise ValueError('ambiguous HTTP operation receipt')
     media={o['name']:o for o in operations if o['kind']=='media'}
-    if set(media)!=set(by_name): raise ValueError('incomplete media receipt')
+    if set(media)!={item.name for item in identities}: raise ValueError('incomplete media receipt')
     transfers=[]
     for item in operations:
         identity=by_name[item['name']]
@@ -142,7 +145,7 @@ def point_evidence(payload, selection, configuration, *, completed_at, data_mode
                      'https://storage.googleapis.com/weathernext-public/terms-of-use.pdf' if local else
                      'WeatherNext historical data terms; conservative valid-time age greater than 48 hours'),
             attribution='WeatherNext data provided by Google',delivery_kind='published_cell',source_display_primary=False,
-            adapter_version='weathernext-local-temperature-v1' if local else 'weathernext-historical-temperature-v1',source_acquisition=acquisition,
+            adapter_version=('weathernext-native-grid-v1' if regional else 'weathernext-local-temperature-v1' if local else 'weathernext-historical-temperature-v1'),source_acquisition=acquisition,
             sampled_latitude=lat,sampled_longitude=lon,sample_method='rectilinear',run_stale=None if local else True,
             run_stale_reason='Pinned experimental run; freshness is not established' if local else 'Explicit historical run; not a current forecast',
             ensemble=EnsembleProvenance(family='google-weathernext-3',statistic=mapping.statistic,quantile=mapping.quantile,computed_here=False,member_set=None)))
@@ -163,10 +166,10 @@ class WeatherNextHistoricalDelivery:
         self._inflight={}
         self._failures=OrderedDict()
 
-    def _native_acquire(self,selection):
+    def _native_acquire(self,selection, *, regional=False):
         transport=AccountedGCSTransport(token_provider=runtime_token_provider(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES)
         return read_historical_point(selection,root_identity=self.config.root_identity,now=self._utcnow(),transport=transport,
-                                     max_received_bytes=MAX_ACQUISITION_BYTES)
+                                     max_received_bytes=MAX_ACQUISITION_BYTES,regional=regional)
 
     def descriptors(self):
         return surface_descriptors('WeatherNext 3 historical')
@@ -188,8 +191,28 @@ class WeatherNextHistoricalDelivery:
         if selection.valid_time >= now-HISTORICAL_DELAY:
             raise ValueError('historical gate')
 
-    def _point_evidence(self, payload, selection, completed):
-        return point_evidence(payload,selection,self.config,completed_at=completed,data_mode=self._data_mode)
+    def _point_evidence(self, payload, selection, completed, *, regional=False):
+        return point_evidence(payload,selection,self.config,completed_at=completed,data_mode=self._data_mode,regional=regional)
+
+    def read_batch(self, latitude, longitude, selected, *, fields, run='latest', report_failures=False):
+        """One native acquisition shares coordinate metadata/chunks for all charts."""
+        if run not in ('latest', self.config.run_id):
+            raise WeatherNextDeliveryUnavailable('WeatherNext configured run only')
+        selection=WeatherNextSelection(self.config.initialization, selected, latitude, longitude,
+            tuple(BY_KEY[key].native for key in fields))
+        self._validate_time(selection, self._utcnow())
+        # Comparison pages coalesce this batch and retain the resulting evidence;
+        # no second response cache or per-chart acquisitions are introduced.
+        from .source_grid import ACQUISITIONS
+        with ACQUISITIONS:
+            payload=self._acquire(selection)
+        completed=self._utcnow()
+        self._validate_time(selection, completed)
+        evidence = tuple(point_evidence(payload, selection, self.config, completed_at=completed,
+            data_mode=self._data_mode, scope='historical' if self._scope_label=='historical' else 'internal_experimental_forecast',
+            selected_field=native['field']) for native in payload['reading']['values'])
+        failures={BY_NATIVE[native].key:'Source acquisition budget reached for this field' for native in payload['reading'].get('unavailable_fields',[])}
+        return (evidence, failures) if report_failures else evidence
 
     def plan_series(self,*args,**kwargs): return None
 
@@ -200,6 +223,9 @@ class WeatherNextHistoricalDelivery:
             self._validate_time(selection,self._utcnow())
         except Exception:
             raise WeatherNextDeliveryUnavailable(f'WeatherNext {self._scope_label} selection unavailable') from None
+        from .source_grid import cached_point
+        shared = None if refresh else cached_point(self,selection)
+        if shared is not None: return shared
         with self._lock:
             entry=self._entries.get(selection)
             if entry and entry[1]<=self._clock():
@@ -221,7 +247,9 @@ class WeatherNextHistoricalDelivery:
                 self._inflight[selection]=future
         if not owner: return (future.result().model_copy(deep=True),)
         try:
-            payload=self._acquire(selection)
+            from .source_grid import ACQUISITIONS
+            with ACQUISITIONS:
+                payload=self._acquire(selection)
             completed=self._utcnow()
             self._validate_time(selection,completed)
             evidence=self._point_evidence(payload,selection,completed)
@@ -266,16 +294,16 @@ class WeatherNextLocalExperimentalDelivery(WeatherNextHistoricalDelivery):
         if now.tzinfo is None or now.utcoffset() is None or selection.initialization > now:
             raise ValueError('local initialization must not be in the future')
 
-    def _native_acquire(self, selection):
+    def _native_acquire(self, selection, *, regional=False):
         # Lazy import leaves the historical path independent of this bridge.
         from .weathernext_gcs_bridge import read_local_experimental_point
         transport=AccountedGCSTransport(token_provider=runtime_token_provider(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES)
         return read_local_experimental_point(selection,root_identity=self.config.root_identity,
-            now=self._utcnow(),transport=transport,max_received_bytes=MAX_ACQUISITION_BYTES)
+            now=self._utcnow(),transport=transport,max_received_bytes=MAX_ACQUISITION_BYTES,regional=regional)
 
-    def _point_evidence(self, payload, selection, completed):
+    def _point_evidence(self, payload, selection, completed, *, regional=False):
         return point_evidence(payload,selection,self.config,completed_at=completed,
-            data_mode=self._data_mode,scope='internal_experimental_forecast')
+            data_mode=self._data_mode,scope='internal_experimental_forecast',regional=regional)
 
     def descriptors(self):
         return surface_descriptors('WeatherNext 3 local')
@@ -287,7 +315,7 @@ class WeatherNextLocalExperimentalDelivery(WeatherNextHistoricalDelivery):
 def surface_descriptors(product):
     return tuple(SourceCapability(source_id=SOURCE_ID,product_id=PRODUCT,field=m.key,
         variants=[SourceVariant(kind='provider_statistic',statistic=m.statistic,quantile=m.quantile)],
-        levels=[m.level],point=True,point_product=product,native_series=False,
+        levels=[m.level],point=True,grid=m.native=="total_cloud_cover_mean",point_product=product,native_series=False,
         point_time_kind='forecast',directional_time_selection=True,run_selection='not_applicable',
         time_semantics='Exact native hourly lead, or next native hour under directional selection, within configured run',
         coverage_description='Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise')
@@ -307,17 +335,8 @@ def directional_surface_point(latitude,longitude,selected,product,*,field=None,m
     reason='WeatherNext 3 requires live mode'
     if configured_mode()==LIVE_MODE:
         try:
-            factory=weathernext_local_experimental_service if product.upper()=='WEATHERNEXT 3 LOCAL' else weathernext_historical_service
-            import os
-            if os.environ.get('WEATHER_WEATHERNEXT_AUTO_RUNS') == '1':
-                from .weathernext_configuration import load_local_experimental_configuration, _service, _local_service
-                from .weathernext_runs import discover_configuration
-                configured=load_local_experimental_configuration()
-                internal=product.upper()=='WEATHERNEXT 3 LOCAL'
-                configuration=discover_configuration(selected,configured.gcloud_profile,internal=internal)
-                service=(_local_service if internal else _service)(configuration)
-            else:
-                service=factory()
+            from .source_grid import selected_service
+            service=selected_service('WeatherNext 3 local' if product.upper()=='WEATHERNEXT 3 LOCAL' else 'WeatherNext 3 historical',selected)
             native=service.resolve_point_time(selected)
             fields=list(service.read_point(latitude,longitude,native,field=mapping.key))
             if any(f.provenance.valid_time!=native or f.provenance.valid_time<selected for f in fields):
