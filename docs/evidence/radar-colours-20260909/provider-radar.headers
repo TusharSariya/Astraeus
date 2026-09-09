@@ -1,0 +1,23 @@
+HTTP/1.1 200 OK
+date: Wed, 09 Sep 2026 16:14:30 GMT
+server: uvicorn
+cache-control: public, max-age=60
+x-weather-layer-id: eccc-radar-radar
+x-weather-data-mode: live
+x-weather-operational: false
+x-weather-evidence-basis: published_artifact
+x-weather-image-basis: live_proxy
+x-weather-retrieval-status: retrieved
+x-weather-render-semantics: a fully transparent image means retrieved and nothing detected, not unavailable
+x-weather-wms-layer: RADAR_1KM_RRAI
+x-weather-crs: EPSG:4326
+x-weather-upstream-url: https://geo.weather.gc.ca/geomet/?service=WMS&version=1.3.0&request=GetMap&layers=RADAR_1KM_RRAI&crs=EPSG%3A4326&bbox=45.0%2C-55.0%2C49.0%2C-50.0&width=512&height=512&format=image%2Fpng&transparent=TRUE&TIME=2026-09-09T15%3A48%3A00Z
+x-weather-byte-size: 6052
+x-weather-licence: Environment and Climate Change Canada Data Servers End-use Licence
+x-weather-attribution: Environment and Climate Change Canada - MSC GeoMet
+x-weather-valid-time: 2026-09-09T15:48:00+00:00
+x-weather-time-semantics: valid at the instant in X-Weather-Valid-Time
+x-weather-reference-time: none
+x-weather-wms-layer-notice: the artifact records "layers=['RADAR_1KM_RRAI', 'RADAR_1KM_RSNO']", which names 2 WMS layers; this image is RADAR_1KM_RRAI alone
+content-length: 6052
+content-type: image/png

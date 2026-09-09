@@ -1,8 +1,9 @@
-import { selectionState } from './pointSelections'
+import { mapOnlyLayer, selectionState } from './pointSelections'
 import { useMemo, useState } from 'react'
 import type { CatalogSource, LayerItem, LayerSelection, PointFieldSelection } from '../types'
 import { discoveryRows, dimensions, groupDiscovery, matchesDiscovery, type Dimension, type Filters, type DiscoveryRow, type DiscoveryEntry } from './discovery'
 import { layerImagery } from './layerIdentity'
+import type { DrawEvidence } from './MapStack'
 import { LayerRow } from './LayerRow'
 
 export interface DiscoveryActions {
@@ -26,8 +27,8 @@ export function DiscoveryFilters({ entries, query, setQuery, filters, setFilters
     {(query || Object.values(filters).some(values => values?.length)) && <button className="discovery-clear" onClick={() => { setQuery(''); setFilters({}); onClear?.() }}>Clear</button>}
   </div>
 }
-export function DiscoveryBrowser({ catalog, layers, stack = [], onToggle, onDetails, error }: {
-  catalog: CatalogSource[]; layers: LayerItem[]; stack?: LayerSelection[]
+export function DiscoveryBrowser({ catalog, layers, stack = [], onToggle, onDetails, error, drawn = [] }: {
+  catalog: CatalogSource[]; layers: LayerItem[]; stack?: LayerSelection[]; drawn?: DrawEvidence[]
   onToggle: (id: string, point?: PointFieldSelection) => void; onDetails: (row: DiscoveryRow, opener: HTMLButtonElement) => void; error?: string | null
 }) {
   const [query,setQuery] = useState(''), [filters,setFilters] = useState<Filters>({}), [group,setGroup] = useState<Dimension | 'Ungrouped'>('Subject')
@@ -35,10 +36,11 @@ export function DiscoveryBrowser({ catalog, layers, stack = [], onToggle, onDeta
   const visible = entries.filter(entry => matchesDiscovery(entry,query,filters))
   const row = (entry: DiscoveryRow) => {
     const layer = layers.find(layer => layer.id === entry.layerId)
-    const status = entry.layerId ? layer ? layer.kind === 'raster' ? layerImagery(layer).status : 'Map' : 'Unknown' : entry.facets.Interface.includes('Point') ? 'Point' : entry.source?.state ?? 'Unknown'
+    const actual = layer?.evidence_basis === 'demand_query' ? drawn.find(row => row.id === entry.layerId) : undefined
+    const status = actual?.status === 'loading' ? 'Loading frame' : actual?.drawn ? 'Drawn' : actual ? 'Unavailable · no frame drawn' : layer?.evidence_basis === 'demand_query' && layer.raster_available ? 'Map on demand' : entry.layerId ? layer ? layer.kind === 'raster' ? layerImagery(layer).status : 'Map' : 'Unknown' : entry.facets.Interface.includes('Map') && entry.facets.Interface.includes('Point') ? 'Map + point' : entry.facets.Interface.includes('Point') ? 'Point' : entry.source?.state ?? 'Unknown'
     return <li key={entry.id} data-source-id={entry.source?.id ?? entry.id}><LayerRow title={entry.title} status={status}
       selected={entry.layerId || entry.point ? stack.some(s => s.id === (entry.layerId ?? entry.id)) : undefined}
-      state={entry.layerId || entry.point ? selectionState(stack.find(s => s.id === (entry.layerId ?? entry.id))) : undefined}
+      state={entry.layerId || entry.point ? selectionState(stack.find(s => s.id === (entry.layerId ?? entry.id)), mapOnlyLayer(layer,catalog)) : undefined}
       onPrimary={opener => entry.layerId || entry.point ? onToggle(entry.layerId ?? entry.id, entry.point) : onDetails(entry, opener)}
       onDetails={opener => onDetails(entry, opener)} /></li>
   }

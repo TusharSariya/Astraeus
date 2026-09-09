@@ -7,7 +7,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator, model_serializer
 
 from .source_contract import SourceAcquisition, SourceCapability, SourceConfiguration
 
@@ -221,6 +221,12 @@ class ContributorProvenance(StrictModel):
     product: str
     licence: str
     attribution: str
+
+
+class DerivationStep(StrictModel):
+    name: str
+    version: str
+    citation: str
 
 
 class DerivedInput(StrictModel):
@@ -585,6 +591,7 @@ class Provenance(StrictModel):
     derivation_citation: str | None = None
     #: Every input the method read, each with its own provenance.
     derivation_inputs: list[DerivedInput] = Field(default_factory=list)
+    derivation_steps: list[DerivationStep] = Field(default_factory=list)
     #: How this source's values reach the deployment, read from its registry
     #: record. A record that declares no kind leaves this ``None`` rather than
     #: claiming the producer's own cell on the record's behalf.
@@ -605,6 +612,7 @@ class Provenance(StrictModel):
     aqhi_acquisition: AQHIAcquisition | None = None
     swob_acquisition: SWOBAcquisition | None = None
     source_acquisition: SourceAcquisition | None = None
+    source_receipt_manifest: str | None = Field(default=None,max_length=2048)
     native_variable: str | None = Field(default=None, max_length=128)
     #: The coordinate of the grid cell the value was actually read from. On a
     #: 2.5 km rotated grid this is not the coordinate that was requested, and
@@ -638,6 +646,15 @@ class Provenance(StrictModel):
     #: not served at all (``ensemble_family_unknown``), because a number whose
     #: construction a reader cannot recover is not evidence.
     ensemble: EnsembleProvenance | None = None
+
+    @model_serializer(mode="wrap")
+    def optional_ifs_evidence(self, handler):
+        result = handler(self)
+        if not self.derivation_steps:
+            result.pop('derivation_steps', None)
+        if self.source_receipt_manifest is None:
+            result.pop('source_receipt_manifest', None)
+        return result
 
     @field_validator("run_time", "valid_time", "retrieval_time", "last_valid_time")
     @classmethod

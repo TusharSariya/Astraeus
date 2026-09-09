@@ -40,6 +40,10 @@ expiry metadata. Identical misses SHALL coalesce and a fresh hit SHALL make zero
 provider requests. After expiry a failed refresh SHALL withhold every SWOB value
 and may expose typed bounded expired metadata with `values_withheld: true`.
 
+#### Scenario: A cached report expires and refresh fails
+- **WHEN** a previously cached station report expires and its refresh fails
+- **THEN** every SWOB value is withheld and any expired metadata states `values_withheld: true`
+
 ### Requirement: SWOB default composition is cache-only and evidence-only
 The default unselected `/point` response SHALL compose validated `eccc-swob`
 station fields as `available-not-stored` evidence without a retained SWOB
@@ -47,3 +51,7 @@ artifact or consensus contribution. Layer listing SHALL advertise the SWOB
 point layer from fresh source-local cache metadata only and SHALL make no
 provider request. Scheduled SWOB ingestion SHALL reject before discovery after the demand
 cache-to-API, default Linux child and fixed-live browser checks complete.
+
+#### Scenario: Layer listing has no fresh SWOB cache entry
+- **WHEN** layers are listed without fresh source-local SWOB cache metadata
+- **THEN** listing makes no provider request and does not advertise stale SWOB evidence

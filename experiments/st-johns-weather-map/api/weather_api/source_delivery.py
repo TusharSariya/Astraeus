@@ -5,7 +5,7 @@ model. No transport, decoder, cadence or acquisition cache is shared here.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable, Protocol
 
@@ -29,6 +29,17 @@ class NativePlan:
     frames: tuple[NativeFrame, ...]
     runs: tuple[RunCandidate, ...] = ()
     reason: str = "This native reader does not expose a selectable run inventory"
+    available_times: tuple[datetime, ...] = ()
+
+
+@dataclass(frozen=True)
+class ComparisonReading:
+    fields: tuple[EvidenceField, ...]
+    failures: dict[str, str]
+    intervals: dict[str, tuple[datetime,datetime]] = field(default_factory=dict)
+    member_values: dict[str,dict[str,float|None]] = field(default_factory=dict)
+    member_units: dict[str,str] = field(default_factory=dict)
+    bands: dict[str,tuple[EvidenceField,EvidenceField]] = field(default_factory=dict)
 
 
 class SourceReader(Protocol):
@@ -111,14 +122,16 @@ class ForecastSource:
             if run != "latest" and run not in {item.provider_run_id for item in candidates}:
                 raise RunUnavailable("Run no longer available in the bounded latest/previous inventory")
             frames = {}
+            available = set()
             for candidate in candidates:
                 if run not in ("latest", candidate.provider_run_id):
                     continue
                 for stamp in coordinator.run_times(candidate.provider_run_id):
+                    available.add(stamp)
                     if start <= stamp < end:
                         frames.setdefault(stamp, NativeFrame(stamp, candidate.provider_run_id, candidate.run_time))
             return NativePlan(tuple(frames[stamp] for stamp in sorted(frames)), tuple(candidates),
-                "Latest/previous from bounded native source discovery; listed frames are validated on acquisition")
+                "Latest/previous from bounded native source discovery; listed frames are validated on acquisition", tuple(sorted(available)))
         if run != "latest":
             raise RunUnavailable("This source cannot pin the requested run")
         stamps = coordinator.timeline_times(start)
@@ -307,7 +320,25 @@ class WeatherNextHistoricalSource:
             raise
 
     def plan_series(self, start, end, *, run="latest"):
-        return None
+        from .source_grid import selected_service
+        from .source_times import run_axis
+        from .native_runs import RunUnavailable
+        service = selected_service('WeatherNext 3 local', start)
+        if run not in ('latest', service.config.run_id):
+            raise RunUnavailable('Requested WeatherNext run is not the configured native run')
+        times, _objects, _expires = run_axis(service)
+        self._comparison_service = service
+        return NativePlan(tuple(NativeFrame(t, service.config.run_id, service.config.initialization)
+            for t in times if start <= t < end), reason='Pinned WeatherNext native time coordinate', available_times=times)
+
+    def read_comparison(self, latitude, longitude, frame, fields, *, spread=False):
+        from registry.weathernext import BY_KEY, BY_NATIVE
+        native = set(BY_KEY[key].native for key in fields)
+        if spread:
+            native.update(f"{BY_KEY[key].native.rsplit('_', 1)[0]}_{stat}" for key in fields for stat in ('p10', 'p90'))
+        service = self._comparison_service
+        return ComparisonReading(*service.read_batch(latitude, longitude, frame.valid_time,
+            fields=tuple(BY_NATIVE[n].key for n in sorted(native)), run=frame.run_id, report_failures=True))
 
 
 def source_readers() -> dict[str, SourceReader]:
@@ -323,6 +354,7 @@ def source_readers() -> dict[str, SourceReader]:
     from .swob_query import swob_query_service
     from .gefs_query import gefs_query_coordinator
     from .ecmwf_query import ecmwf_query_coordinator
+    from .ifs_delivery import IFSSource
     from .aviation_delivery import METARSource
     from .gfs_wave_delivery import GFSWaveSource
     from .openmeteo_gfs_wave_query import openmeteo_gfs_wave_query_service
@@ -331,7 +363,7 @@ def source_readers() -> dict[str, SourceReader]:
     from .geps_delivery import GEPSReductionSource, geps_point_service
     from .ostia_delivery import OSTIASource
     from .radar_delivery import RadarSource
-    common = ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_u_10m", "wind_v_10m", "mean_sea_level_pressure")
+    common = ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "wind_u_10m", "wind_v_10m", "wind_speed_10m", "wind_direction_10m", "mean_sea_level_pressure")
     readers = [
         ForecastSource("eccc-hrdps", "hrdps", hrdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
         ForecastSource("eccc-rdps", "rdps", rdps_query_coordinator, (*common, "total_cloud_opacity"), named_runs=True),
@@ -348,9 +380,10 @@ def source_readers() -> dict[str, SourceReader]:
         OSTIASource(ostia_query_service),
         GEPSReductionSource(geps_point_service),
         WeatherNextHistoricalSource(),
+        IFSSource(),
         *(ECMWFSource(source_id, product_id, lambda source_id=source_id: ecmwf_query_coordinator(source_id),
             ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "mean_sea_level_pressure", "total_cloud_geometric"), named_runs=False)
-            for source_id, product_id in (("ecmwf-ifs", "ifs"), ("ecmwf-aifs-single", "aifs-single"))),
+            for source_id, product_id in (("ecmwf-aifs-single", "aifs-single"),)),
     ]
     return {reader.source_id: reader for reader in readers}
 

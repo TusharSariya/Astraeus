@@ -163,3 +163,42 @@ def test_ambiguous_http_receipt_refused(payload,kind):
     if kind=='unknown':payload['receipt']['http_objects'][0]['kind']='unknown'
     else:payload['receipt']['http_objects'].append(deepcopy(payload['receipt']['http_objects'][0]))
     with pytest.raises(WeatherNextDeliveryUnavailable):service(payload).read_point(47.5,-52.7,VALID)
+
+
+def test_comparison_batch_reuses_acquisition_metadata_for_fields_and_quantiles(payload):
+    """GOV-SPEC-004/006: one native read, published statistics, exact units."""
+    from registry.weathernext import BY_NATIVE
+    fields=['temperature_2m_mean','temperature_2m_p10','temperature_2m_p90','total_cloud_cover_mean','total_precipitation_1hr_mean']
+    prefix=ROOT.name.rsplit('/',1)[0]+'/'
+    for native in fields[1:]:
+        mapping=BY_NATIVE[native]
+        payload['reading']['values'].append(dict(field=native,value=.002 if 'precipitation' in native else .4 if 'cloud' in native else 279.,unit=mapping.native_unit,
+            statistic=native.rsplit('_',1)[1],grid=mapping.grid,latitude=47.5,longitude=-52.7))
+        identity=dict(bucket=ROOT.bucket,name=prefix+native+'/c/5/0/0',generation='42',etag='fixture-etag',size=4)
+        payload['reading']['objects'].append(identity)
+        payload['receipt']['http_objects'].append(dict(name=identity['name'],kind='media',generation='42',bytes=4,sha256=hashlib.sha256(native.encode()).hexdigest(),completed_at=NOW.isoformat()))
+        payload['reading']['received_bytes']+=4
+        payload['receipt']['http_response_bytes']+=4
+    reader=service(payload);calls=[]
+    reader._acquire=lambda s:(calls.append(s),deepcopy(payload))[1]
+    result=reader.read_batch(47.5,-52.7,VALID,fields=tuple(BY_NATIVE[n].key for n in fields))
+    assert len(calls)==1 and set(calls[0].fields)==set(fields) and len(result)==5
+    assert len({f.provenance.artifact_revision for f in result})==1
+    precipitation=next(f for f in result if f.key==BY_NATIVE['total_precipitation_1hr_mean'].key)
+    assert precipitation.value==2 and precipitation.provenance.normalized_units=='mm'
+    cloud=next(f for f in result if f.key==BY_NATIVE['total_cloud_cover_mean'].key)
+    assert cloud.value==40 and cloud.provenance.normalized_units=='percent'
+    assert {f.provenance.ensemble.quantile for f in result}=={None,.1,.9}
+
+
+def test_comparison_partial_batch_preserves_unread_metadata_receipt(payload):
+    from registry.weathernext import BY_NATIVE
+    missing='total_cloud_cover_mean';native_path=ROOT.name.rsplit('/',1)[0]+'/'+missing+'/c/5/0/0'
+    payload['reading']['unavailable_fields']=[missing]
+    payload['reading']['unread_objects']=[dict(bucket=ROOT.bucket,name=native_path,generation='42',etag='fixture-etag',size=64*1024**2)]
+    payload['receipt']['http_objects'].append(dict(name=native_path,kind='metadata',generation='42',bytes=4,sha256=hashlib.sha256(b'meta').hexdigest(),completed_at=NOW.isoformat()))
+    payload['receipt']['http_response_bytes']+=4
+    values,failures=service(payload).read_batch(47.5,-52.7,VALID,fields=('temperature_2m',BY_NATIVE[missing].key),report_failures=True)
+    assert len(values)==1 and values[0].value==pytest.approx(6.85)
+    assert failures=={BY_NATIVE[missing].key:'Source acquisition budget reached for this field'}
+    assert len(values[0].provenance.source_acquisition.transport_receipts)==7

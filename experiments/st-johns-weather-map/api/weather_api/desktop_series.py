@@ -342,6 +342,9 @@ class SeriesService:
                 self._expire()
                 if sum(item.size for item in self.entries.values()) + size > MAX_CACHE_BYTES:
                     fail('snapshot_capacity_unavailable', 'Finite selection byte budget is full', status=503)
+                from .series_budget import reserve
+                if not reserve(snapshot.id, size, time.monotonic() + TTL_SECONDS):
+                    fail("snapshot_capacity_unavailable", "Shared Series cache byte budget is full", status=503)
                 self.entries[snapshot.id] = entry
             result = self._page(entry, 0)
             future.set_result(result)

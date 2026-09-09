@@ -1815,6 +1815,11 @@ function sameRunOrUnknown(layer: LayerItem, previousTime: string, nextTime: stri
 }
 
 export function resolveLayerFrame(layer: LayerItem, at: Date, opts: { interpolate: boolean; reference: Date }): FrameResolution {
+  if (['noaa-goes19-demand-cloud-mask','eccc-rdps-demand-total-cloud'].includes(layer.id)) {
+    if(layer.id==='noaa-goes19-demand-cloud-mask' && at.getTime()>Date.now()+300000)return {kind:'none',reason:'No future observations; choose Latest available scan in Tracks',nearest:null}
+    return {kind:'exact',frame:{time:at.toISOString(),offsetSeconds:0}}
+  }
+
   // Older catalogues can outlive the serving window. Never send a frame that
   // the API's hour-aligned horizon validation necessarily refuses.
   const referenceHour = Math.floor(opts.reference.getTime() / 3_600_000) * 3_600_000

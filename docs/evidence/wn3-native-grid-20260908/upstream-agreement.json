@@ -1,0 +1,21 @@
+{
+  "evidence_class": "actual upstream grid and independent point acquisitions",
+  "cells": 861,
+  "point_percent": 93.81702542304993,
+  "grid_percent": 93.81702542304993,
+  "native_centre": [
+    47.5,
+    -53.0
+  ],
+  "run": "20260907_18hr_01_preds",
+  "native_time": "2026-09-08T12:00:00+00:00",
+  "elapsed_seconds": 45.877466042060405,
+  "grid_bytes": 28373,
+  "grid_sha256": "76b07e0bf67f4306e8ca83662a07b71875de77ba08727a69f82404735ec32bb1",
+  "point_sha256": "60b0881c3b14edfd33b5fe323038cf7360cfd2889b42f8eb0d207c904e5aa98a",
+  "grid_http_requests": 11,
+  "grid_received_bytes": 21978557,
+  "point_http_requests": 11,
+  "point_received_bytes": 21978557,
+  "same_generation_pinned_requests": true
+}

@@ -24,7 +24,8 @@
     "directional_time_selection": true,
     "run_selection": "not_applicable",
     "time_semantics": "Exact native hourly lead, or next native hour under directional selection, within configured run",
-    "coverage_description": "Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise"
+    "coverage_description": "Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise",
+    "grid": false
   },
   "point": {
     "field": "temperature_2m",

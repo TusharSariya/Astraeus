@@ -11,3 +11,6 @@ coverage/
 # Pinned JPL kernels are fetched/verified locally; do not commit multi‑100MB binaries.
 *.bsp
 !.gitkeep
+
+# Local agent settings and nested scratch worktrees are not project source.
+.claude/

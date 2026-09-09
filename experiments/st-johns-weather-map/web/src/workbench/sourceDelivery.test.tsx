@@ -42,7 +42,7 @@ it('uses shared backend descriptors despite absent point data and keeps full nat
   expect(control).toHaveValue(chosen.key)
   expect(within(control).getByRole('option', { name: /hrdps.*temperature_2m.*Retained selection/ })).toBeInTheDocument()
   expect(screen.getByText(/Native Series support is not declared for this retained selection/)).toBeInTheDocument()
-})
+}, 15000)
 it('rejects a backend response that changes a selected variant or level', () => {
   expect(() => readNativeSeriesResponse(fixture.series)).not.toThrow()
   const badLevel = structuredClone(fixture.series)

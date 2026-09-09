@@ -1,3 +1,4 @@
+import type { TimeRow } from './workbench/sourceTimes'
 import { pointLabel } from './workbench/pointSelections'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { frameMarkers, resolveLayerImageFrame, drawableFrames, describeResolution, layerGroup, LAYER_GROUP_LABELS, type FrameMarker } from './api'
@@ -11,6 +12,8 @@ import { clusterMarkers, frameNeighbour, frameTime, markerDescription, rangeMark
 import { placeScaleMarks, textMeasurer } from './scrubberAxis'
 
 export interface DesktopTimelineOptions {
+  comparison?: boolean
+  sourceTimes?: TimeRow[]
   range: TimeRange; onRange: (range: TimeRange) => void
   onInterval: (interval: PlaybackSpeed) => void
   onStep: (direction: 1 | -1) => void; onFrame: (direction: 1 | -1) => void
@@ -56,7 +59,7 @@ function FrameRail({ markers, start, end, selected, onPick, label, layers, onClu
       const changed = cluster.markers.some(marker => changes.has(marker.ms))
       const forecast = first.layers.some(entry => {
         const layer = layers.find(item => item.id === entry.id)
-        return layer && ['forecast_proxy', 'published_model'].includes(layerGroup(layer))
+        return entry.title.includes('native forecast time') || layer && ['forecast_proxy', 'published_model'].includes(layerGroup(layer))
       })
       const observed = first.layers.every(entry => { const layer = layers.find(item => item.id === entry.id); return layer && ['satellite', 'observation'].includes(layerGroup(layer)) })
       return <button key={first.ms} className={`native-frame-marker${count > 1 ? ' clustered' : ''}${changed ? ' run-change' : ''}`}
@@ -69,6 +72,21 @@ function FrameRail({ markers, start, end, selected, onPick, label, layers, onClu
     })}
     {selected >= start && selected <= end && end > start && <span className="native-playhead" style={{ left: `${(selected-start)/(end-start)*100}%` }} aria-hidden="true" />}
     {hint && <div role="tooltip" className="native-frame-hint">{hint}</div>}
+  </div>
+}
+
+/** Scan inventory remains selectable even when the shared instant is a forecast. */
+export function ObservedScanTimes({ row, selectedMs, onPick }: { row: TimeRow; selectedMs: number; onPick: (ms: number) => void }) {
+  const frames = row.inventory?.frames ?? []
+  const selected = frames.find(frame => Date.parse(frame.valid_time) === selectedMs)?.valid_time ?? ''
+  const latest = frames.at(-1)
+  return <div className="timeline-observed-scans">
+    <label>GOES-19 available scans <select aria-label="GOES-19 available scan timestamps" value={selected} disabled={!frames.length} onChange={event => { if (event.target.value) onPick(Date.parse(event.target.value)) }}>
+      <option value="" disabled>{frames.length ? 'Choose an observed scan' : row.error ?? 'No scans in this range'}</option>
+      {frames.map(frame => <option key={frame.valid_time} value={frame.valid_time}>{frameTime(Date.parse(frame.valid_time))} · {frame.valid_time.replace('T',' ').replace('Z',' UTC')}</option>)}
+    </select></label>
+    {latest && <button onClick={() => onPick(Date.parse(latest.valid_time))}>Latest GOES scan</button>}
+    <small>{frames.length ? `${frames.length} observed timestamps · no future observations` : row.error ?? 'No observed scans in this range'}</small>
   </div>
 }
 
@@ -91,7 +109,8 @@ export function DesktopTimeline(props: TimelineDockProps & { desktop: DesktopTim
   useEffect(() => { if (state.expanded) tracksHeading.current?.focus() }, [state.expanded])
   useEffect(() => { setChooser(null); setPage(0) }, [state.range])
   const coverage = resolveCoverageState(timeline, timelineError, timeline ? timelineItemForInstant(timeline.items, selectedMs) : null)
-  const coverageText = coverage.kind === 'entries' ? `${coverage.entries.length} covering sources` : coverage.kind === 'empty' ? 'Nothing covers this instant' : 'Coverage unavailable'
+  const nativeAvailable = state.sourceTimes?.some(row => row.inventory?.frames.some(frame => {const offset=Date.parse(frame.valid_time)-selectedMs;return row.id==='noaa-goes19-demand-cloud-mask'?Math.abs(offset)<=300000:row.id==='eccc-rdps-demand-total-cloud'?offset<=0 && offset>-3600000:offset>=0 && offset<3600000}))
+  const coverageText = nativeAvailable ? 'Native source time available' : coverage.kind === 'entries' ? `${coverage.entries.length} covering sources` : coverage.kind === 'empty' ? 'Nothing covers this instant' : 'Coverage unavailable'
   const candidates = rangeMarks(state.range, start, end, state.reference.getTime()).map(mark => mark.hours === 24 && timeline?.boundary ? { ...mark, label: '+24h | planning', short: '+24h | planning' } : mark)
   const labels = placeScaleMarks({ marks: candidates, backMinutes: props.backMinutes, forwardMinutes: props.forwardMinutes, railPx: width, measure: textMeasurer(font) })
   const instants = markers.markers.map(marker => marker.ms)
@@ -100,8 +119,8 @@ export function DesktopTimeline(props: TimelineDockProps & { desktop: DesktopTim
   const boundary = timeline?.boundary ? Date.parse(timeline.boundary) : NaN
   const rows = useMemo(() => [...state.selections].reverse().map(selection => {
     const layer = state.layers.find(layer => layer.id === selection.id)
-    return { selection, layer, markers: layer ? frameMarkers(state.layers, [{ id: layer.id, visible: true }], start, end).markers : [] }
-  }), [state.layers, state.selections, start, end])
+    return { selection, layer, markers: layer && !state.sourceTimes?.some(row=>row.id===selection.id) ? frameMarkers(state.layers, [{ id: layer.id, visible: true }], start, end).markers : markers.markers.filter(m => m.layers.some(l => l.id === selection.id)).map(m => ({...m,layers:m.layers.filter(l => l.id === selection.id)})) }
+  }), [state.layers, state.selections, state.sourceTimes, start, end, markers])
   const allFrames = rows.flatMap(row => row.markers)
   const filteredFrames = (chooser ?? allFrames).filter(marker => markerDescription(marker).toLowerCase().includes(query.toLowerCase())).sort((a,b) => a.ms - b.ms)
   const pages = Math.max(1, Math.ceil(filteredFrames.length / 50))
@@ -133,11 +152,11 @@ export function DesktopTimeline(props: TimelineDockProps & { desktop: DesktopTim
         <button aria-label="Reverse" aria-pressed={props.direction === -1} onClick={props.onToggleDirection} title="Reverse playback">⇄</button>
         <div className="bench-time-selected"><strong><time dateTime={new Date(selectedMs).toISOString()}>{frameTime(selectedMs)}</time></strong><small>{props.playing ? `${props.direction === -1 ? 'Reverse · ' : ''}${props.speed} min each second` : 'Paused'} · {props.scrubOffset}</small></div>
         <button onClick={() => props.onJumpToInstant(state.reference.getTime())}>Now</button>
-        <label><span className="visually-hidden">Timeline range</span><select aria-label="Timeline range" value={state.range} onChange={event => { const value = TIME_RANGES.find(value => value.id === event.target.value); if (value) state.onRange(value.id) }}>{TIME_RANGES.map(range => <option key={range.id} value={range.id}>{range.label}</option>)}</select></label>
+        {state.comparison ? <span>Series window</span> : <label><span className="visually-hidden">Timeline range</span><select aria-label="Timeline range" value={state.range} onChange={event => { const value = TIME_RANGES.find(value => value.id === event.target.value); if (value) state.onRange(value.id) }}>{TIME_RANGES.map(range => <option key={range.id} value={range.id}>{range.label}</option>)}</select></label>}
         <button ref={node => { tracksButton.current = node; props.storyToggleRef.current = node }} aria-expanded={state.expanded} aria-controls="timeline-tracks" onClick={() => { if (state.expanded) closeTracks(); else state.onExpanded(true) }}>Tracks</button>
       </div>
       <div className="timeline-compact-axis">
-        <div className="timeline-axis-status" title={coverage.kind === 'unavailable' ? coverage.reason : coverageText}>{outsideWindow ? <span>Selected time outside timeline window</span> : offscreen ? <button onClick={state.onReveal}>Selected time {selectedMs < start ? '← before' : 'after →'} range</button> : <><span>{coverageText}</span><small>{markers.markers.length ? `${markers.markers.length} native times` : 'No published frames in range'}</small></>}</div>
+        <div className="timeline-axis-status" title={coverage.kind === 'unavailable' ? coverage.reason : coverageText}>{state.comparison ? <><span>Forecast comparison</span><small>Shared chart and map time</small></> : outsideWindow ? <span>Selected time outside timeline window</span> : offscreen ? <button onClick={state.onReveal}>Selected time {selectedMs < start ? '← before' : 'after →'} range</button> : <><span>{coverageText}</span><small>{markers.markers.length ? `${markers.markers.length} native times` : 'No published frames in range'}</small></>}{state.sourceTimes?.some(row => row.error) && <small role="status" title={state.sourceTimes.filter(row => row.error).map(row => `${row.title}: ${row.error}`).join('; ')}>Native times loading or unavailable; see Tracks</small>}</div>
         <div className="timeline-axis-geometry">
           <div className="timeline-scale" ref={ref}>{labels.map(mark => <span key={mark.hours} className={`scrubber-mark ${mark.anchor}`} style={{ left: `${mark.fraction*100}%` }}>{mark.text}</span>)}</div>
           <input className="timeline-compact-slider" aria-label="Valid timeline scrubber" aria-valuetext={props.ariaValueText} type="range" min={-props.backMinutes} max={props.forwardMinutes} step="any" value={Math.max(-props.backMinutes, Math.min(props.forwardMinutes, (selectedMs-state.reference.getTime())/60_000))} onChange={event => props.onScrubMinutes(Number(event.target.value))} onKeyDown={props.onScrubKeyDown} />
@@ -145,11 +164,20 @@ export function DesktopTimeline(props: TimelineDockProps & { desktop: DesktopTim
         </div>
       </div>
     </div>
+    {state.sourceTimes?.filter(row => row.id === 'noaa-goes19-demand-cloud-mask').map(row => <ObservedScanTimes key={row.id} row={row} selectedMs={selectedMs} onPick={pick} />)}
     {state.expanded && <section id="timeline-tracks" className="bench-time-expanded" aria-label="Layer timeline tracks">
       <div className="timeline-tracks-head"><h2 ref={tracksHeading} tabIndex={-1}>Native frame tracks</h2><button onClick={closeTracks}>Close tracks</button></div>
       <p>Drawing order · top first. │ Observations · ◇ Forecasts · ? Other/unknown · ↯ Run change. Markers describe published availability; drawn times below come from map receipts.</p>
       {Number.isFinite(boundary) && boundary >= start && boundary <= end && <p>Core through +24h; planning to +14d. Gaps indicate no reported frames.</p>}
       <div className="timeline-track-rows">{rows.map(({ selection, layer, markers: native }) => {
+        const inventory = state.sourceTimes?.find(row => row.id === selection.id)
+        if (inventory) return <article className="timeline-track" key={selection.id}>
+          <div className="timeline-track-title"><strong>{inventory.title}</strong><span>{selection.id==='noaa-goes19-demand-cloud-mask' ? 'Map' : selection.visible && !selection.pointOnly ? 'Map + data' : 'Data only'} · {selection.id==='noaa-goes19-demand-cloud-mask'?'Actual observed scans':'Advertised native forecast times'}</span></div>
+          <FrameRail markers={native} start={start} end={end} selected={selectedMs} onPick={pick} layers={layer?[layer]:[]} onCluster={openCluster} label={`${inventory.title} available times`} />
+          <p>{inventory.error ?? `${native.length} available native times in this range`}</p>
+          {selection.id==='noaa-goes19-demand-cloud-mask' && native.length>0 && !native.some(m=>Math.abs(m.ms-selectedMs)<=300000) && <button onClick={()=>pick(native[native.length-1].ms)}>Latest available scan</button>}
+          <details><summary>Time inventory details</summary>{inventory.inventory?.notices.map(note => <p key={note}>{note}</p>)}<p>Run labels identify the inventoried model initialization. Selecting a time reads the newest permitted published run for that instant.</p></details>
+        </article>
         if (!layer) return <article className="timeline-track is-hidden" key={selection.id}><strong>{selection.pointOnly && selection.points?.[0] ? pointLabel(selection.points[0]) : selection.id}</strong><p>{selection.pointOnly ? 'Data only · no map frame axis; point readings follow the shared time.' : 'Layer unavailable · no published frame axis'}</p></article>
         const resolution = resolveLayerImageFrame(layer, new Date(selectedMs), { reference: state.reference, interpolate: props.interpolate && layer.evidence_basis !== 'demand_query' })
         const frames = drawableFrames(resolution)

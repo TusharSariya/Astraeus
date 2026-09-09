@@ -1,0 +1,118 @@
+{
+  "initial": {
+    "id": "CDHRYXAULYKPPM9Ru3sCkiX9",
+    "expires_at": "2026-09-09T14:30:26.690759Z",
+    "complete": false,
+    "result": null,
+    "reason": null,
+    "bytes_received": 0
+  },
+  "completed": {
+    "id": "CDHRYXAULYKPPM9Ru3sCkiX9",
+    "expires_at": "2026-09-09T14:30:26.690759Z",
+    "complete": true,
+    "result": {
+      "product": "cyclone-ensemble",
+      "run_id": "ifs:cyclone-ensemble:2026090906",
+      "run_time": "2026-09-09T06:00:00Z",
+      "tracks": [
+        {
+          "storm_id": "70L",
+          "member": "17",
+          "points": [
+            {
+              "time": "2026-09-09T06:00:00Z",
+              "latitude": 38.2,
+              "longitude": -47.400000000000006
+            },
+            {
+              "time": "2026-09-09T12:00:00Z",
+              "latitude": 39.800000000000004,
+              "longitude": -42.900000000000006
+            },
+            {
+              "time": "2026-09-09T18:00:00Z",
+              "latitude": 41.5,
+              "longitude": -40.099999999999994
+            }
+          ]
+        }
+      ],
+      "decoded_members": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50",
+        "51"
+      ],
+      "expires_at": "2026-09-09T14:25:36.937925Z",
+      "receipts": [
+        {
+          "url": "https://data.ecmwf.int/forecasts/20260909/06z/ifs/0p25/enfo/20260909060000-144h-enfo-tf.bufr",
+          "effective_url": "https://data.ecmwf.int/forecasts/20260909/06z/ifs/0p25/enfo/20260909060000-144h-enfo-tf.bufr",
+          "http_status": 200,
+          "request_headers": {
+            "Accept-Encoding": "identity"
+          },
+          "response_headers": {
+            "content-type": "application/bufr",
+            "etag": "00000000-0959-a1d9-0000-000000000000",
+            "last-modified": "Wed, 09 Sep 2026 13:16:00 GMT",
+            "content-length": "438812"
+          },
+          "byte_size": 438812,
+          "sha256": "ff41edbd6653c4140c623ec4b69122208b5bbc3dd57c0f1ce77f0266a573e6c0",
+          "completed_at": "2026-09-09T14:15:36.937925Z"
+        }
+      ]
+    },
+    "reason": null,
+    "bytes_received": 5121717
+  }
+}

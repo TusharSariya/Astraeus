@@ -1949,6 +1949,22 @@ for _wn in _WN3_FIELDS:
     SOURCE_FIELDS.append(_sf('google-weathernext-3-statistics', _wn.key, _wn.native,
         'available-not-stored', 'Bounded experimental native point; exact provider statistic, grid and units.'))
 
+# Scoped IFS catalogue entries retain native quantity and temporal identity.
+if __package__:
+    from .ifs import FIELDS as _IFS_FIELDS
+else:
+    from ifs import FIELDS as _IFS_FIELDS
+FAMILIES.append({"name": "ifs_native", "title": "IFS native quantities",
+    "note": "Compare only identical product quantity, native units, level, event and temporal definition.",
+    "groups": {"ifs_" + key.replace(":", "_"): row["name"] for key, row in _IFS_FIELDS.items()}})
+for _key, _row in _IFS_FIELDS.items():
+    _native_key = "ifs_" + _key.replace(":", "_")
+    FIELDS.append(_f(_native_key, _row["name"], _row["units"], "ifs_native", _row["level_type"],
+        _native_key, "Experimental native IFS " + _row["temporal"] + "; product, level and event remain explicit.",
+        evidence_classes=_RETRIEVED_OR_REPROCESSED))
+    SOURCE_FIELDS.append(_sf("ecmwf-ifs", _native_key, _row["parameter"], "available-not-stored",
+        "Selected Atlantic native record only; catalogue membership does not assert retrieval."))
+
 _FIELDS, _FAMILIES, _LEVEL_PATTERNS = _build()
 
 _SOURCE_FIELDS: tuple[SourceField, ...] = tuple(

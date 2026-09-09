@@ -52,3 +52,10 @@ condensed API readbacks:
 are not retained in Git, per the owner decision of 2026-09-05 recorded in
 issue #70; replay inputs are re-captured locally with
 `experiments/st-johns-weather-map/scripts/ecmwf_ensemble_evidence.py`.
+
+September 9 scoped extension: the owner's IFS Atlantic implementation plan
+extends the six-field experimental mapping for selected atmospheric and wave
+fields through `ifs-atlantic-selection/specs/source-delivery/spec.md`. That
+contract requires matching native identities and producer-designated control,
+all declared members, finite on-demand jobs and no production transition. It
+does not alter historical evidence or broaden the scheduled adapter.

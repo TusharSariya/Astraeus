@@ -118,3 +118,18 @@ it('removing the last Active row falls back to the previous row', async () => {
   await userEvent.click(screen.getByRole('button', {name:'Remove first'}))
   expect(screen.getByRole('button', {name:'second'})).toHaveFocus()
 })
+
+it('lists numeric precipitation sample scales separately and keeps rate units',()=>{
+  render(<MapLegends layers={[]} stack={[]} drawn={[{id:'radar-samples',drawn:true,description:'Numeric fixture',times:[],precipitation:[{field:'precipitation_rate',sourceChoice:'auto',value:10,temperature:null,scale:{label:'Precipitation rate',units:'mm h-1',max:20}}]}]}/>)
+  expect(screen.getByRole('heading',{name:'radar-samples · numeric samples'})).toBeInTheDocument()
+  expect(screen.getByText('Temperature-based colours')).toBeInTheDocument()
+  expect(screen.getByText(/Precipitation rate: 0–20\+ mm h-1/)).toBeInTheDocument()
+})
+
+it('exposes a temperature picker directly on active radar and preserves its display settings',()=>{
+ const onChange=vi.fn(),layer={id:'eccc-radar-radar',title:'Canadian radar composite precipitation rate via GeoMet WMS radar (sampled points)',field:'radar',kind:'point',product:'Radar',units:'mixed',semantics:'Provider radar',times:[],raster_available:true,group:'observation'}
+ render(<MapStack layers={[layer]} stack={[{id:layer.id,visible:true,opacity:.6}]} drawn={[]} onInspect={vi.fn()} onChange={onChange}/>)
+ expect(screen.getByText('Provider colours')).toBeInTheDocument()
+ fireEvent.change(screen.getByRole('combobox',{name:'Temperature source'}),{target:{value:'eccc-hrdps'}})
+ expect(onChange).toHaveBeenCalledWith([{id:layer.id,visible:true,opacity:.6,temperatureSource:'eccc-hrdps'}])
+})

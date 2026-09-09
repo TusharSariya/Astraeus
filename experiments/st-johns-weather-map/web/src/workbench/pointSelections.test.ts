@@ -38,3 +38,16 @@ it('merges declared variant choices and requires ambiguous selections instead of
   expect(pointUnavailable(pointDefault(cap),[],{})).toMatch(/retained/)
   expect(pointUnavailable(pointDefault(cap),[source],{s:'old-run'})).toMatch(/named run/)
 })
+
+
+it('toggles map-only imagery directly off without retaining a data-only selection', () => {
+  const stack=cycleSelection([], 'mask', undefined, [], false, true)
+  expect(selectionState(stack[0],true)).toBe('Map')
+  expect(cycleSelection(stack,'mask',undefined,[],false,true)).toEqual([])
+})
+
+it('retains a passive temperature source through stack parsing',()=>{
+ const entry={id:'radar',visible:true,opacity:.6,temperatureSource:'eccc-hrdps'}
+ expect(parseSelection(entry)).toEqual(entry)
+ expect(()=>parseSelection({...entry,temperatureSource:42})).toThrow()
+})

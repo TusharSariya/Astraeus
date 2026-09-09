@@ -25,8 +25,8 @@ from weather_api.store import registry_source_records, registry_source_statuses
 def contract():
     schema = app.openapi()
     paths = {path: value for path, value in schema["paths"].items()
-             if path in {f"{PREFIX}/catalog", f"{PREFIX}/sources/status", f"{PREFIX}/point", f"{PREFIX}/point/series", f"{PREFIX}/point/series/changes"}
-             or path.startswith(f"{PREFIX}/sources/eccc-holyrood-cashr-dpqpe/images")}
+             if path in {f"{PREFIX}/layers/{{layer_id}}/times", f"{PREFIX}/sources/{{source_id}}/times", f"{PREFIX}/sources/{{source_id}}/grid", f"{PREFIX}/catalog", f"{PREFIX}/sources/status", f"{PREFIX}/point", f"{PREFIX}/point/series", f"{PREFIX}/point/series/changes", f"{PREFIX}/point/comparison", f"{PREFIX}/point/comparison/{{identity}}"}
+             or path.startswith(f"{PREFIX}/sources/eccc-holyrood-cashr-dpqpe/images") or path.startswith(f"{PREFIX}/ifs/")}
     components = schema["components"]["schemas"]
     # The route keeps custom cursor/selection error codes by validating its
     # dictionary body itself. Its request schema still comes from those exact

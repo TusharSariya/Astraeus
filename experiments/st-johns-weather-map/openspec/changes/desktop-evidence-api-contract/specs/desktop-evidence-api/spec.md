@@ -80,3 +80,18 @@ retention, or silently evict a live pin.
 - **WHEN** a pinned run is no longer readable
 - **THEN** it remains identified as unavailable, preserves Focus and time, and
   offers Latest available without substituting values
+
+### Requirement: Multiple-model comparison acquires native pages progressively
+The additive comparison interface SHALL implement the owner-selected bounds,
+identities, failure isolation and lifecycle in [comparison.md](comparison.md).
+The existing finite Series interface SHALL remain compatible.
+
+#### Scenario: Four models cover the next day
+- **WHEN** the default four-source comparison requests a 24-hour half-open window
+- **THEN** pages acquire at most 12 of at most 144 pinned native positions,
+  coalescing fields at a position and preserving source-local missingness
+
+#### Scenario: A comparison page expires or fails
+- **WHEN** a source fails or the fixed 15-minute lifetime ends
+- **THEN** completed pages remain identifiable, failures remain local, and
+  further acquisition requires an explicit new comparison after expiry

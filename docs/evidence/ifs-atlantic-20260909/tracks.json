@@ -1,0 +1,8 @@
+{
+  "cyclone-control": {
+    "error": "bounded decoder exited 1: Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/work/api/weather_api/ifs_track_worker.py\", line 59, in <module>\n    body=json.dumps(decode(json.loads(sys.stdin.buffer.read())),allow_nan=False).encode()\n                    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/api/weather_api/ifs_track_worker.py\", line 38, in decode\n    if any(int(n) not in (significance,ec.CODES_MISSING_LONG) for n in sig):raise ValueError('track_layout_unrecognized')\n                                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: track_layout_unrecognized\n"
+  },
+  "cyclone-ensemble": {
+    "error": "bounded decoder exited 1: Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/work/api/weather_api/ifs_track_worker.py\", line 59, in <module>\n    body=json.dumps(decode(json.loads(sys.stdin.buffer.read())),allow_nan=False).encode()\n                    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/work/api/weather_api/ifs_track_worker.py\", line 38, in decode\n    if any(int(n) not in (significance,ec.CODES_MISSING_LONG) for n in sig):raise ValueError('track_layout_unrecognized')\n                                                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: track_layout_unrecognized\n"
+  }
+}

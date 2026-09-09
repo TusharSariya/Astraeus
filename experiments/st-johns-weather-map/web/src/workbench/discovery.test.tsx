@@ -47,7 +47,7 @@ it('discovers point-only WeatherNext and invokes the explicit path without addin
   const point = vi.fn(), add = vi.fn(), series = vi.fn(), user = userEvent.setup()
   render(<MapStack catalog={[source]} layers={[]} stack={[]} onChange={add} drawn={[]} onInspect={vi.fn()} onPoint={point} onSeries={series} />)
   await user.click(screen.getByRole('button', { name: 'Browse' }))
-  await user.type(screen.getByRole('searchbox'), 'weathernext 3')
+  await user.type(screen.getByPlaceholderText('Name, provider, model or field'), 'weathernext 3')
   await user.click(screen.getByRole('button', {name: 'Details for WeatherNext 3 local · temperature 2m'}))
   await user.click(screen.getByRole('button', { name: 'Open point · WeatherNext 3 local' }))
   expect(point).toHaveBeenCalledWith('WeatherNext 3 local', expect.any(HTMLButtonElement))
@@ -131,11 +131,25 @@ it('details return to Browse search if a catalogue refresh removes the originati
   await userEvent.click(screen.getByRole('button', {name:'Details for WeatherNext 3 local · temperature 2m'}))
   rerender(<MapStack {...props} catalog={[]} catalogError="HTTP 503" />)
   await userEvent.keyboard('{Escape}')
-  await waitFor(() => expect(screen.getByRole('searchbox')).toHaveFocus())
+  await waitFor(() => expect(screen.getByPlaceholderText('Name, provider, model or field')).toHaveFocus())
 })
 
 it('hides both WeatherNext 2 sources while retaining WeatherNext 3 discovery', () => {
   const old = ['google-weathernext-2', 'open-meteo-weathernext-2'].map(id => ({...source,id,product:'WeatherNext 2',capabilities:[]}))
   expect(discoveryEntries([...old,source],[]).map(entry => entry.id)).toEqual([source.id])
   expect(discoveryRows([...old,source],[]).every(row => row.source?.id === source.id)).toBe(true)
+})
+
+
+it('labels demand imagery as a map and shows current draw state instead of unknown', () => {
+  const layer={id:'noaa-goes19-demand-cloud-mask',title:'GOES-19 observed cloud mask',kind:'raster',raster_available:true,evidence_basis:'demand_query',field:'cloud_mask'} as import('../types').LayerItem
+  const props={catalog:[],layers:[layer],stack:[{id:layer.id,visible:true,opacity:1}],onToggle:vi.fn(),onDetails:vi.fn()}
+  const {rerender}=render(<DiscoveryBrowser {...props} />)
+  const button=screen.getByRole('button',{name:layer.title})
+  expect(button).toHaveAccessibleDescription('Map on demand')
+  expect(button).toHaveAttribute('aria-description','Map. Activate to cycle selection.')
+  rerender(<DiscoveryBrowser {...props} drawn={[{id:layer.id,drawn:false,status:'loading',description:'Loading selected scan',times:[]}]} />)
+  expect(button).toHaveAccessibleDescription('Loading frame')
+  rerender(<DiscoveryBrowser {...props} drawn={[{id:layer.id,drawn:true,description:'Selected scan',times:[]}]} />)
+  expect(button).toHaveAccessibleDescription('Drawn')
 })

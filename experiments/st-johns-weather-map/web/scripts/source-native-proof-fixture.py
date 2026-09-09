@@ -36,6 +36,8 @@ def build_native_fixtures(experiment_root: Path | None = None) -> dict:
     from test_experimental_holyrood_radar import GIF
     from weather_api.holyrood_api import holyrood_service
     from weather_api.store import DATA_MODE_ENV, reset_live_store
+    from weather_api import source_delivery
+    original_readers = source_delivery.source_readers
 
     app = importlib.import_module("weather_api.app")
     ecmwf = importlib.import_module("weather_api.ecmwf_query")
@@ -73,6 +75,15 @@ def build_native_fixtures(experiment_root: Path | None = None) -> dict:
                     raise AssertionError("Fixture source substituted")
                 return query
             monkey.setattr(ecmwf, "ecmwf_query_coordinator", selected_query)
+            # Preserve legacy point-adapter receipt coverage; Atlantic IFS has
+            # separate native-grid fixtures in test_ifs_selection.py.
+            def fixture_readers(source=source, query=query):
+                readers = original_readers()
+                if source == "ecmwf-ifs":
+                    readers[source] = source_delivery.ECMWFSource(source, "ifs", lambda: query,
+                        ("temperature_2m", "dew_point_2m", "relative_humidity_2m", "mean_sea_level_pressure", "total_cloud_geometric"), named_runs=False)
+                return readers
+            monkey.setattr(source_delivery, "source_readers", fixture_readers)
             params = {"latitude": 47.5, "longitude": -52.75, "valid_time": RUN.isoformat(), "product": product}
             response = client.get(f"{app.PREFIX}/point", params=params)
             response.raise_for_status()

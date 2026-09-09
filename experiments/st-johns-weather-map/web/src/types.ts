@@ -1,6 +1,6 @@
 import type { components as SourceApi } from './generated/source-api'
 export type ObservationUnavailable = SourceApi['schemas']['AQHIDemandUnavailable'] | SourceApi['schemas']['SWOBDemandUnavailable']
-export type SourceCapability = SourceApi['schemas']['SourceCapability']
+export type SourceCapability = Omit<SourceApi['schemas']['SourceCapability'], 'grid'> & { grid?: boolean }
 export type SourceConfiguration = SourceApi['schemas']['SourceConfiguration']
 export type SourceVariant = SourceApi['schemas']['SourceVariant']
 
@@ -702,6 +702,9 @@ export interface CatalogResult {
 /** One layer's presence in the stack. Layers are additive: several may draw at
  *  once, which is what makes radar over a temperature field possible. */
 export interface LayerSelection {
+  /** Passive display choice; never schedules temperature acquisition. */
+  temperatureSource?: string
+  ifs?: import("./workbench/IFSLayers").IFSOptions
   id: string
   visible: boolean
   opacity: number

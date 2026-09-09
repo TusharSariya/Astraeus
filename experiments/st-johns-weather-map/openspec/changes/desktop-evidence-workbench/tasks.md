@@ -473,3 +473,15 @@ Evidence: `docs/evidence/native-timeline-20260908/README.md` (repo root).
 
 Evidence: `docs/evidence/dense-layer-menus-20260908/README.md` (repo root).
 Spec-Refs: GOV-SPEC-001, GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-006.
+
+## September 9 Series replacement
+
+The owner's supplied multiple-model plan replaces Overview/Temporary Compare in
+the active Series screen. Stacked charts share a fixed window, model visibility
+and cursor; chart clicks update shared map time. Native values, separate cloud
+definitions, precipitation intervals, optional published spread, partial source
+failures, explicit available-window selection and nonrenewing expiry are tested.
+The legacy finite API and its compatibility tests remain.
+
+Spec-Refs: GOV-SPEC-001, GOV-SPEC-004, GOV-SPEC-006.
+Evidence: [September 9 comparison](../../../../../docs/evidence/forecast-comparison-20260909/README.md).

@@ -4,19 +4,39 @@ Define the desktop Bench that keeps one shared place and instant while presentin
 
 ## ADDED Requirements
 
-### Requirement: Series implements the selected Overview and temporary Compare
-Series SHALL provide separate time-aligned field tracks in Overview and a
-temporary in-memory field/source workspace in Compare. Switching SHALL
-preserve Focus, instant, selections and provenance. Only compatible quantities
-MAY share an axis; incompatible units or meanings SHALL retain separate aligned
-axes. Native timestamps, checked gaps, unqueried spans, observations, forecasts,
-raw ensemble members and provider reductions SHALL retain their distinctions.
-The workspace SHALL NOT be saved, shared, persisted or used to author scoring.
+### Requirement: Series implements stacked multiple-model forecast comparison
+Series SHALL implement the September 9 owner-selected [comparison contract](../../../desktop-evidence-api-contract/specs/desktop-evidence-api/comparison.md).
+One compact toolbar SHALL select location, fixed start/end, sources, variables
+and Refresh. Each variable SHALL have a labelled chart and units, aligned time
+axes and a shared cursor showing each source's native time and value. Model
+colours SHALL be consistent and shared visibility SHALL not acquire data.
+Details SHALL disclose technical metadata. Expired charts SHALL be labelled.
 
-#### Scenario: Incompatible fields are compared
-- **WHEN** the reader compares temperature and wind speed
-- **THEN** their axes remain separate and aligned in time, and switching to
-  Overview preserves the selected evidence and Focus
+#### Scenario: Clicking a chart preserves the window
+- **WHEN** the reader clicks a chart or hides a model
+- **THEN** the click updates shared map time without changing the window and
+  visibility uses loaded data without new acquisition
+
+#### Scenario: One timeline controls Series
+- **WHEN** Series is visible and the reader uses the bottom timeline
+- **THEN** that single timeline spans the fixed Series window and moves the shared
+  chart/map instant without reacquiring or clearing the comparison, including playback
+- **AND** chart hover temporarily inspects native samples and leaving restores
+  the selected timeline instant; no second cursor slider or commit button appears
+
+#### Scenario: Native API pages arrive
+- **WHEN** a page retains the selected source, product and run values but serializes
+  JSON object properties in another order
+- **THEN** its native points and connecting lines render progressively
+- **AND** actual selection identity changes remain rejected
+
+#### Scenario: Cloud definitions differ
+- **WHEN** opacity-weighted and geometric cloud fields are selected
+- **THEN** separate labelled subcharts retain the same time axis
+
+#### Scenario: The requested window is empty
+- **WHEN** no native samples fall in the window
+- **THEN** Show available window is an explicit action and no automatic shift occurs
 
 ### Requirement: Sky uses the selected Horizon instrument
 Sky SHALL lead with the registered site horizon and separate scalar cloud-layer

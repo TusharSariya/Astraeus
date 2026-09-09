@@ -1,0 +1,37 @@
+{
+  "window_start": "2026-09-09T03:00:00+00:00",
+  "window_end": "2026-09-10T03:00:00+00:00",
+  "location": {
+    "latitude": 47.5,
+    "longitude": -52.7
+  },
+  "live_provider_traffic": true,
+  "successful_pages": 46,
+  "delivered_positions": 92,
+  "planned_positions": 94,
+  "largest_page_bytes": 101463,
+  "successful_page_elapsed_seconds": 891.49,
+  "central_value_counts": {
+    "eccc-hrdps:temperature_2m": 22,
+    "eccc-hrdps:relative_humidity_2m": 22,
+    "eccc-hrdps:total_cloud_opacity": 22,
+    "eccc-hrdps:wind_speed_10m": 22,
+    "eccc-rdps:temperature_2m": 24,
+    "eccc-rdps:relative_humidity_2m": 24,
+    "eccc-rdps:total_cloud_opacity": 24,
+    "eccc-rdps:wind_speed_10m": 24,
+    "google-weathernext-3-statistics:temperature_2m": 24,
+    "google-weathernext-3-statistics:weathernext3_total_cloud_cover_mean": 24,
+    "google-weathernext-3-statistics:weathernext3_wind_speed_mean_10m": 0,
+    "google-weathernext-3-statistics:weathernext3_total_precipitation_1hr_mean": 24,
+    "noaa-gfs:temperature_2m": 22,
+    "noaa-gfs:relative_humidity_2m": 22,
+    "noaa-gfs:total_cloud_geometric": 22,
+    "noaa-gfs:wind_speed_10m": 22
+  },
+  "final_attempt": {
+    "page": 46,
+    "failure": "HTTPError"
+  },
+  "limitation": "Final continuation failed at the fixed lifetime boundary. Original driver recorded HTTPError without its HTTP status; the comparison was not fully delivered. No automatic renewal."
+}

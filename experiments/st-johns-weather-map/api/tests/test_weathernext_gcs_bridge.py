@@ -167,3 +167,42 @@ http_main()
         assert reply == {'error': 'WeatherNext bounded HTTP worker failed', 'http_status': None}
     else:
         assert base64.b64decode(reply['body']) == b'public-fixture-response'
+
+
+def test_actual_comparison_batch_shares_native_coordinates(transport):
+    """GOV-SPEC-004/006: exercise the default worker, not injected acquisition."""
+    if sys.platform!='linux':pytest.skip('Linux resource-limited worker')
+    from copy import deepcopy
+    from dataclasses import replace
+    original='total_cloud_cover_p90'
+    for field in ['total_cloud_cover_mean','total_cloud_cover_p10']:
+        transport.nodes[field]=deepcopy(transport.nodes[original])
+        for path,body in list(transport.bodies.items()):
+            if path.startswith(original+'/'):
+                transport.bodies[path.replace(original,field,1)]=body
+    selected=replace(selection(),fields=('total_cloud_cover_mean','total_cloud_cover_p10',original))
+    result=read_historical_point(selected,root_identity=root(transport),now=NOW,transport=transport)
+    assert {v['statistic'] for v in result['reading']['values']}=={'mean','p10','p90'}
+    reads=[path for op,path in transport.calls if op=='read']
+    assert len(reads)==len(set(reads))
+    assert reads.count('lead_time/c/0')==1 and reads.count('init_time/c')==1
+    assert all(sum(path.startswith(field+'/c/') for path in reads)==1 for field in selected.fields)
+
+
+def test_actual_batch_byte_limit_retains_completed_fields(transport):
+    if sys.platform!='linux':pytest.skip('Linux resource-limited worker')
+    from copy import deepcopy
+    from dataclasses import replace
+    from weather_api.weathernext_delivery import HistoricalConfiguration, point_evidence
+    original='total_cloud_cover_p90';mean='total_cloud_cover_mean'
+    transport.nodes[mean]=deepcopy(transport.nodes[original])
+    for path,body in list(transport.bodies.items()):
+        if path.startswith(original+'/'):transport.bodies[path.replace(original,mean,1)]=body
+    selected=replace(selection(),fields=(mean,original))
+    paths=['zarr.json','init_time/c','lead_time/c/0','lat_0p1/c/0','lon_0p1/c/0',mean+'/c/1/1/0']
+    cap=sum(len(transport.body(p)) for p in paths)
+    result=read_historical_point(selected,root_identity=root(transport),now=NOW,transport=transport,max_received_bytes=cap)
+    assert [v['field'] for v in result['reading']['values']]==[mean]
+    assert result['reading']['unavailable_fields']==[original]
+    assert result['reading']['received_bytes']==cap
+    assert not any(op=='read' and path.startswith(original+'/c/') for op,path in transport.calls)

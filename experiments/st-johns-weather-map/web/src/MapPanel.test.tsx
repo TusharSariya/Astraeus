@@ -429,6 +429,19 @@ describe('MapPanel imagery', () => {
     ...props,
   })
 
+  it('keeps provider radar RGB out of the white cloud shader when interpolation is enabled', async()=>{
+    const fetcher=routedFetch(()=>rasterResponse({'X-Weather-Wms-Layer':'RADAR_1KM_RRAI','X-Weather-Evidence-Basis':'published_artifact'}))
+    vi.stubGlobal('fetch',fetcher)
+    const layer={...radarLayer,evidence_basis:'published_artifact' as const,group:'observation',raster_available:true}
+    const layers=[layer]
+    const {rerender}=render(panel({layers,interpolate:true}))
+    await waitFor(()=>expect((globalThis as Record<string,unknown>).__mapLayersNow).toContain(`raster-${layer.id}-0`))
+    expect((globalThis as Record<string,unknown>).__mapLayersNow).not.toContain(`flowblend-${layer.id}`)
+    const count=fetcher.mock.calls.length
+    rerender(panel({layers,interpolate:true,selections:[{id:layer.id,visible:true,opacity:.85,temperatureSource:'eccc-hrdps'}]}))
+    expect(fetcher.mock.calls.length).toBe(count)
+    expect(fetcher.mock.calls.some(([url])=>String(url).includes('/flow'))).toBe(false)
+  })
   it('draws current WMS imagery without requesting stale samples or inventing image-time features', async () => {
     const receipt = vi.fn(), fetcher = routedFetch(() => rasterResponse())
     vi.stubGlobal('fetch', fetcher)

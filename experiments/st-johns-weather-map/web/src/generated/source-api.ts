@@ -25,6 +25,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/experiments/weather/v0/ifs/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalogue */
+        get: operations["catalogue_api_experiments_weather_v0_ifs_catalogue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/ifs/runs/{product}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Inventory */
+        get: operations["inventory_api_experiments_weather_v0_ifs_runs__product__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/ifs/selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Select */
+        post: operations["select_api_experiments_weather_v0_ifs_selections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/ifs/selections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Page */
+        get: operations["page_api_experiments_weather_v0_ifs_selections__id__get"];
+        put?: never;
+        post?: never;
+        /** Cancel */
+        delete: operations["cancel_api_experiments_weather_v0_ifs_selections__id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/ifs/selections/{id}/grid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Loaded Grid */
+        get: operations["loaded_grid_api_experiments_weather_v0_ifs_selections__id__grid_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/ifs/selections/{id}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Receipts */
+        get: operations["receipts_api_experiments_weather_v0_ifs_selections__id__receipts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/ifs/track-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Select Tracks */
+        post: operations["select_tracks_api_experiments_weather_v0_ifs_track_selections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/ifs/track-selections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Continue Tracks */
+        get: operations["continue_tracks_api_experiments_weather_v0_ifs_track_selections__id__get"];
+        put?: never;
+        post?: never;
+        /** Cancel Tracks */
+        delete: operations["cancel_tracks_api_experiments_weather_v0_ifs_track_selections__id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/ifs/tracks/{product}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tracks */
+        get: operations["tracks_api_experiments_weather_v0_ifs_tracks__product__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/ifs/transfers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Transfers */
+        get: operations["transfers_api_experiments_weather_v0_ifs_transfers__id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/layers/{layer_id}/times": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Demand Layer Times */
+        get: operations["demand_layer_times_api_experiments_weather_v0_layers__layer_id__times_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/experiments/weather/v0/point": {
         parameters: {
             query?: never;
@@ -46,6 +235,40 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/point/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Comparison */
+        post: operations["comparison_api_experiments_weather_v0_point_comparison_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/point/comparison/{identity}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel Comparison */
+        delete: operations["cancel_comparison_api_experiments_weather_v0_point_comparison__identity__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -132,6 +355,40 @@ export interface paths {
          *     it never promotes a source past the state the registry declares.
          */
         get: operations["get_source_status_api_experiments_weather_v0_sources_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/sources/{source_id}/grid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Source Grid */
+        get: operations["source_grid_api_experiments_weather_v0_sources__source_id__grid_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/sources/{source_id}/times": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Source Times */
+        get: operations["source_times_api_experiments_weather_v0_sources__source_id__times_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -274,6 +531,167 @@ export interface components {
              */
             state: "unchanged" | "changed" | "unknown";
         };
+        /** ComparisonCoverage */
+        ComparisonCoverage: {
+            /** Available End */
+            available_end?: string | null;
+            /** Available Start */
+            available_start?: string | null;
+            /** Failure Kind */
+            failure_kind?: string | null;
+            /** Native Times */
+            native_times?: string[];
+            /** Reason */
+            reason?: string | null;
+            /** Source Id */
+            source_id: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "available" | "empty" | "unknown" | "unsupported" | "credentials_required";
+        };
+        /** ComparisonCurve */
+        ComparisonCurve: {
+            /** Definition */
+            definition: string;
+            /** Field */
+            field: string;
+            /** Group */
+            group: string;
+            /** Id */
+            id: string;
+            /** Product Id */
+            product_id: string;
+            /** Reason */
+            reason?: string | null;
+            /** Samples */
+            samples?: components["schemas"]["ComparisonSample"][];
+            /** Source Id */
+            source_id: string;
+            /** Units */
+            units?: string | null;
+        };
+        /** ComparisonPage */
+        ComparisonPage: {
+            /** Complete */
+            complete: boolean;
+            /** Completed Positions */
+            completed_positions: number;
+            /** Coverage */
+            coverage: components["schemas"]["ComparisonCoverage"][];
+            /** Curves */
+            curves: components["schemas"]["ComparisonCurve"][];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: string;
+            /** Next Cursor */
+            next_cursor: string | null;
+            /**
+             * Selected At
+             * Format: date-time
+             */
+            selected_at: string;
+            selection: components["schemas"]["ComparisonSelection-Output"];
+            /** Total Positions */
+            total_positions: number;
+        };
+        /** ComparisonSample */
+        ComparisonSample: {
+            evidence?: components["schemas"]["EvidenceField"] | null;
+            /** Interval End */
+            interval_end?: string | null;
+            /** Interval Start */
+            interval_start?: string | null;
+            lower?: components["schemas"]["EvidenceField"] | null;
+            /** Member Units */
+            member_units?: string | null;
+            /** Member Values */
+            member_values?: {
+                [key: string]: number | null;
+            };
+            /** Reason */
+            reason?: string | null;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Time
+             * Format: date-time
+             */
+            time: string;
+            upper?: components["schemas"]["EvidenceField"] | null;
+        };
+        /** ComparisonSelection */
+        "ComparisonSelection-Input": {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Ensemble Spread
+             * @default false
+             */
+            ensemble_spread: boolean;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /** Sources */
+            sources?: components["schemas"]["ComparisonSource"][];
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Variables */
+            variables?: string[];
+        };
+        /** ComparisonSelection */
+        "ComparisonSelection-Output": {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Ensemble Spread
+             * @default false
+             */
+            ensemble_spread: boolean;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /** Sources */
+            sources?: components["schemas"]["ComparisonSource"][];
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+            /** Variables */
+            variables?: string[];
+        };
+        /** ComparisonSource */
+        ComparisonSource: {
+            /** Level */
+            level?: number | null;
+            /** Product Id */
+            product_id?: string | null;
+            /**
+             * Run
+             * @default latest
+             */
+            run: string;
+            /** Source Id */
+            source_id: string;
+            variant?: components["schemas"]["SourceVariant"] | null;
+        };
         /** Continuation */
         Continuation: {
             /** Cursor */
@@ -312,6 +730,61 @@ export interface components {
          * @enum {string}
          */
         DataMode: "live" | "fixture" | "mixed" | "unavailable";
+        /** DemandLayerTimes */
+        DemandLayerTimes: {
+            /**
+             * Basis
+             * @default advertised_native_times
+             * @constant
+             */
+            basis: "advertised_native_times";
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Frames */
+            frames: components["schemas"]["DemandTimeFrame"][];
+            /**
+             * Layer Id
+             * @enum {string}
+             */
+            layer_id: "noaa-goes19-demand-cloud-mask" | "eccc-rdps-demand-total-cloud";
+            /** Notices */
+            notices: string[];
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+        };
+        /** DemandTimeFrame */
+        DemandTimeFrame: {
+            /**
+             * Run Time
+             * Format: date-time
+             */
+            run_time: string;
+            /**
+             * Valid Time
+             * Format: date-time
+             */
+            valid_time: string;
+        };
+        /** DerivationStep */
+        DerivationStep: {
+            /** Citation */
+            citation: string;
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+        };
         /**
          * DerivedInput
          * @description One value a ``derived_here`` construction read, with its own lineage.
@@ -761,6 +1234,273 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** IFSFieldSelection */
+        IFSFieldSelection: {
+            /** Field */
+            field: string;
+            /**
+             * Level
+             * @default 0
+             */
+            level: number;
+            /** Product */
+            product: string;
+            /**
+             * Run
+             * @default latest
+             */
+            run: string;
+            /** Times */
+            times: string[];
+        };
+        /** IFSGrid */
+        IFSGrid: {
+            /** Comparison */
+            comparison?: string | null;
+            /** Control Mapping */
+            control_mapping?: {
+                [key: string]: string;
+            } | null;
+            /** Digest */
+            digest: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Field */
+            field: string;
+            /**
+             * Interval End
+             * Format: date-time
+             */
+            interval_end: string;
+            /**
+             * Interval Start
+             * Format: date-time
+             */
+            interval_start: string;
+            /** Latitude Edges */
+            latitude_edges: number[];
+            /** Latitudes */
+            latitudes: number[];
+            /** Level */
+            level: number;
+            /** Longitude Edges */
+            longitude_edges: number[];
+            /** Longitudes */
+            longitudes: number[];
+            /** Member */
+            member: string | null;
+            /** Member Counts */
+            member_counts?: number[][] | null;
+            /** Method */
+            method?: {
+                [key: string]: string;
+            } | null;
+            /** Missing Member Bits */
+            missing_member_bits?: number[][] | null;
+            /** Missing Members */
+            missing_members?: string[];
+            /** Native Metadata */
+            native_metadata: {
+                [key: string]: string | number;
+            };
+            /**
+             * Native Time
+             * Format: date-time
+             */
+            native_time: string;
+            /** Product */
+            product: string;
+            /** Quantile */
+            quantile?: number | null;
+            /** Receipt Ids */
+            receipt_ids: number[];
+            /** Receipt Manifest */
+            receipt_manifest: string;
+            /** Refusal Reasons */
+            refusal_reasons?: string[];
+            /** Region */
+            region: [
+                number,
+                number,
+                number,
+                number
+            ];
+            /**
+             * Retrieved At
+             * Format: date-time
+             */
+            retrieved_at: string;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Run Time
+             * Format: date-time
+             */
+            run_time: string;
+            /** Selection Product */
+            selection_product: string;
+            /**
+             * Source Id
+             * @default ecmwf-ifs
+             * @constant
+             */
+            source_id: "ecmwf-ifs";
+            /** Statistic */
+            statistic?: string | null;
+            /** Temporal */
+            temporal: string;
+            /** Threshold */
+            threshold?: number | null;
+            /** Units */
+            units: string;
+            /** Values */
+            values: (number | null)[][];
+        };
+        /** IFSItem */
+        IFSItem: {
+            /** Field */
+            field: string;
+            grid?: components["schemas"]["IFSGrid"] | null;
+            /** Index */
+            index: number;
+            /** Level */
+            level: number;
+            /** Member */
+            member: string;
+            /** Product */
+            product: string;
+            /** Reason */
+            reason?: string | null;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Time
+             * Format: date-time
+             */
+            time: string;
+        };
+        /** IFSPage */
+        IFSPage: {
+            /** Completed */
+            completed: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: string;
+            /** Input Bytes */
+            input_bytes: number;
+            /** Items */
+            items: components["schemas"]["IFSItem"][];
+            /** Next Cursor */
+            next_cursor: number | null;
+            /** Receipt Manifest */
+            receipt_manifest: string;
+            /** Record Acquisitions */
+            record_acquisitions: number;
+            /**
+             * Selected At
+             * Format: date-time
+             */
+            selected_at: string;
+            /** Total */
+            total: number;
+        };
+        /** IFSReceipts */
+        IFSReceipts: {
+            /** Id */
+            id: string;
+            /** Next Offset */
+            next_offset: number | null;
+            /** Offset */
+            offset: number;
+            /** Receipts */
+            receipts: components["schemas"]["SourceTransferReceipt"][];
+        };
+        /** IFSSelection */
+        IFSSelection: {
+            /** Fields */
+            fields: components["schemas"]["IFSFieldSelection"][];
+        };
+        /** IFSTrack */
+        IFSTrack: {
+            /** Member */
+            member: string;
+            /** Points */
+            points: components["schemas"]["IFSTrackPoint"][];
+            /** Storm Id */
+            storm_id: string;
+        };
+        /** IFSTrackPage */
+        IFSTrackPage: {
+            /** Bytes Received */
+            bytes_received: number;
+            /** Complete */
+            complete: boolean;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: string;
+            /** Reason */
+            reason?: string | null;
+            result?: components["schemas"]["IFSTracks"] | null;
+        };
+        /** IFSTrackPoint */
+        IFSTrackPoint: {
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /**
+             * Time
+             * Format: date-time
+             */
+            time: string;
+        };
+        /** IFSTrackSelection */
+        IFSTrackSelection: {
+            /**
+             * Product
+             * @enum {string}
+             */
+            product: "cyclone-control" | "cyclone-ensemble";
+            /**
+             * Run
+             * @default latest
+             */
+            run: string;
+        };
+        /** IFSTracks */
+        IFSTracks: {
+            /** Decoded Members */
+            decoded_members: string[];
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Product */
+            product: string;
+            /** Receipts */
+            receipts: components["schemas"]["SourceTransferReceipt"][];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Run Time
+             * Format: date-time
+             */
+            run_time: string;
+            /** Tracks */
+            tracks: components["schemas"]["IFSTrack"][];
+        };
         /** MapCapability */
         MapCapability: {
             /** Layer Id */
@@ -919,6 +1659,8 @@ export interface components {
             derivation_citation?: string | null;
             /** Derivation Inputs */
             derivation_inputs?: components["schemas"]["DerivedInput"][];
+            /** Derivation Steps */
+            derivation_steps?: components["schemas"]["DerivationStep"][];
             /** Derivation Version */
             derivation_version?: string | null;
             /**
@@ -1002,6 +1744,8 @@ export interface components {
             source_display_primary?: boolean | null;
             /** Source Id */
             source_id: string;
+            /** Source Receipt Manifest */
+            source_receipt_manifest?: string | null;
             swob_acquisition?: components["schemas"]["SWOBAcquisition"] | null;
             /**
              * Valid Time
@@ -1419,6 +2163,11 @@ export interface components {
             directional_time_selection: boolean;
             /** Field */
             field: string;
+            /**
+             * Grid
+             * @default false
+             */
+            grid: boolean;
             /** Levels */
             levels: string[];
             /** Native Series */
@@ -1489,6 +2238,68 @@ export interface components {
             storage: "stored" | "available-not-stored" | "not-published";
             /** Upstream */
             upstream?: string | null;
+        };
+        /** SourceGridResponse */
+        SourceGridResponse: {
+            /**
+             * Field
+             * @default weathernext3_total_cloud_cover_mean
+             * @constant
+             */
+            field: "weathernext3_total_cloud_cover_mean";
+            /** Latitude Edges */
+            latitude_edges: number[];
+            /** Latitudes */
+            latitudes: number[];
+            /** Longitude Edges */
+            longitude_edges: number[];
+            /** Longitudes */
+            longitudes: number[];
+            /**
+             * Native Time
+             * Format: date-time
+             */
+            native_time: string;
+            /** Percentages */
+            percentages: (number | null)[][];
+            /**
+             * Product
+             * @enum {string}
+             */
+            product: "WeatherNext 3 local" | "WeatherNext 3 historical";
+            provenance: components["schemas"]["Provenance"];
+            /**
+             * Region
+             * @default [
+             *       -55,
+             *       46.5,
+             *       -51,
+             *       48.5
+             *     ]
+             */
+            region: [
+                number,
+                number,
+                number,
+                number
+            ];
+            /**
+             * Selected Time
+             * Format: date-time
+             */
+            selected_time: string;
+            /**
+             * Source Id
+             * @default google-weathernext-3-statistics
+             * @constant
+             */
+            source_id: "google-weathernext-3-statistics";
+            /**
+             * Statistic
+             * @default ensemble_mean
+             * @constant
+             */
+            statistic: "ensemble_mean";
         };
         /**
          * SourceRecord
@@ -1613,6 +2424,47 @@ export interface components {
             /** Statuses */
             statuses: components["schemas"]["SourceStatus"][];
         };
+        /** SourceTimesResponse */
+        SourceTimesResponse: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /**
+             * Field
+             * @default weathernext3_total_cloud_cover_mean
+             * @constant
+             */
+            field: "weathernext3_total_cloud_cover_mean";
+            /** Frames */
+            frames: components["schemas"]["TimeFrame"][];
+            /** Notices */
+            notices: string[];
+            /** Objects */
+            objects: components["schemas"]["TimeObject"][];
+            /**
+             * Product
+             * @enum {string}
+             */
+            product: "WeatherNext 3 local" | "WeatherNext 3 historical";
+            /**
+             * Source Id
+             * @default google-weathernext-3-statistics
+             * @constant
+             */
+            source_id: "google-weathernext-3-statistics";
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+        };
         /** SourceTransferReceipt */
         SourceTransferReceipt: {
             /** Byte Size */
@@ -1657,6 +2509,32 @@ export interface components {
             /** Threshold */
             threshold?: number | null;
         };
+        /** TimeFrame */
+        TimeFrame: {
+            /**
+             * Run Time
+             * Format: date-time
+             */
+            run_time: string;
+            /**
+             * Valid Time
+             * Format: date-time
+             */
+            valid_time: string;
+        };
+        /** TimeObject */
+        TimeObject: {
+            /** Bucket */
+            bucket: string;
+            /** Etag */
+            etag: string;
+            /** Generation */
+            generation: string;
+            /** Name */
+            name: string;
+            /** Size */
+            size: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1691,6 +2569,415 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogResponse"];
+                };
+            };
+        };
+    };
+    catalogue_api_experiments_weather_v0_ifs_catalogue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    inventory_api_experiments_weather_v0_ifs_runs__product__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_api_experiments_weather_v0_ifs_selections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IFSSelection"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IFSPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    page_api_experiments_weather_v0_ifs_selections__id__get: {
+        parameters: {
+            query?: {
+                cursor?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IFSPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_experiments_weather_v0_ifs_selections__id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    loaded_grid_api_experiments_weather_v0_ifs_selections__id__grid_get: {
+        parameters: {
+            query?: {
+                statistic?: string | null;
+                member?: string;
+                quantile?: number | null;
+                threshold?: number | null;
+                comparison?: string | null;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IFSGrid"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    receipts_api_experiments_weather_v0_ifs_selections__id__receipts_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IFSReceipts"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_tracks_api_experiments_weather_v0_ifs_track_selections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IFSTrackSelection"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IFSTrackPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    continue_tracks_api_experiments_weather_v0_ifs_track_selections__id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IFSTrackPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_tracks_api_experiments_weather_v0_ifs_track_selections__id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    tracks_api_experiments_weather_v0_ifs_tracks__product__get: {
+        parameters: {
+            query?: {
+                run?: string;
+            };
+            header?: never;
+            path: {
+                product: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IFSTracks"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transfers_api_experiments_weather_v0_ifs_transfers__id__get: {
+        parameters: {
+            query?: {
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IFSReceipts"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    demand_layer_times_api_experiments_weather_v0_layers__layer_id__times_get: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+            };
+            header?: never;
+            path: {
+                layer_id: "noaa-goes19-demand-cloud-mask" | "eccc-rdps-demand-total-cloud";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DemandLayerTimes"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1735,6 +3022,68 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PointResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    comparison_api_experiments_weather_v0_point_comparison_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComparisonSelection-Input"] | components["schemas"]["Continuation"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_comparison_api_experiments_weather_v0_point_comparison__identity__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identity: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1894,6 +3243,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourceStatusResponse"];
+                };
+            };
+        };
+    };
+    source_grid_api_experiments_weather_v0_sources__source_id__grid_get: {
+        parameters: {
+            query: {
+                product: string;
+                field: string;
+                selected_time: string;
+                region?: "avalon" | "atlantic";
+            };
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceGridResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    source_times_api_experiments_weather_v0_sources__source_id__times_get: {
+        parameters: {
+            query: {
+                product: string;
+                field: string;
+                start: string;
+                end: string;
+            };
+            header?: never;
+            path: {
+                source_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceTimesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

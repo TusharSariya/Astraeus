@@ -1,0 +1,28 @@
+{
+  "evidence": "synthetic native fixture/browser replay, not upstream evidence",
+  "providerWeatherRequests": 0,
+  "requests": [
+    {
+      "kind": "grid",
+      "params": {
+        "product": "WeatherNext 3 historical",
+        "field": "weathernext3_total_cloud_cover_mean",
+        "selected_time": "2026-08-01T06:00:00.000Z"
+      }
+    },
+    {
+      "kind": "point",
+      "params": {
+        "latitude": "47.5",
+        "longitude": "-53",
+        "valid_time": "2026-08-01T06:00:00.000Z",
+        "product": "WeatherNext 3 historical",
+        "time_selection": "directional",
+        "field": "weathernext3_total_cloud_cover_mean",
+        "statistic": "ensemble_mean"
+      }
+    }
+  ],
+  "errors": [],
+  "cells": 861
+}
