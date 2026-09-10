@@ -243,3 +243,21 @@ def test_public_point_route_reuses_atlantic_cells_and_retains_other_coverage(tra
     assert len(transport.calls)==count
     assert client.get(f'{module.PREFIX}/point',params={**params,'latitude':56}).status_code==422
     assert client.get(f'{module.PREFIX}/point',params={**params,'product':'RDPS'}).status_code==422
+
+@pytest.mark.parametrize('level',['low','medium','high'])
+def test_all_cloud_means_reuse_native_grid_and_keep_field_identity(transport,level):
+    from copy import deepcopy
+    native=level+'_cloud_cover_mean'
+    transport.nodes[native]=deepcopy(transport.nodes[FIELD])
+    for name,body in list(transport.bodies.items()):
+        if name.startswith(FIELD+'/'):transport.bodies[name.replace(FIELD,native,1)]=body
+    reader=service(transport)
+    original=grids.frame(reader,VALID)
+    field='weathernext3_'+native
+    grid=grids.frame(reader,VALID,field=field)
+    assert grid.field==field and grid.percentages==original.percentages
+    assert grid.provenance.native_variable==native
+    assert grids.key(reader,VALID,field=field)!=grids.key(reader,VALID)
+    selection=WeatherNextSelection(INIT,VALID,47.5,-53.,(native,))
+    point=grids.cached_point(reader,selection)[0]
+    assert point.key==field and point.provenance.native_variable==native

@@ -81,7 +81,7 @@ catalogue or point implementation through a shared service alias.
 Owner authorization: the 2026-09-08 implementation request explicitly authorizes
 this experimental amendment under GOV-SPEC-001, GOV-SPEC-004 and GOV-SPEC-006.
 The isolated experiment SHALL offer optional grid capability, unsupported by
-default, only for total-cloud ensemble mean in historical and internal forecast
+default, only for total, low, middle and high cloud ensemble means in historical and internal forecast
 scopes. A typed source-grid request SHALL retain selected/native time, pinned
 run/object identity, native coordinate axes, shared midpoint cell boundaries,
 nullable percentages and acquisition provenance. The complete intersecting
@@ -107,7 +107,7 @@ Data only and legacy point requests SHALL retain direct point delivery.
 - **AND** duplicate requests coalesce while obsolete client responses are discarded
 
 ### Requirement: Native cloud grid display
-Forecast and historical total-cloud mean SHALL be selectable using Off, Map +
+Forecast and historical total, low, middle and high cloud means SHALL be selectable using Off, Map +
 data, Data only. Saved point-only selections and default profiles SHALL remain
 unchanged. Adjoining native geographic rectangles SHALL use fixed tint and
 alpha equal to cloud fraction times layer opacity, with no smoothing,
@@ -175,3 +175,53 @@ status. Comparison page and lifetime limits are owned by desktop-evidence-api.
 #### Scenario: A selected batch reaches the existing byte ceiling
 - **WHEN** some selected fields have decoded successfully and another field would exceed the source byte or operation ceiling
 - **THEN** the batch retains completed fields, records the unread field as a budget gap, preserves receipts for metadata already consulted, and does not acquire its payload or invent a value
+
+
+### Requirement: Dedicated WeatherNext workspace
+Owner authorization: the September 9 dedicated WeatherNext workspace implementation
+plan. The isolated experiment SHALL implement the section, product, percentile,
+threshold, shared timeline, pinned run, bounded paging and expiry semantics in
+[the workspace contract](workspace.md). This supersedes the total-cloud-only grid
+restriction, with no change to production or normative status.
+
+#### Scenario: Shared selection is explored
+- **WHEN** WeatherNext is opened or docked
+- **THEN** only the active section loads for the selected point and full shared range
+- **AND** native times retain one pinned run, source provenance and explicit gaps
+
+#### Scenario: Published summaries support an estimate
+- **WHEN** a threshold is entered or changed
+- **THEN** the backend reads retained percentiles without provider acquisition
+- **AND** strict quantile neighbors bracket an approximate range, ties widen it,
+  and non-monotonic or unusable data withholds the estimate
+
+#### Scenario: Pages load, expire or are cancelled
+- **WHEN** a page is pending or fails, the selection changes, or evidence expires
+- **THEN** completed results remain independently inspectable while fresh,
+  expired values are withheld, and cancelled selections start no later pages
+
+### Requirement: Owner-selected one GiB acquisition budget
+Owner authorization: on September 9 the owner explicitly requested raising the
+WeatherNext download limit to 1 GB, implemented as 1 GiB (1,073,741,824 bytes).
+The experimental native delivery SHALL allow at most 1 GiB total received bytes
+per acquisition, including metadata, with matching parent, worker and receipt
+validation. The lower standalone bridge default SHALL remain 16 MiB. Individual
+compressed objects SHALL remain bounded to 64 MiB, decoded chunks to 128 MiB,
+and process memory, concurrency and native worker deadlines SHALL remain
+unchanged. Workspace page waiting and retained-summary expiry SHALL follow the
+subsequent owner-authorized live loading correction in `workspace.md`; other
+source consumers retain their existing deadlines and expiry. Selected point batches SHALL support up to 36 fields, as required by
+the Wind section. Their operation allowance SHALL be max(30, 10 + 4 × fields),
+capped at the native reader's existing 270-operation maximum. Grid and inventory
+operation limits SHALL remain 30 and 10 respectively. This amendment supersedes
+the workspace's previous aggregate-byte/operation restriction only; it does not
+authorize raw members, requester billing, production status or unbounded reads.
+
+#### Scenario: A larger selected statistics batch is read
+- **WHEN** aggregate metadata and science bytes exceed 64 MiB but remain within 1 GiB
+- **THEN** byte validation permits the batch while all per-object, memory, native
+  identity and time constraints remain enforced
+
+#### Scenario: A resource bound is exceeded
+- **WHEN** a batch exceeds 1 GiB, a chunk exceeds 64 MiB, or a time/process limit is reached
+- **THEN** the acquisition refuses excess work and retains existing explicit failure semantics

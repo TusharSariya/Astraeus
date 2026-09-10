@@ -1,14 +1,14 @@
 import { StrictMode } from 'react'
 import { describe,it,expect,vi } from 'vitest'
 import { renderHook,waitFor,act } from '@testing-library/react'
-import { cloudColor,gridFeatures,validateGrid,useSourceGrids,wn3Request,GRID_FIELD,type SourceGrid } from './sourceGrid'
+import { cloudColor,gridKey,GRID_FIELDS,gridFeatures,validateGrid,useSourceGrids,wn3Request,GRID_FIELD,type SourceGrid } from './sourceGrid'
 import { cycleSelection,parseSelection,pointSelectionId } from './pointSelections'
 import type { PointFieldSelection } from '../types'
 const point:PointFieldSelection={sourceId:'google-weathernext-3-statistics',productId:'weathernext_3_0_0_statistics',product:'WeatherNext 3 local',field:GRID_FIELD,variant:{kind:'provider_statistic',statistic:'ensemble_mean'},level:'column'}
 const instant=Date.parse('2026-09-08T12:00:00Z')
 function frame():SourceGrid {
   const lats=Array.from({length:151},(_,i)=>55-i*.1),lons=Array.from({length:301},(_,i)=>-70+i*.1)
-  return {source_id:point.sourceId,product:point.product,field:GRID_FIELD,statistic:'ensemble_mean',selected_time:new Date(instant).toISOString(),native_time:new Date(instant).toISOString(),region:[-70,40,-40,55],latitudes:lats,longitudes:lons,latitude_edges:Array.from({length:152},(_,i)=>55.05-i*.1),longitude_edges:Array.from({length:302},(_,i)=>-70.05+i*.1),percentages:lats.map(()=>lons.map(()=>50)),provenance:{source_acquisition:{expires_at:new Date(Date.now()+60000).toISOString()},valid_time:new Date(instant).toISOString()}} as SourceGrid
+  return {source_id:point.sourceId,product:point.product,field:GRID_FIELD,statistic:'ensemble_mean',selected_time:new Date(instant).toISOString(),native_time:new Date(instant).toISOString(),region:[-70,40,-40,55],latitudes:lats,longitudes:lons,latitude_edges:Array.from({length:152},(_,i)=>55.05-i*.1),longitude_edges:Array.from({length:302},(_,i)=>-70.05+i*.1),percentages:lats.map(()=>lons.map(()=>50)),provenance:{native_variable:'total_cloud_cover_mean',source_acquisition:{expires_at:new Date(Date.now()+60000).toISOString()},valid_time:new Date(instant).toISOString()}} as SourceGrid
 }
 describe('native WN3 grid display',()=>{
   it('maps valid zero, 50 and 100 percent without gamma or opacity exponent',()=>{
@@ -75,4 +75,10 @@ it('survives StrictMode and clears a failed replacement without viewport reacqui
   expect(result.current[0].frame).toBeUndefined()
   await waitFor(()=>expect(result.current[0].error).toContain('unavailable'))
   expect(result.current[0].frame).toBeUndefined();unmount();fetcher.mockRestore()
+})
+
+it('keeps each of the four mean fields in grid and point cache identity',()=>{
+ expect(new Set(GRID_FIELDS.map(field=>gridKey(point.product,instant,field))).size).toBe(4)
+ for(const field of GRID_FIELDS){const g=frame();g.field=field as SourceGrid['field'];g.provenance.native_variable=field.replace('weathernext3_','');expect(validateGrid(g,point.product,instant,field)).toBe(g)}
+ const wrong=frame();wrong.field='weathernext3_low_cloud_cover_mean';expect(()=>validateGrid(wrong,point.product,instant,wrong.field)).toThrow()
 })

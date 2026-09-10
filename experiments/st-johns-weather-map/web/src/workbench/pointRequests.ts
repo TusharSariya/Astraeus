@@ -1,4 +1,4 @@
-import { GRID_FIELD, waitForGrid, wn3Request } from './sourceGrid'
+import { GRID_FIELDS, waitForGrid, wn3Request } from './sourceGrid'
 import { useEffect, useRef, useState } from 'react'
 import { loadPoint, type NormalizeOptions } from '../api'
 import type { LocationPoint, PointFieldSelection } from '../types'
@@ -36,7 +36,7 @@ export class PointRequestQueue {
       Promise.resolve().then(async () => {
         const load = () => this.loader(request.location, new Date(request.instant).toISOString(), request.product, controller.signal, request.options)
         if (!request.product.startsWith('WeatherNext 3')) return load()
-        if(request.options.field===GRID_FIELD) await waitForGrid(request.product, request.instant)
+        if(GRID_FIELDS.includes(request.options.field ?? '')) await waitForGrid(request.product, request.instant, request.options.field)
         return wn3Request(controller.signal, load)
       })
         .then(result => { if (generation === this.generation && !controller.signal.aborted) this.report(request.key, { result }) })

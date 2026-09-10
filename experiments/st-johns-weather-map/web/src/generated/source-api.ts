@@ -397,6 +397,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/experiments/weather/v0/weathernext/selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Initial */
+        post: operations["initial_api_experiments_weather_v0_weathernext_selection_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/weathernext/selection/{identity}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Page */
+        get: operations["page_api_experiments_weather_v0_weathernext_selection__identity__get"];
+        put?: never;
+        post?: never;
+        /** Cancel */
+        delete: operations["cancel_api_experiments_weather_v0_weathernext_selection__identity__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/experiments/weather/v0/weathernext/selection/{identity}/threshold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Estimate */
+        post: operations["estimate_api_experiments_weather_v0_weathernext_selection__identity__threshold_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1633,6 +1685,21 @@ export interface components {
              */
             valid_time: string;
         };
+        /** ProbabilityBounds */
+        ProbabilityBounds: {
+            /**
+             * Approximate
+             * @default true
+             * @constant
+             */
+            approximate: true;
+            /** Basis */
+            basis: string;
+            /** Lower */
+            lower?: number | null;
+            /** Upper */
+            upper?: number | null;
+        };
         /** Provenance */
         Provenance: {
             /** Adapter Version */
@@ -2244,9 +2311,9 @@ export interface components {
             /**
              * Field
              * @default weathernext3_total_cloud_cover_mean
-             * @constant
+             * @enum {string}
              */
-            field: "weathernext3_total_cloud_cover_mean";
+            field: "weathernext3_total_cloud_cover_mean" | "weathernext3_low_cloud_cover_mean" | "weathernext3_medium_cloud_cover_mean" | "weathernext3_high_cloud_cover_mean";
             /** Latitude Edges */
             latitude_edges: number[];
             /** Latitudes */
@@ -2509,6 +2576,21 @@ export interface components {
             /** Threshold */
             threshold?: number | null;
         };
+        /** Threshold */
+        Threshold: {
+            /**
+             * Event
+             * @default above
+             * @enum {string}
+             */
+            event: "above" | "below";
+            /** Quantity */
+            quantity: string;
+            /** Unit */
+            unit: string;
+            /** Value */
+            value: number;
+        };
         /** TimeFrame */
         TimeFrame: {
             /**
@@ -2543,6 +2625,145 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WeatherNextEstimates */
+        WeatherNextEstimates: {
+            /**
+             * Basis
+             * @default retained_published_percentiles
+             * @constant
+             */
+            basis: "retained_published_percentiles";
+            /** Estimates */
+            estimates: {
+                [key: string]: components["schemas"]["ProbabilityBounds"];
+            };
+            /** Id */
+            id: string;
+            /** Run Time */
+            run_time: string | null;
+            threshold: components["schemas"]["Threshold"];
+        };
+        /** WeatherNextPage */
+        WeatherNextPage: {
+            /**
+             * Completed Pages
+             * @default 0
+             */
+            completed_pages: number;
+            /**
+             * Expires At
+             * Format: date-time
+             */
+            expires_at: string;
+            /** Id */
+            id: string;
+            /** Native Times */
+            native_times: string[];
+            /** Next Offset */
+            next_offset: number | null;
+            /** Reason */
+            reason?: string | null;
+            /** Run Id */
+            run_id: string | null;
+            /** Run Time */
+            run_time: string | null;
+            /** Samples */
+            samples: components["schemas"]["WeatherNextSample"][];
+            selection: components["schemas"]["WeatherNextSelectionRequest"];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "available" | "unsupported" | "failed" | "credentials_required" | "missing";
+            /**
+             * Total Pages
+             * @default 0
+             */
+            total_pages: number;
+        };
+        /** WeatherNextSample */
+        WeatherNextSample: {
+            /** Expires At */
+            expires_at?: string | null;
+            provenance?: components["schemas"]["Provenance"] | null;
+            /** Summaries */
+            summaries: components["schemas"]["WeatherNextSummary"][];
+            /**
+             * Time
+             * Format: date-time
+             */
+            time: string;
+        };
+        /** WeatherNextSelectionRequest */
+        WeatherNextSelectionRequest: {
+            /**
+             * End
+             * Format: date-time
+             */
+            end: string;
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+            /**
+             * Product
+             * @default default
+             * @enum {string}
+             */
+            product: "default" | "gridded" | "station" | "model" | "imerg" | "experimental";
+            /** Run Time */
+            run_time?: string | null;
+            /**
+             * Section
+             * @default clouds
+             * @enum {string}
+             */
+            section: "clouds" | "temperature" | "wind" | "precipitation" | "solar" | "pressure_sea";
+            /**
+             * Start
+             * Format: date-time
+             */
+            start: string;
+        };
+        /** WeatherNextSummary */
+        WeatherNextSummary: {
+            /** Conversion Offset */
+            conversion_offset: number;
+            /** Conversion Scale */
+            conversion_scale: number;
+            /** Grid */
+            grid: string;
+            /** Interval End */
+            interval_end?: string | null;
+            /** Interval Start */
+            interval_start?: string | null;
+            /** Level */
+            level: string;
+            /** Native Fields */
+            native_fields: string[];
+            /** Original Unit */
+            original_unit: string;
+            provenance?: components["schemas"]["Provenance"] | null;
+            /** Quantity */
+            quantity: string;
+            /** Reason */
+            reason?: string | null;
+            /** Sampled Latitude */
+            sampled_latitude?: number | null;
+            /** Sampled Longitude */
+            sampled_longitude?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "available" | "missing" | "failed" | "expired";
+            /** Unit */
+            unit: string;
+            /** Values */
+            values: {
+                [key: string]: number | null;
+            };
         };
     };
     responses: never;
@@ -3306,6 +3527,136 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SourceTimesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    initial_api_experiments_weather_v0_weathernext_selection_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WeatherNextSelectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeatherNextPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    page_api_experiments_weather_v0_weathernext_selection__identity__get: {
+        parameters: {
+            query?: {
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                identity: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeatherNextPage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_api_experiments_weather_v0_weathernext_selection__identity__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identity: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    estimate_api_experiments_weather_v0_weathernext_selection__identity__threshold_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identity: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Threshold"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeatherNextEstimates"];
                 };
             };
             /** @description Validation Error */

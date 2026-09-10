@@ -1,6 +1,6 @@
 import { TemperatureProvider } from './workbench/precipitationColours'
 import { useDemandCloudTimes } from './workbench/demandCloudTimes'
-import { useSourceTimes, timeMarkers } from './workbench/sourceTimes'
+import { useSourceTimes, timeMarkers, type TimeRow } from './workbench/sourceTimes'
 import { PointDataPanel, openPointData } from './workbench/PointDataPanel'
 import { useActivity, activityEvidence, type ActivityResponse } from './workbench/ActivityView'
 import { captureInspectorReturn, restoreInspectorReturn, type InspectorReturn } from './workbench/inspectorReturn'
@@ -10,6 +10,7 @@ import { SkyView, skyEvidence } from './workbench/SkyView'
 import { loadRegisteredCameras, type CameraRegistry } from './workbench/registeredCameras'
 import { sourceEvidence, useSourcesView } from './workbench/SourcesView'
 import { type SharedSeriesSelection } from './workbench/NativeSeries'
+import { useWeatherNext } from './workbench/WeatherNext'
 import { comparisonMarkers, useForecastComparison } from './workbench/ForecastComparison'
 import { loadRegisteredSites, nearestRegisteredSite, type RegisteredSites } from './workbench/registeredSites'
 import { WorkbenchShell } from './workbench/WorkbenchShell'
@@ -387,6 +388,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
   const [view, setView] = useState<View>(initialFocus.view)
   const [dock, setDock] = useState<View | null>(initialFocus.dock)
   const [site, setSite] = useState<string | null>(initialFocus.site)
+  const [weatherTimes, setWeatherTimes] = useState<TimeRow[]>([])
   const [seriesWindow, setSeriesWindow] = useState<{start:number;end:number} | null>(null)
   const seriesVisible = !legacyOpen && (view === 'Series' || dock === 'Series')
   const [seriesEvidence, setSeriesEvidence] = useState<SharedSeriesSelection | null>(null)
@@ -559,7 +561,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
 
   const wn3Times = useSourceTimes(selections, windowStartMs, windowEndMs)
   const cloudTimes = useDemandCloudTimes(selections, windowStartMs, windowEndMs)
-  const sourceTimes = useMemo(()=>[...wn3Times,...cloudTimes],[wn3Times,cloudTimes])
+  const sourceTimes = useMemo(()=>[...wn3Times,...cloudTimes,...weatherTimes],[wn3Times,cloudTimes,weatherTimes])
   const markers = useMemo(
     () => timeMarkers(frameMarkers(layers, selections, windowStartMs, windowEndMs), sourceTimes),
     [layers, selections, windowStartMs, windowEndMs, sourceTimes],
@@ -1909,6 +1911,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     onInstant: value => { pausePlayback(); setSelectedMs(value) },
     onLocation: point => { setSite(null); setLocation(point) },
   })
+  const weatherNext = useWeatherNext({ onTimes: setWeatherTimes, location, start: windowStartMs, end: windowEndMs + 1, instant: selectedMs, enabled: !legacyOpen && (view === 'WeatherNext' || dock === 'WeatherNext'), focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude), onInstant: value => { pausePlayback(); setSelectedMs(value) } })
   const activity = useActivity({ windowEnd: windowEndMs, location, instant: selectedMs, siteId: site,
     enabled: !legacyOpen && (view === 'Activity' || dock === 'Activity'), moving: playing,
     focusReady: !site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude),
@@ -1957,6 +1960,7 @@ export default function App({ initialLayout = 'desktop' }: { initialLayout?: 'de
     views={{
       Map: <TemperatureProvider><div className="bench-map-layout">{benchMap}<PointDataPanel stack={selections} layers={layers} catalog={catalog} location={location} instant={selectedMs} drawn={drawn} runs={runChoices} focusReady={!site || (registeredFocus?.latitude === location.latitude && registeredFocus.longitude === location.longitude)} /></div></TemperatureProvider>,
       Series: nativeSeries,
+      WeatherNext: weatherNext,
       Sky: <SkyView {...skyProps} />,
       Activity: activity,
       Sources: sourcesView,

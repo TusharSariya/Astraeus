@@ -56,6 +56,7 @@ class NativeLimits:
     metadata_bytes: int = 4 * 1024**2
     received_bytes: int = 512 * 1024**2
     decoded_chunk_bytes: int = 128 * 1024**2
+    object_bytes: int = 512 * 1024**2
     operations: int = 270
     seconds: float = 60
 
@@ -81,8 +82,8 @@ class NativeStatisticsReader:
         self.transport, self.limits = transport, limits
 
     def read_grid(self, selection: WeatherNextSelection, *, now: datetime, acquisition_scope: str = HISTORICAL, region: str = "avalon") -> NativeReading:
-        if selection.fields != ("total_cloud_cover_mean",):
-            raise NativeUnavailable("Only total cloud mean supports grid delivery")
+        if len(selection.fields)!=1 or selection.fields[0] not in tuple(level+"_cloud_cover_mean" for level in ("total","low","medium","high")):
+            raise NativeUnavailable("Only four native cloud means support grid delivery")
         return self.read_point(selection, now=now, acquisition_scope=acquisition_scope, regional=region)
 
     def read_point(self, selection: WeatherNextSelection, *, now: datetime, acquisition_scope: str = HISTORICAL, regional: bool = False, inventory: bool = False) -> NativeReading:
@@ -159,7 +160,7 @@ class NativeStatisticsReader:
                 local = Path(directory)
 
                 def decode(name, value, relative, index):
-                    body = fetch(relative, self.limits.received_bytes)
+                    body = fetch(relative, min(self.limits.received_bytes,self.limits.object_bytes))
                     target = local / name
                     target.mkdir(exist_ok=True)
                     (target / "zarr.json").write_text(json.dumps(value))

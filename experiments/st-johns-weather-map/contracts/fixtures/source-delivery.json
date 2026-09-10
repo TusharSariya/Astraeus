@@ -40571,7 +40571,7 @@
             "coverage_description": "Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise",
             "directional_time_selection": true,
             "field": "weathernext3_low_cloud_cover_mean",
-            "grid": false,
+            "grid": true,
             "levels": [
               "low cloud"
             ],
@@ -40733,7 +40733,7 @@
             "coverage_description": "Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise",
             "directional_time_selection": true,
             "field": "weathernext3_medium_cloud_cover_mean",
-            "grid": false,
+            "grid": true,
             "levels": [
               "middle cloud"
             ],
@@ -40895,7 +40895,7 @@
             "coverage_description": "Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise",
             "directional_time_selection": true,
             "field": "weathernext3_high_cloud_cover_mean",
-            "grid": false,
+            "grid": true,
             "levels": [
               "high cloud"
             ],
@@ -43973,7 +43973,7 @@
             "coverage_description": "Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise",
             "directional_time_selection": true,
             "field": "weathernext3_low_cloud_cover_mean",
-            "grid": false,
+            "grid": true,
             "levels": [
               "low cloud"
             ],
@@ -44135,7 +44135,7 @@
             "coverage_description": "Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise",
             "directional_time_selection": true,
             "field": "weathernext3_medium_cloud_cover_mean",
-            "grid": false,
+            "grid": true,
             "levels": [
               "middle cloud"
             ],
@@ -44297,7 +44297,7 @@
             "coverage_description": "Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise",
             "directional_time_selection": true,
             "field": "weathernext3_high_cloud_cover_mean",
-            "grid": false,
+            "grid": true,
             "levels": [
               "high cloud"
             ],

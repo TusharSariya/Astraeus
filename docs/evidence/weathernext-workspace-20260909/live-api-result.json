@@ -1,0 +1,2829 @@
+{
+  "id": "3rpFYNriOF-4WqLsqrt98VHz",
+  "run_id": "20260909_12hr_01_preds",
+  "pages": 8,
+  "durations": [
+    41.82867741701193,
+    32.863504750072025,
+    33.49688991694711,
+    33.290063332999125,
+    33.33916420908645,
+    33.04751779104117,
+    32.78746979206335,
+    32.814855374977924
+  ],
+  "all_48_values_available": true,
+  "first_page_preserved": true,
+  "selection": {
+    "latitude": 47.6186,
+    "longitude": -52.7519,
+    "start": "2026-09-09T20:00:00Z",
+    "end": "2026-09-09T22:00:00Z",
+    "run_time": "2026-09-09T12:00:00Z",
+    "section": "clouds",
+    "product": "default"
+  },
+  "expires_at": "2026-09-09T21:08:30.175204Z",
+  "data": [
+    {
+      "time": "2026-09-09T20:00:00Z",
+      "quantity": "total_cloud_cover",
+      "values": {
+        "mean": 99.76816177368164,
+        "p10": 99.4194746017456,
+        "p25": 99.77255463600159,
+        "p50": 99.93622899055481,
+        "p75": 100.0,
+        "p90": 100.0
+      },
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "google-weathernext-3-statistics",
+        "artifact_revision": "6426c84f5f6354b91bf95fe3931d8e3d766ab10c9f75c42f1c744eaae842ce65",
+        "provider": "Google",
+        "product": "weathernext_3_0_0_statistics",
+        "forecast_centre": "Google",
+        "run_time": "2026-09-09T12:00:00Z",
+        "valid_time": "2026-09-09T20:00:00Z",
+        "retrieval_time": "2026-09-09T20:09:03.362420Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "column",
+        "original_units": "(0 - 1)",
+        "normalized_units": "percent",
+        "native_resolution": "0.1 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "unknown",
+          "flags": [
+            "internal_experimental_forecast",
+            "provider_qc_not_supplied"
+          ]
+        },
+        "coverage": {
+          "status": "partial",
+          "fraction": null
+        },
+        "freshness": {
+          "status": "unknown",
+          "age_seconds": 0,
+          "threshold_seconds": null
+        },
+        "licence": "GDM Real-Time Weather Forecasting Experimental Data Terms of Use (2026-09-03), section 2(a) internal use; historical data transitions to CC BY 4.0 under the provider terms; https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
+        "attribution": "WeatherNext data provided by Google",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "weathernext-local-temperature-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": {
+          "source_id": "google-weathernext-3-statistics",
+          "product_id": "weathernext_3_0_0_statistics",
+          "provider_run_id": "20260909_12hr_01_preds",
+          "run_time": "2026-09-09T12:00:00Z",
+          "valid_time": "2026-09-09T20:00:00Z",
+          "retrieval_time": "2026-09-09T20:09:03.362420Z",
+          "expires_at": "2026-09-09T21:08:30.175204Z",
+          "normalized_sha256": "6426c84f5f6354b91bf95fe3931d8e3d766ab10c9f75c42f1c744eaae842ce65",
+          "transport_receipts": [
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 182540,
+              "sha256": "0a4fd47c390f2f08e3aea6a198a2fbad546546f98b177756a846fd4e5481f3f4",
+              "completed_at": "2026-09-09T20:08:32.350231Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 247,
+              "sha256": "57e7e2127c85341f798d5b4834c07a661f3595881f80646eae6a23a131219f71",
+              "completed_at": "2026-09-09T20:08:33.631411Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17,
+              "sha256": "1b1e87eef1594dc3e508a21fbe69efeea94081c6a715d377ecc539eecb003e3e",
+              "completed_at": "2026-09-09T20:08:34.856863Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "b66a1bb378ca3b26b08356b3b76cb05f45e95aeadc3b7486e67b57087188b7b6",
+              "completed_at": "2026-09-09T20:08:36.070820Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 4886,
+              "sha256": "0ac72b3a68b65bc68696510153063fa27afd2098624fb749bda2ab2883970c84",
+              "completed_at": "2026-09-09T20:08:37.288896Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 250,
+              "sha256": "7b5794692b73063327c9893b06143fb475ee0bf9f923cad32bac880ab622aa18",
+              "completed_at": "2026-09-09T20:08:38.486326Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 568,
+              "sha256": "46641c3bb159c9d175a052cee4820c5e72b1b25633a8b08c1acb7d60e5db4f1c",
+              "completed_at": "2026-09-09T20:08:39.683627Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "f39af393ae3014b8174fc26d8f9e5b3e67b1072b023a59b8bd85b7fbde75ad15",
+              "completed_at": "2026-09-09T20:08:40.898933Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 9944,
+              "sha256": "742fff3d2e3ba228aebb1845914c6807300690069ba91b99562f09c6fdcc8141",
+              "completed_at": "2026-09-09T20:08:42.030815Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_mean%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_mean%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "926e6659703e0de9c5c1a27481a93d9ee264532e1a12070d0326056e772ccc75",
+              "completed_at": "2026-09-09T20:08:43.228684Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_mean%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655418107",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_mean%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655418107",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 21892083,
+              "sha256": "9830df35821954f569da6d551454b396f4b021c89531d1b2e752121720fdd9f8",
+              "completed_at": "2026-09-09T20:08:45.552619Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p10%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p10%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "f018403e70fafe103d75deba2299f168d2d4e4372f969350b9d602cc4188e34d",
+              "completed_at": "2026-09-09T20:08:47.081093Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p10%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651885569",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p10%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651885569",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 19959209,
+              "sha256": "d3232bb71374c56487bb9f1e833debe15d168d365d385d219a0a0e4ecb3a5e48",
+              "completed_at": "2026-09-09T20:08:49.320745Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p25%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p25%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "ff75485233ce4d3b9e73259a6564ffc0f29a71c6ecfddf97cd807d243cc87bc7",
+              "completed_at": "2026-09-09T20:08:50.669139Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p25%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651803775",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p25%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651803775",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 20361228,
+              "sha256": "fe5fc39c391cefce1321ccb6988e230645235c9cd4dbdd9dc34c68cdc107935a",
+              "completed_at": "2026-09-09T20:08:52.932195Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p50%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p50%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "d095d3fd6da2f190e8ed2e9eb2d60c083b5d270f1c17110ae0cd7c21963405d7",
+              "completed_at": "2026-09-09T20:08:54.236447Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p50%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651306754",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p50%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651306754",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 20259360,
+              "sha256": "7474bf5e675c08ac7679f07f4c3a67438093d1518f7b80fdf559b834a76dbf16",
+              "completed_at": "2026-09-09T20:08:56.500221Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p75%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p75%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "c01a39ed8b1539835267cd696f52abbd17073532c123af8c50ebd7bd5fee6229",
+              "completed_at": "2026-09-09T20:08:57.839711Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p75%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655181794",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p75%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655181794",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 15036833,
+              "sha256": "9a7b86efb8168187c85d96597c44feca051072b03b6ce581cb06f62612001358",
+              "completed_at": "2026-09-09T20:08:59.991503Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p90%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p90%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "cab150789dd96e77148b0e9c5e3928d9f2a205b5e2157131ac28db29b02266d7",
+              "completed_at": "2026-09-09T20:09:01.325935Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p90%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651630874",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p90%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651630874",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 11526218,
+              "sha256": "31318b531d02074889d53b0f33cf968adf271282a488ef43818069d53fafa87f",
+              "completed_at": "2026-09-09T20:09:03.280562Z"
+            }
+          ]
+        },
+        "native_variable": "total_cloud_cover_mean",
+        "sampled_latitude": 47.599998474121094,
+        "sampled_longitude": -52.79998779296875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": "Pinned experimental run; freshness is not established",
+        "ensemble": {
+          "family": "google-weathernext-3",
+          "statistic": "ensemble_mean",
+          "computed_here": false,
+          "member_set": null,
+          "refusal": null,
+          "quantile": null,
+          "threshold": null,
+          "threshold_units": null,
+          "comparison": null,
+          "averaging_window_hours": null
+        },
+        "display_primary_eligible": false
+      }
+    },
+    {
+      "time": "2026-09-09T21:00:00Z",
+      "quantity": "total_cloud_cover",
+      "values": {
+        "mean": 99.5248556137085,
+        "p10": 98.80237579345703,
+        "p25": 99.76482391357422,
+        "p50": 99.96851682662964,
+        "p75": 100.0,
+        "p90": 100.0
+      },
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "google-weathernext-3-statistics",
+        "artifact_revision": "ebafd8e08b76dcb6ca5905b4e6a7b5eaff0936112cac86f54839b9c9c5b161a4",
+        "provider": "Google",
+        "product": "weathernext_3_0_0_statistics",
+        "forecast_centre": "Google",
+        "run_time": "2026-09-09T12:00:00Z",
+        "valid_time": "2026-09-09T21:00:00Z",
+        "retrieval_time": "2026-09-09T20:09:36.228822Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "column",
+        "original_units": "(0 - 1)",
+        "normalized_units": "percent",
+        "native_resolution": "0.1 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "unknown",
+          "flags": [
+            "internal_experimental_forecast",
+            "provider_qc_not_supplied"
+          ]
+        },
+        "coverage": {
+          "status": "partial",
+          "fraction": null
+        },
+        "freshness": {
+          "status": "unknown",
+          "age_seconds": 0,
+          "threshold_seconds": null
+        },
+        "licence": "GDM Real-Time Weather Forecasting Experimental Data Terms of Use (2026-09-03), section 2(a) internal use; historical data transitions to CC BY 4.0 under the provider terms; https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
+        "attribution": "WeatherNext data provided by Google",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "weathernext-local-temperature-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": {
+          "source_id": "google-weathernext-3-statistics",
+          "product_id": "weathernext_3_0_0_statistics",
+          "provider_run_id": "20260909_12hr_01_preds",
+          "run_time": "2026-09-09T12:00:00Z",
+          "valid_time": "2026-09-09T21:00:00Z",
+          "retrieval_time": "2026-09-09T20:09:36.228822Z",
+          "expires_at": "2026-09-09T21:08:30.175204Z",
+          "normalized_sha256": "ebafd8e08b76dcb6ca5905b4e6a7b5eaff0936112cac86f54839b9c9c5b161a4",
+          "transport_receipts": [
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 182540,
+              "sha256": "0a4fd47c390f2f08e3aea6a198a2fbad546546f98b177756a846fd4e5481f3f4",
+              "completed_at": "2026-09-09T20:09:05.479204Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 247,
+              "sha256": "57e7e2127c85341f798d5b4834c07a661f3595881f80646eae6a23a131219f71",
+              "completed_at": "2026-09-09T20:09:06.678354Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17,
+              "sha256": "1b1e87eef1594dc3e508a21fbe69efeea94081c6a715d377ecc539eecb003e3e",
+              "completed_at": "2026-09-09T20:09:07.869664Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "b66a1bb378ca3b26b08356b3b76cb05f45e95aeadc3b7486e67b57087188b7b6",
+              "completed_at": "2026-09-09T20:09:09.086809Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 4886,
+              "sha256": "0ac72b3a68b65bc68696510153063fa27afd2098624fb749bda2ab2883970c84",
+              "completed_at": "2026-09-09T20:09:10.277744Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 250,
+              "sha256": "7b5794692b73063327c9893b06143fb475ee0bf9f923cad32bac880ab622aa18",
+              "completed_at": "2026-09-09T20:09:11.466772Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 568,
+              "sha256": "46641c3bb159c9d175a052cee4820c5e72b1b25633a8b08c1acb7d60e5db4f1c",
+              "completed_at": "2026-09-09T20:09:12.657241Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "f39af393ae3014b8174fc26d8f9e5b3e67b1072b023a59b8bd85b7fbde75ad15",
+              "completed_at": "2026-09-09T20:09:13.844127Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 9944,
+              "sha256": "742fff3d2e3ba228aebb1845914c6807300690069ba91b99562f09c6fdcc8141",
+              "completed_at": "2026-09-09T20:09:15.045361Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_mean%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_mean%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "6dcc851829fb29f6bafb49754bf0ec6fe5bc606ae217e1afdade1dc676a0646b",
+              "completed_at": "2026-09-09T20:09:16.251887Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_mean%2Fc%2F8%2F0%2F0?alt=media&generation=1788980072365899",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_mean%2Fc%2F8%2F0%2F0?alt=media&generation=1788980072365899",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 21915756,
+              "sha256": "36ce13beb0b1607ad1620ea2b75f21b40f0ab8a01c42480b09cf61d52157ac76",
+              "completed_at": "2026-09-09T20:09:18.592643Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p10%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p10%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "0c32b9cf664d9586a14e6a7bd3a6889ed84c6e59920c6eeca4901aacac4b5944",
+              "completed_at": "2026-09-09T20:09:19.911572Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p10%2Fc%2F8%2F0%2F0?alt=media&generation=1788980064305260",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p10%2Fc%2F8%2F0%2F0?alt=media&generation=1788980064305260",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 19931033,
+              "sha256": "23dec3e099f6bb12459ec9cbea9b859bbeadf04000537810b49eb9cc758d9200",
+              "completed_at": "2026-09-09T20:09:22.275808Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p25%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p25%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "db0220d9ec2314aa8a7cf72e1a18ffbc60b57c5f190870de0e29f3eb328e508f",
+              "completed_at": "2026-09-09T20:09:23.594780Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p25%2Fc%2F8%2F0%2F0?alt=media&generation=1788980058105787",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p25%2Fc%2F8%2F0%2F0?alt=media&generation=1788980058105787",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 20356893,
+              "sha256": "b6f1112ec33aa6af3649e175d669d77d49a2951055e81c86e5bd8696d16f4f88",
+              "completed_at": "2026-09-09T20:09:25.914329Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p50%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p50%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "b76dc3665a293f85d6b5dbbf3106ab0b282ddc7629d1105c0e528fadce88658b",
+              "completed_at": "2026-09-09T20:09:27.185912Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p50%2Fc%2F8%2F0%2F0?alt=media&generation=1788980069080689",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p50%2Fc%2F8%2F0%2F0?alt=media&generation=1788980069080689",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 20155043,
+              "sha256": "93473e601ab887f97b6ce875962c0331f12852a301d52346198e48e20fcbe6a1",
+              "completed_at": "2026-09-09T20:09:29.478482Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p75%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p75%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "4e32116ef06402f4c3fcd9ffce24381be1e38628e732c9215c3aa00b87a62098",
+              "completed_at": "2026-09-09T20:09:30.829738Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p75%2Fc%2F8%2F0%2F0?alt=media&generation=1788980055827723",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p75%2Fc%2F8%2F0%2F0?alt=media&generation=1788980055827723",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 14683419,
+              "sha256": "557ad32d010a8b845399da2f3fe2435b79f9b2771723096ac8079808db4a71d4",
+              "completed_at": "2026-09-09T20:09:32.895819Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p90%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p90%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "7edce6dd11ff2cdfc078b16fadc01d3d35a8c578c490647c594b20550c73cc2f",
+              "completed_at": "2026-09-09T20:09:34.201808Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p90%2Fc%2F8%2F0%2F0?alt=media&generation=1788980067323140",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Ftotal_cloud_cover_p90%2Fc%2F8%2F0%2F0?alt=media&generation=1788980067323140",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 11283786,
+              "sha256": "0317dfc15b27c3203510198437afc738831272f1093b96108f6359a4678067ac",
+              "completed_at": "2026-09-09T20:09:36.148426Z"
+            }
+          ]
+        },
+        "native_variable": "total_cloud_cover_mean",
+        "sampled_latitude": 47.599998474121094,
+        "sampled_longitude": -52.79998779296875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": "Pinned experimental run; freshness is not established",
+        "ensemble": {
+          "family": "google-weathernext-3",
+          "statistic": "ensemble_mean",
+          "computed_here": false,
+          "member_set": null,
+          "refusal": null,
+          "quantile": null,
+          "threshold": null,
+          "threshold_units": null,
+          "comparison": null,
+          "averaging_window_hours": null
+        },
+        "display_primary_eligible": false
+      }
+    },
+    {
+      "time": "2026-09-09T20:00:00Z",
+      "quantity": "low_cloud_cover",
+      "values": {
+        "mean": 99.75164532661438,
+        "p10": 99.50563907623291,
+        "p25": 99.6945858001709,
+        "p50": 99.94974732398987,
+        "p75": 100.0,
+        "p90": 100.0
+      },
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "google-weathernext-3-statistics",
+        "artifact_revision": "8e3a74ceb54583b4ab6d9ad28d44c3b21010917990f7a844def69b5545210fa6",
+        "provider": "Google",
+        "product": "weathernext_3_0_0_statistics",
+        "forecast_centre": "Google",
+        "run_time": "2026-09-09T12:00:00Z",
+        "valid_time": "2026-09-09T20:00:00Z",
+        "retrieval_time": "2026-09-09T20:10:09.727748Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "low cloud",
+        "original_units": "(0 - 1)",
+        "normalized_units": "percent",
+        "native_resolution": "0.1 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "unknown",
+          "flags": [
+            "internal_experimental_forecast",
+            "provider_qc_not_supplied"
+          ]
+        },
+        "coverage": {
+          "status": "partial",
+          "fraction": null
+        },
+        "freshness": {
+          "status": "unknown",
+          "age_seconds": 0,
+          "threshold_seconds": null
+        },
+        "licence": "GDM Real-Time Weather Forecasting Experimental Data Terms of Use (2026-09-03), section 2(a) internal use; historical data transitions to CC BY 4.0 under the provider terms; https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
+        "attribution": "WeatherNext data provided by Google",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "weathernext-local-temperature-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": {
+          "source_id": "google-weathernext-3-statistics",
+          "product_id": "weathernext_3_0_0_statistics",
+          "provider_run_id": "20260909_12hr_01_preds",
+          "run_time": "2026-09-09T12:00:00Z",
+          "valid_time": "2026-09-09T20:00:00Z",
+          "retrieval_time": "2026-09-09T20:10:09.727748Z",
+          "expires_at": "2026-09-09T21:08:30.175204Z",
+          "normalized_sha256": "8e3a74ceb54583b4ab6d9ad28d44c3b21010917990f7a844def69b5545210fa6",
+          "transport_receipts": [
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 182540,
+              "sha256": "0a4fd47c390f2f08e3aea6a198a2fbad546546f98b177756a846fd4e5481f3f4",
+              "completed_at": "2026-09-09T20:09:38.408154Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 247,
+              "sha256": "57e7e2127c85341f798d5b4834c07a661f3595881f80646eae6a23a131219f71",
+              "completed_at": "2026-09-09T20:09:39.589647Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17,
+              "sha256": "1b1e87eef1594dc3e508a21fbe69efeea94081c6a715d377ecc539eecb003e3e",
+              "completed_at": "2026-09-09T20:09:40.831848Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "b66a1bb378ca3b26b08356b3b76cb05f45e95aeadc3b7486e67b57087188b7b6",
+              "completed_at": "2026-09-09T20:09:42.018696Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 4886,
+              "sha256": "0ac72b3a68b65bc68696510153063fa27afd2098624fb749bda2ab2883970c84",
+              "completed_at": "2026-09-09T20:09:43.238858Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 250,
+              "sha256": "7b5794692b73063327c9893b06143fb475ee0bf9f923cad32bac880ab622aa18",
+              "completed_at": "2026-09-09T20:09:44.476931Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 568,
+              "sha256": "46641c3bb159c9d175a052cee4820c5e72b1b25633a8b08c1acb7d60e5db4f1c",
+              "completed_at": "2026-09-09T20:09:45.761479Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "f39af393ae3014b8174fc26d8f9e5b3e67b1072b023a59b8bd85b7fbde75ad15",
+              "completed_at": "2026-09-09T20:09:46.944174Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 9944,
+              "sha256": "742fff3d2e3ba228aebb1845914c6807300690069ba91b99562f09c6fdcc8141",
+              "completed_at": "2026-09-09T20:09:48.207758Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_mean%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_mean%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "e030611b8a9233001aa4b1fc382184547b93c568dc054115640e4300a1d34c3b",
+              "completed_at": "2026-09-09T20:09:49.416256Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_mean%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655309838",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_mean%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655309838",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 23042159,
+              "sha256": "455b1db70b0dd6b9f94f072034c2dc0feecaf8c0f480429de69b376dac62d239",
+              "completed_at": "2026-09-09T20:09:51.867577Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p10%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p10%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "1df885bcf41e10e6919b3a9eea69b66af8ceffb9f241086785e65e892c8eae4d",
+              "completed_at": "2026-09-09T20:09:53.250453Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p10%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647127117",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p10%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647127117",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17824886,
+              "sha256": "5c5d6157698ad7d8ad9f78459ad73d01b6fa774e8a2e6ebaab970559d17fe1e9",
+              "completed_at": "2026-09-09T20:09:55.511034Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p25%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p25%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "791453db9afce01dd49259480d58dbe0eabd3e897e92834c252b842fe41f9b85",
+              "completed_at": "2026-09-09T20:09:56.836887Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p25%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647373424",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p25%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647373424",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 19231033,
+              "sha256": "b6f56a4d091915aeb4e2728619c76ffa7f93305c6031e0e7db57d23026312005",
+              "completed_at": "2026-09-09T20:09:59.059147Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p50%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p50%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "1614ed56364f0dacb28ec078b1957756ef7a1ffd5239fc4704cf2e29a531dbb5",
+              "completed_at": "2026-09-09T20:10:00.361881Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p50%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647371801",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p50%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647371801",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 21579633,
+              "sha256": "697a59713e3ea907c90d3049b86718abe634fb3b138e9ba194fabc190ee857d1",
+              "completed_at": "2026-09-09T20:10:02.661555Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p75%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p75%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "725a8b69824901035efd4cb53d2c07fb3e650ff081943a3e7ded593df1e51afb",
+              "completed_at": "2026-09-09T20:10:03.976227Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p75%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647755979",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p75%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647755979",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 19352807,
+              "sha256": "4ed98dcb257a0961773eab1c495d37cbbcc4d50668b1af0c3a52df7ea7e11149",
+              "completed_at": "2026-09-09T20:10:06.219413Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p90%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p90%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "4135b6f21d2e309a26ecf85518089eb3bbc576737e32d0af472a5acda6daae9c",
+              "completed_at": "2026-09-09T20:10:07.499075Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p90%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651093747",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p90%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651093747",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 16320592,
+              "sha256": "8d18370eddb7babeebf29aa0c1d9c306db42cf264ceff2d9b2577b14de6fb958",
+              "completed_at": "2026-09-09T20:10:09.619133Z"
+            }
+          ]
+        },
+        "native_variable": "low_cloud_cover_mean",
+        "sampled_latitude": 47.599998474121094,
+        "sampled_longitude": -52.79998779296875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": "Pinned experimental run; freshness is not established",
+        "ensemble": {
+          "family": "google-weathernext-3",
+          "statistic": "ensemble_mean",
+          "computed_here": false,
+          "member_set": null,
+          "refusal": null,
+          "quantile": null,
+          "threshold": null,
+          "threshold_units": null,
+          "comparison": null,
+          "averaging_window_hours": null
+        },
+        "display_primary_eligible": false
+      }
+    },
+    {
+      "time": "2026-09-09T21:00:00Z",
+      "quantity": "low_cloud_cover",
+      "values": {
+        "mean": 99.4677722454071,
+        "p10": 98.16755056381226,
+        "p25": 99.40273761749268,
+        "p50": 99.88830089569092,
+        "p75": 100.0,
+        "p90": 100.0
+      },
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "google-weathernext-3-statistics",
+        "artifact_revision": "fe34d6f6ce9bd2689c3beb9fd2d5ad6d90650f199bb9d778a062e67ae3e6da6d",
+        "provider": "Google",
+        "product": "weathernext_3_0_0_statistics",
+        "forecast_centre": "Google",
+        "run_time": "2026-09-09T12:00:00Z",
+        "valid_time": "2026-09-09T21:00:00Z",
+        "retrieval_time": "2026-09-09T20:10:43.023916Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "low cloud",
+        "original_units": "(0 - 1)",
+        "normalized_units": "percent",
+        "native_resolution": "0.1 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "unknown",
+          "flags": [
+            "internal_experimental_forecast",
+            "provider_qc_not_supplied"
+          ]
+        },
+        "coverage": {
+          "status": "partial",
+          "fraction": null
+        },
+        "freshness": {
+          "status": "unknown",
+          "age_seconds": 0,
+          "threshold_seconds": null
+        },
+        "licence": "GDM Real-Time Weather Forecasting Experimental Data Terms of Use (2026-09-03), section 2(a) internal use; historical data transitions to CC BY 4.0 under the provider terms; https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
+        "attribution": "WeatherNext data provided by Google",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "weathernext-local-temperature-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": {
+          "source_id": "google-weathernext-3-statistics",
+          "product_id": "weathernext_3_0_0_statistics",
+          "provider_run_id": "20260909_12hr_01_preds",
+          "run_time": "2026-09-09T12:00:00Z",
+          "valid_time": "2026-09-09T21:00:00Z",
+          "retrieval_time": "2026-09-09T20:10:43.023916Z",
+          "expires_at": "2026-09-09T21:08:30.175204Z",
+          "normalized_sha256": "fe34d6f6ce9bd2689c3beb9fd2d5ad6d90650f199bb9d778a062e67ae3e6da6d",
+          "transport_receipts": [
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 182540,
+              "sha256": "0a4fd47c390f2f08e3aea6a198a2fbad546546f98b177756a846fd4e5481f3f4",
+              "completed_at": "2026-09-09T20:10:11.859204Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 247,
+              "sha256": "57e7e2127c85341f798d5b4834c07a661f3595881f80646eae6a23a131219f71",
+              "completed_at": "2026-09-09T20:10:13.048681Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17,
+              "sha256": "1b1e87eef1594dc3e508a21fbe69efeea94081c6a715d377ecc539eecb003e3e",
+              "completed_at": "2026-09-09T20:10:14.234697Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "b66a1bb378ca3b26b08356b3b76cb05f45e95aeadc3b7486e67b57087188b7b6",
+              "completed_at": "2026-09-09T20:10:15.466155Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 4886,
+              "sha256": "0ac72b3a68b65bc68696510153063fa27afd2098624fb749bda2ab2883970c84",
+              "completed_at": "2026-09-09T20:10:16.673447Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 250,
+              "sha256": "7b5794692b73063327c9893b06143fb475ee0bf9f923cad32bac880ab622aa18",
+              "completed_at": "2026-09-09T20:10:17.881213Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 568,
+              "sha256": "46641c3bb159c9d175a052cee4820c5e72b1b25633a8b08c1acb7d60e5db4f1c",
+              "completed_at": "2026-09-09T20:10:19.075736Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "f39af393ae3014b8174fc26d8f9e5b3e67b1072b023a59b8bd85b7fbde75ad15",
+              "completed_at": "2026-09-09T20:10:20.242742Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 9944,
+              "sha256": "742fff3d2e3ba228aebb1845914c6807300690069ba91b99562f09c6fdcc8141",
+              "completed_at": "2026-09-09T20:10:21.427093Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_mean%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_mean%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "59050911609666ff39aa89c78122c6b0bba1f2efc77e582b94927bdce55074d0",
+              "completed_at": "2026-09-09T20:10:22.625855Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_mean%2Fc%2F8%2F0%2F0?alt=media&generation=1788980073482535",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_mean%2Fc%2F8%2F0%2F0?alt=media&generation=1788980073482535",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 23054294,
+              "sha256": "86ecec141f1ce111b2e3190812464afb1c1a7ff81eac1216198c0849a235cfbe",
+              "completed_at": "2026-09-09T20:10:24.935195Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p10%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p10%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "cf413bb72540d0ce667b67382b6791e24d3faaf730f49ba0219638a1ec2c2836",
+              "completed_at": "2026-09-09T20:10:26.258835Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p10%2Fc%2F8%2F0%2F0?alt=media&generation=1788980064891985",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p10%2Fc%2F8%2F0%2F0?alt=media&generation=1788980064891985",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17769748,
+              "sha256": "94a67c0e8a47f9fbed2a6ccd540e5b1c34947378c6efb0a1ef79362d6290ee9a",
+              "completed_at": "2026-09-09T20:10:28.466732Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p25%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p25%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "4dfd4f4fcff9b77efd0e8943eece03f77c707f32bfa18115dc2daf99c99c9ccb",
+              "completed_at": "2026-09-09T20:10:29.815227Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p25%2Fc%2F8%2F0%2F0?alt=media&generation=1788980064660864",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p25%2Fc%2F8%2F0%2F0?alt=media&generation=1788980064660864",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 19296835,
+              "sha256": "10ed42b30a310f324f380e5363cb515f47eafeacc86c2910f185c062cffe6a13",
+              "completed_at": "2026-09-09T20:10:32.288257Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p50%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p50%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "fd01cac4fcaefb6a4ad1b3af81ab55baf16bfbbb0e18d0a8d6c6f676858cbdbb",
+              "completed_at": "2026-09-09T20:10:33.630610Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p50%2Fc%2F8%2F0%2F0?alt=media&generation=1788980073182067",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p50%2Fc%2F8%2F0%2F0?alt=media&generation=1788980073182067",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 21780379,
+              "sha256": "a782efc5eb21b5820f0b107a7be3476b747cd12dc221d36e5ec72f76e7f31998",
+              "completed_at": "2026-09-09T20:10:35.965106Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p75%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p75%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "09343c5bce31340c63f6d85ca968ea71818fc9c814f7a6942a1a7dc9dfe0e119",
+              "completed_at": "2026-09-09T20:10:37.273567Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p75%2Fc%2F8%2F0%2F0?alt=media&generation=1788980055543673",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p75%2Fc%2F8%2F0%2F0?alt=media&generation=1788980055543673",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 19028087,
+              "sha256": "106582f9f0cb8eceb628a4406ed9824b06189b593c1b5f0ce6450f3ba3394a73",
+              "completed_at": "2026-09-09T20:10:39.553691Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p90%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p90%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 269,
+              "sha256": "028fd8f18de303f7af185477a3607472f4c0b542924681d8758d1a268867899a",
+              "completed_at": "2026-09-09T20:10:40.865763Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p90%2Fc%2F8%2F0%2F0?alt=media&generation=1788980054424840",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flow_cloud_cover_p90%2Fc%2F8%2F0%2F0?alt=media&generation=1788980054424840",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 16174394,
+              "sha256": "36d503bc003670b2ca9d07277e7b187d6614ab3d29948763e68cfa9fd5528ffc",
+              "completed_at": "2026-09-09T20:10:42.915647Z"
+            }
+          ]
+        },
+        "native_variable": "low_cloud_cover_mean",
+        "sampled_latitude": 47.599998474121094,
+        "sampled_longitude": -52.79998779296875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": "Pinned experimental run; freshness is not established",
+        "ensemble": {
+          "family": "google-weathernext-3",
+          "statistic": "ensemble_mean",
+          "computed_here": false,
+          "member_set": null,
+          "refusal": null,
+          "quantile": null,
+          "threshold": null,
+          "threshold_units": null,
+          "comparison": null,
+          "averaging_window_hours": null
+        },
+        "display_primary_eligible": false
+      }
+    },
+    {
+      "time": "2026-09-09T20:00:00Z",
+      "quantity": "medium_cloud_cover",
+      "values": {
+        "mean": 0.10509626008570194,
+        "p10": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.060318305622786283,
+        "p90": 0.22402971517294645
+      },
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "google-weathernext-3-statistics",
+        "artifact_revision": "4f209715b3510190563719d34698d5c3057be9711f304752391bcc9249064e7a",
+        "provider": "Google",
+        "product": "weathernext_3_0_0_statistics",
+        "forecast_centre": "Google",
+        "run_time": "2026-09-09T12:00:00Z",
+        "valid_time": "2026-09-09T20:00:00Z",
+        "retrieval_time": "2026-09-09T20:11:16.369705Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "middle cloud",
+        "original_units": "(0 - 1)",
+        "normalized_units": "percent",
+        "native_resolution": "0.1 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "unknown",
+          "flags": [
+            "internal_experimental_forecast",
+            "provider_qc_not_supplied"
+          ]
+        },
+        "coverage": {
+          "status": "partial",
+          "fraction": null
+        },
+        "freshness": {
+          "status": "unknown",
+          "age_seconds": 0,
+          "threshold_seconds": null
+        },
+        "licence": "GDM Real-Time Weather Forecasting Experimental Data Terms of Use (2026-09-03), section 2(a) internal use; historical data transitions to CC BY 4.0 under the provider terms; https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
+        "attribution": "WeatherNext data provided by Google",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "weathernext-local-temperature-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": {
+          "source_id": "google-weathernext-3-statistics",
+          "product_id": "weathernext_3_0_0_statistics",
+          "provider_run_id": "20260909_12hr_01_preds",
+          "run_time": "2026-09-09T12:00:00Z",
+          "valid_time": "2026-09-09T20:00:00Z",
+          "retrieval_time": "2026-09-09T20:11:16.369705Z",
+          "expires_at": "2026-09-09T21:08:30.175204Z",
+          "normalized_sha256": "4f209715b3510190563719d34698d5c3057be9711f304752391bcc9249064e7a",
+          "transport_receipts": [
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 182540,
+              "sha256": "0a4fd47c390f2f08e3aea6a198a2fbad546546f98b177756a846fd4e5481f3f4",
+              "completed_at": "2026-09-09T20:10:45.137200Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 247,
+              "sha256": "57e7e2127c85341f798d5b4834c07a661f3595881f80646eae6a23a131219f71",
+              "completed_at": "2026-09-09T20:10:46.321454Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17,
+              "sha256": "1b1e87eef1594dc3e508a21fbe69efeea94081c6a715d377ecc539eecb003e3e",
+              "completed_at": "2026-09-09T20:10:47.485220Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "b66a1bb378ca3b26b08356b3b76cb05f45e95aeadc3b7486e67b57087188b7b6",
+              "completed_at": "2026-09-09T20:10:48.653895Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 4886,
+              "sha256": "0ac72b3a68b65bc68696510153063fa27afd2098624fb749bda2ab2883970c84",
+              "completed_at": "2026-09-09T20:10:49.872021Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 250,
+              "sha256": "7b5794692b73063327c9893b06143fb475ee0bf9f923cad32bac880ab622aa18",
+              "completed_at": "2026-09-09T20:10:51.119538Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 568,
+              "sha256": "46641c3bb159c9d175a052cee4820c5e72b1b25633a8b08c1acb7d60e5db4f1c",
+              "completed_at": "2026-09-09T20:10:52.306229Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "f39af393ae3014b8174fc26d8f9e5b3e67b1072b023a59b8bd85b7fbde75ad15",
+              "completed_at": "2026-09-09T20:10:53.609858Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 9944,
+              "sha256": "742fff3d2e3ba228aebb1845914c6807300690069ba91b99562f09c6fdcc8141",
+              "completed_at": "2026-09-09T20:10:54.851785Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_mean%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_mean%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 273,
+              "sha256": "9a7e1bc65211a87b25a3a5ca59a0eb7db2e28f1007b6650d1d0027e1317d549c",
+              "completed_at": "2026-09-09T20:10:56.037022Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_mean%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651728018",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_mean%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651728018",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 23795757,
+              "sha256": "036177ed3a4cd9b541cfc27729a0583cfee6552e888077dd921247a9da2a738e",
+              "completed_at": "2026-09-09T20:10:58.397584Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p10%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p10%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "7327b9bf247d2a238be0de9f4a7c1cd8ca652750735f302d41bb9f638bd05795",
+              "completed_at": "2026-09-09T20:10:59.752846Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p10%2Fc%2F7%2F0%2F0?alt=media&generation=1788979650906900",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p10%2Fc%2F7%2F0%2F0?alt=media&generation=1788979650906900",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 13359783,
+              "sha256": "0798643e4dd970f017245ee379f70d76247fa5b6de3fddda0941e53c0f1a46b8",
+              "completed_at": "2026-09-09T20:11:01.961017Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p25%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p25%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "9606611e06f86d662de0c1cb9e852d17584be0537a0deed05ce65423e73479a4",
+              "completed_at": "2026-09-09T20:11:03.190873Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p25%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647217199",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p25%2Fc%2F7%2F0%2F0?alt=media&generation=1788979647217199",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 16956394,
+              "sha256": "18d6e14f599e21e6c8a404f32f61651f04a673bf8aef1762c19418836cb1bebb",
+              "completed_at": "2026-09-09T20:11:05.464772Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p50%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p50%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "4b25db092cb4851def2070d0f41860c42e964ed09595b66a02a3286802c60394",
+              "completed_at": "2026-09-09T20:11:06.745902Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p50%2Fc%2F7%2F0%2F0?alt=media&generation=1788979642951967",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p50%2Fc%2F7%2F0%2F0?alt=media&generation=1788979642951967",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 22797570,
+              "sha256": "9b137426780618757176ce5f22a330ba834d135c936ae52175ae5f19645bdec2",
+              "completed_at": "2026-09-09T20:11:09.096352Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p75%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p75%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "f5c3db585da274ba06f1500ada32272611477b84a6c30f1efefe901032f998ea",
+              "completed_at": "2026-09-09T20:11:10.404647Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p75%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655101060",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p75%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655101060",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 21353525,
+              "sha256": "2296bbd79186e98e08253f33b820b55534970971ad092669728ab47f243a916c",
+              "completed_at": "2026-09-09T20:11:12.703171Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p90%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p90%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "3cc863ea8a7df89da5394f3652ac227cbea06255c458d106db0c68570fa7ab8c",
+              "completed_at": "2026-09-09T20:11:14.025093Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p90%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655251816",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p90%2Fc%2F7%2F0%2F0?alt=media&generation=1788979655251816",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 19773802,
+              "sha256": "6f33ae0c04859734d524723fdfb77d66aa4a81bc08ef096f4295ca64de0b66b7",
+              "completed_at": "2026-09-09T20:11:16.236278Z"
+            }
+          ]
+        },
+        "native_variable": "medium_cloud_cover_mean",
+        "sampled_latitude": 47.599998474121094,
+        "sampled_longitude": -52.79998779296875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": "Pinned experimental run; freshness is not established",
+        "ensemble": {
+          "family": "google-weathernext-3",
+          "statistic": "ensemble_mean",
+          "computed_here": false,
+          "member_set": null,
+          "refusal": null,
+          "quantile": null,
+          "threshold": null,
+          "threshold_units": null,
+          "comparison": null,
+          "averaging_window_hours": null
+        },
+        "display_primary_eligible": false
+      }
+    },
+    {
+      "time": "2026-09-09T21:00:00Z",
+      "quantity": "medium_cloud_cover",
+      "values": {
+        "mean": 0.06355522200465202,
+        "p10": 0.0,
+        "p25": 0.0,
+        "p50": 0.0,
+        "p75": 0.0724723853636533,
+        "p90": 0.16337188426405191
+      },
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "google-weathernext-3-statistics",
+        "artifact_revision": "8cdb1ae5280aff68cf7227e0e6cfa479459d20e3e3e2f795a25145da51263613",
+        "provider": "Google",
+        "product": "weathernext_3_0_0_statistics",
+        "forecast_centre": "Google",
+        "run_time": "2026-09-09T12:00:00Z",
+        "valid_time": "2026-09-09T21:00:00Z",
+        "retrieval_time": "2026-09-09T20:11:49.422734Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "middle cloud",
+        "original_units": "(0 - 1)",
+        "normalized_units": "percent",
+        "native_resolution": "0.1 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "unknown",
+          "flags": [
+            "internal_experimental_forecast",
+            "provider_qc_not_supplied"
+          ]
+        },
+        "coverage": {
+          "status": "partial",
+          "fraction": null
+        },
+        "freshness": {
+          "status": "unknown",
+          "age_seconds": 0,
+          "threshold_seconds": null
+        },
+        "licence": "GDM Real-Time Weather Forecasting Experimental Data Terms of Use (2026-09-03), section 2(a) internal use; historical data transitions to CC BY 4.0 under the provider terms; https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
+        "attribution": "WeatherNext data provided by Google",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "weathernext-local-temperature-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": {
+          "source_id": "google-weathernext-3-statistics",
+          "product_id": "weathernext_3_0_0_statistics",
+          "provider_run_id": "20260909_12hr_01_preds",
+          "run_time": "2026-09-09T12:00:00Z",
+          "valid_time": "2026-09-09T21:00:00Z",
+          "retrieval_time": "2026-09-09T20:11:49.422734Z",
+          "expires_at": "2026-09-09T21:08:30.175204Z",
+          "normalized_sha256": "8cdb1ae5280aff68cf7227e0e6cfa479459d20e3e3e2f795a25145da51263613",
+          "transport_receipts": [
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 182540,
+              "sha256": "0a4fd47c390f2f08e3aea6a198a2fbad546546f98b177756a846fd4e5481f3f4",
+              "completed_at": "2026-09-09T20:11:18.489224Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 247,
+              "sha256": "57e7e2127c85341f798d5b4834c07a661f3595881f80646eae6a23a131219f71",
+              "completed_at": "2026-09-09T20:11:19.654512Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17,
+              "sha256": "1b1e87eef1594dc3e508a21fbe69efeea94081c6a715d377ecc539eecb003e3e",
+              "completed_at": "2026-09-09T20:11:20.836746Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "b66a1bb378ca3b26b08356b3b76cb05f45e95aeadc3b7486e67b57087188b7b6",
+              "completed_at": "2026-09-09T20:11:22.001575Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 4886,
+              "sha256": "0ac72b3a68b65bc68696510153063fa27afd2098624fb749bda2ab2883970c84",
+              "completed_at": "2026-09-09T20:11:23.123293Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 250,
+              "sha256": "7b5794692b73063327c9893b06143fb475ee0bf9f923cad32bac880ab622aa18",
+              "completed_at": "2026-09-09T20:11:24.302188Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 568,
+              "sha256": "46641c3bb159c9d175a052cee4820c5e72b1b25633a8b08c1acb7d60e5db4f1c",
+              "completed_at": "2026-09-09T20:11:25.496582Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "f39af393ae3014b8174fc26d8f9e5b3e67b1072b023a59b8bd85b7fbde75ad15",
+              "completed_at": "2026-09-09T20:11:26.675997Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 9944,
+              "sha256": "742fff3d2e3ba228aebb1845914c6807300690069ba91b99562f09c6fdcc8141",
+              "completed_at": "2026-09-09T20:11:27.804812Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_mean%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_mean%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 273,
+              "sha256": "45416a68fe85609e14b5e15d9307b5fcdf067afb1cb17ae063c968625187d1ff",
+              "completed_at": "2026-09-09T20:11:28.961549Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_mean%2Fc%2F8%2F0%2F0?alt=media&generation=1788980061462992",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_mean%2Fc%2F8%2F0%2F0?alt=media&generation=1788980061462992",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 23800094,
+              "sha256": "6454f89725ac168968e4ffe4a349ddf2be2466277ee2e67e9eae7868af00dbe0",
+              "completed_at": "2026-09-09T20:11:31.457514Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p10%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p10%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "990646eae7238687194413c199cebbd0f9bb89ba2aef57ee511e288d9fa05429",
+              "completed_at": "2026-09-09T20:11:32.787630Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p10%2Fc%2F8%2F0%2F0?alt=media&generation=1788980073257276",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p10%2Fc%2F8%2F0%2F0?alt=media&generation=1788980073257276",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 13306287,
+              "sha256": "ba35107cacd5c0ee9d6c0bcaacc43d368398546cca82c89471d11001f86681c2",
+              "completed_at": "2026-09-09T20:11:34.841168Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p25%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p25%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "4ed41e69ed0cb349d003811268e7abecfc9e2bc0099affb8b3197a3f4938b4c5",
+              "completed_at": "2026-09-09T20:11:36.111656Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p25%2Fc%2F8%2F0%2F0?alt=media&generation=1788980057341519",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p25%2Fc%2F8%2F0%2F0?alt=media&generation=1788980057341519",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 16796942,
+              "sha256": "d79f254ac8df5f69203e7707531d280c70fa0708bd12c2d50afcd5523c5e588d",
+              "completed_at": "2026-09-09T20:11:38.247336Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p50%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p50%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "5e898a6089c232f3b4bd8a17871f1be81389fb9ddf76955d5741b0f3e164c727",
+              "completed_at": "2026-09-09T20:11:39.531685Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p50%2Fc%2F8%2F0%2F0?alt=media&generation=1788980069223339",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p50%2Fc%2F8%2F0%2F0?alt=media&generation=1788980069223339",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 22733238,
+              "sha256": "0dd91b269b80634bae633df8ca7b808400e96624b328b78c311632ad4e9aa4d4",
+              "completed_at": "2026-09-09T20:11:42.081313Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p75%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p75%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "0387b8a829d8e43ae7b9c8e4ef97a03b5e109b937cfd35325589dbde3ebfff63",
+              "completed_at": "2026-09-09T20:11:43.373628Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p75%2Fc%2F8%2F0%2F0?alt=media&generation=1788980054565351",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p75%2Fc%2F8%2F0%2F0?alt=media&generation=1788980054565351",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 21255029,
+              "sha256": "d7e5b9ff35853a0757ab76851da09a77f10b794da2a524996c46e2df23358b47",
+              "completed_at": "2026-09-09T20:11:45.646536Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p90%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p90%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 272,
+              "sha256": "2e65d5b011a235836b9f78dcedc6d4de6fdf7f315215d4088047ca436fed4011",
+              "completed_at": "2026-09-09T20:11:46.985709Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p90%2Fc%2F8%2F0%2F0?alt=media&generation=1788980067564088",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fmedium_cloud_cover_p90%2Fc%2F8%2F0%2F0?alt=media&generation=1788980067564088",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 19676874,
+              "sha256": "faa5e5f892b892718241aefe519f7dbbe8f916816500de9910ec50fc44af5b52",
+              "completed_at": "2026-09-09T20:11:49.293335Z"
+            }
+          ]
+        },
+        "native_variable": "medium_cloud_cover_mean",
+        "sampled_latitude": 47.599998474121094,
+        "sampled_longitude": -52.79998779296875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": "Pinned experimental run; freshness is not established",
+        "ensemble": {
+          "family": "google-weathernext-3",
+          "statistic": "ensemble_mean",
+          "computed_here": false,
+          "member_set": null,
+          "refusal": null,
+          "quantile": null,
+          "threshold": null,
+          "threshold_units": null,
+          "comparison": null,
+          "averaging_window_hours": null
+        },
+        "display_primary_eligible": false
+      }
+    },
+    {
+      "time": "2026-09-09T20:00:00Z",
+      "quantity": "high_cloud_cover",
+      "values": {
+        "mean": 0.06741214310750365,
+        "p10": 0.0,
+        "p25": 0.0,
+        "p50": 0.02570769574958831,
+        "p75": 0.06322058034129441,
+        "p90": 0.0878823921084404
+      },
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "google-weathernext-3-statistics",
+        "artifact_revision": "e476faa5778c2dade448ebaea6ad09bb633ee6a2a6d0bc17456f5b7c9e042a80",
+        "provider": "Google",
+        "product": "weathernext_3_0_0_statistics",
+        "forecast_centre": "Google",
+        "run_time": "2026-09-09T12:00:00Z",
+        "valid_time": "2026-09-09T20:00:00Z",
+        "retrieval_time": "2026-09-09T20:12:22.217322Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "high cloud",
+        "original_units": "(0 - 1)",
+        "normalized_units": "percent",
+        "native_resolution": "0.1 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "unknown",
+          "flags": [
+            "internal_experimental_forecast",
+            "provider_qc_not_supplied"
+          ]
+        },
+        "coverage": {
+          "status": "partial",
+          "fraction": null
+        },
+        "freshness": {
+          "status": "unknown",
+          "age_seconds": 0,
+          "threshold_seconds": null
+        },
+        "licence": "GDM Real-Time Weather Forecasting Experimental Data Terms of Use (2026-09-03), section 2(a) internal use; historical data transitions to CC BY 4.0 under the provider terms; https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
+        "attribution": "WeatherNext data provided by Google",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "weathernext-local-temperature-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": {
+          "source_id": "google-weathernext-3-statistics",
+          "product_id": "weathernext_3_0_0_statistics",
+          "provider_run_id": "20260909_12hr_01_preds",
+          "run_time": "2026-09-09T12:00:00Z",
+          "valid_time": "2026-09-09T20:00:00Z",
+          "retrieval_time": "2026-09-09T20:12:22.217322Z",
+          "expires_at": "2026-09-09T21:08:30.175204Z",
+          "normalized_sha256": "e476faa5778c2dade448ebaea6ad09bb633ee6a2a6d0bc17456f5b7c9e042a80",
+          "transport_receipts": [
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 182540,
+              "sha256": "0a4fd47c390f2f08e3aea6a198a2fbad546546f98b177756a846fd4e5481f3f4",
+              "completed_at": "2026-09-09T20:11:51.631177Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 247,
+              "sha256": "57e7e2127c85341f798d5b4834c07a661f3595881f80646eae6a23a131219f71",
+              "completed_at": "2026-09-09T20:11:52.815197Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17,
+              "sha256": "1b1e87eef1594dc3e508a21fbe69efeea94081c6a715d377ecc539eecb003e3e",
+              "completed_at": "2026-09-09T20:11:53.990876Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "b66a1bb378ca3b26b08356b3b76cb05f45e95aeadc3b7486e67b57087188b7b6",
+              "completed_at": "2026-09-09T20:11:55.176396Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 4886,
+              "sha256": "0ac72b3a68b65bc68696510153063fa27afd2098624fb749bda2ab2883970c84",
+              "completed_at": "2026-09-09T20:11:56.388717Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 250,
+              "sha256": "7b5794692b73063327c9893b06143fb475ee0bf9f923cad32bac880ab622aa18",
+              "completed_at": "2026-09-09T20:11:57.559804Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 568,
+              "sha256": "46641c3bb159c9d175a052cee4820c5e72b1b25633a8b08c1acb7d60e5db4f1c",
+              "completed_at": "2026-09-09T20:11:58.760623Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "f39af393ae3014b8174fc26d8f9e5b3e67b1072b023a59b8bd85b7fbde75ad15",
+              "completed_at": "2026-09-09T20:11:59.954149Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 9944,
+              "sha256": "742fff3d2e3ba228aebb1845914c6807300690069ba91b99562f09c6fdcc8141",
+              "completed_at": "2026-09-09T20:12:01.215785Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_mean%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_mean%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "b7ddf2f3ab8d4a25e544e1084e576b159f420a2e71739a060bf6186030a8c052",
+              "completed_at": "2026-09-09T20:12:02.387944Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_mean%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651632701",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_mean%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651632701",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 23666184,
+              "sha256": "bc0446387a923b1c99dc3f2143f78897a29cd650a110538e0bd7d1046de3820f",
+              "completed_at": "2026-09-09T20:12:04.717946Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p10%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p10%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "876f97a81393112112cf1bff045714603aa232837cdf47345349eef0b5a02b0f",
+              "completed_at": "2026-09-09T20:12:06.055611Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p10%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651438727",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p10%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651438727",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 10860047,
+              "sha256": "c6b36ea16a7d326f9d951497871c79d3162163ba3cd5ad93fbdd8aa64c5d7fa3",
+              "completed_at": "2026-09-09T20:12:07.952689Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p25%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p25%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "e35e747c0406cc3f63684087db376aab6b9ab4f9ffc2305553da4ad7eb1ab009",
+              "completed_at": "2026-09-09T20:12:09.201772Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p25%2Fc%2F7%2F0%2F0?alt=media&generation=1788979654984603",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p25%2Fc%2F7%2F0%2F0?alt=media&generation=1788979654984603",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 14547788,
+              "sha256": "773bbddf46e31f8d3e12c97a04d8ae6eadef3378b8af7c409fd945be5220b00e",
+              "completed_at": "2026-09-09T20:12:11.408684Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p50%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p50%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "16879c54c54067228eb0e4b5df140c41c2994ab3b00de76745da383778e9c444",
+              "completed_at": "2026-09-09T20:12:12.662476Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p50%2Fc%2F7%2F0%2F0?alt=media&generation=1788979643260296",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p50%2Fc%2F7%2F0%2F0?alt=media&generation=1788979643260296",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 22119710,
+              "sha256": "d35dec4e69fdf5701142500e6482efd6f26bb568e8311be8f214541608dc0235",
+              "completed_at": "2026-09-09T20:12:14.984303Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p75%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p75%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "ba9de29e8cbbef4420f13c56bd85ef84b0f5caaff5a554a4f886b4a6c7e472ff",
+              "completed_at": "2026-09-09T20:12:16.296770Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p75%2Fc%2F7%2F0%2F0?alt=media&generation=1788979643285315",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p75%2Fc%2F7%2F0%2F0?alt=media&generation=1788979643285315",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 20633852,
+              "sha256": "b1c48e5645d3f20e21f44726fd7d9aa2e1fece60e8d64ae12cf5b48e0061b33f",
+              "completed_at": "2026-09-09T20:12:18.524625Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p90%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p90%2Fc%2F7%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "c1bb16bf5a8fe3dcbceed2cb978b73f64936c827a558d213a54b5985ca5f74ed",
+              "completed_at": "2026-09-09T20:12:19.837126Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p90%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651214814",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p90%2Fc%2F7%2F0%2F0?alt=media&generation=1788979651214814",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 18185266,
+              "sha256": "636a6465af2f678eac91404a55d8eb7ecfbd63340263f85acbda0fe3b15eb65f",
+              "completed_at": "2026-09-09T20:12:22.089621Z"
+            }
+          ]
+        },
+        "native_variable": "high_cloud_cover_mean",
+        "sampled_latitude": 47.599998474121094,
+        "sampled_longitude": -52.79998779296875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": "Pinned experimental run; freshness is not established",
+        "ensemble": {
+          "family": "google-weathernext-3",
+          "statistic": "ensemble_mean",
+          "computed_here": false,
+          "member_set": null,
+          "refusal": null,
+          "quantile": null,
+          "threshold": null,
+          "threshold_units": null,
+          "comparison": null,
+          "averaging_window_hours": null
+        },
+        "display_primary_eligible": false
+      }
+    },
+    {
+      "time": "2026-09-09T21:00:00Z",
+      "quantity": "high_cloud_cover",
+      "values": {
+        "mean": 0.025532249128445983,
+        "p10": 0.0,
+        "p25": 0.0,
+        "p50": 0.011524427100084722,
+        "p75": 0.044798877206631005,
+        "p90": 0.06806005840189755
+      },
+      "provenance": {
+        "data_mode": "live",
+        "operational": false,
+        "evidence_class": "retrieved",
+        "source_id": "google-weathernext-3-statistics",
+        "artifact_revision": "1862bbf36c20e6040deaa85828d89c095adeb89dc9d25ba01fb012a851a1fa4c",
+        "provider": "Google",
+        "product": "weathernext_3_0_0_statistics",
+        "forecast_centre": "Google",
+        "run_time": "2026-09-09T12:00:00Z",
+        "valid_time": "2026-09-09T21:00:00Z",
+        "retrieval_time": "2026-09-09T20:12:55.042734Z",
+        "member": null,
+        "member_control": null,
+        "vertical_level": "high cloud",
+        "original_units": "(0 - 1)",
+        "normalized_units": "percent",
+        "native_resolution": "0.1 degree",
+        "native_crs": "EPSG:4326",
+        "quality": {
+          "status": "unknown",
+          "flags": [
+            "internal_experimental_forecast",
+            "provider_qc_not_supplied"
+          ]
+        },
+        "coverage": {
+          "status": "partial",
+          "fraction": null
+        },
+        "freshness": {
+          "status": "unknown",
+          "age_seconds": 0,
+          "threshold_seconds": null
+        },
+        "licence": "GDM Real-Time Weather Forecasting Experimental Data Terms of Use (2026-09-03), section 2(a) internal use; historical data transitions to CC BY 4.0 under the provider terms; https://storage.googleapis.com/weathernext-public/terms-of-use.pdf",
+        "attribution": "WeatherNext data provided by Google",
+        "derivation": null,
+        "derivation_version": null,
+        "derivation_citation": null,
+        "derivation_inputs": [],
+        "delivery_kind": "published_cell",
+        "source_display_primary": false,
+        "intermediary": null,
+        "intermediary_method": null,
+        "adapter_version": "weathernext-local-temperature-v1",
+        "native_report": null,
+        "demand_acquisition": null,
+        "aqhi_acquisition": null,
+        "swob_acquisition": null,
+        "source_acquisition": {
+          "source_id": "google-weathernext-3-statistics",
+          "product_id": "weathernext_3_0_0_statistics",
+          "provider_run_id": "20260909_12hr_01_preds",
+          "run_time": "2026-09-09T12:00:00Z",
+          "valid_time": "2026-09-09T21:00:00Z",
+          "retrieval_time": "2026-09-09T20:12:55.042734Z",
+          "expires_at": "2026-09-09T21:08:30.175204Z",
+          "normalized_sha256": "1862bbf36c20e6040deaa85828d89c095adeb89dc9d25ba01fb012a851a1fa4c",
+          "transport_receipts": [
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fzarr.json?alt=media&generation=1788979243055338",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 182540,
+              "sha256": "0a4fd47c390f2f08e3aea6a198a2fbad546546f98b177756a846fd4e5481f3f4",
+              "completed_at": "2026-09-09T20:12:24.401617Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 247,
+              "sha256": "57e7e2127c85341f798d5b4834c07a661f3595881f80646eae6a23a131219f71",
+              "completed_at": "2026-09-09T20:12:25.574780Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Finit_time%2Fc?alt=media&generation=1788979242028946",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 17,
+              "sha256": "1b1e87eef1594dc3e508a21fbe69efeea94081c6a715d377ecc539eecb003e3e",
+              "completed_at": "2026-09-09T20:12:26.779830Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "b66a1bb378ca3b26b08356b3b76cb05f45e95aeadc3b7486e67b57087188b7b6",
+              "completed_at": "2026-09-09T20:12:27.983807Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flat_0p1%2Fc%2F0?alt=media&generation=1788979243618329",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 4886,
+              "sha256": "0ac72b3a68b65bc68696510153063fa27afd2098624fb749bda2ab2883970c84",
+              "completed_at": "2026-09-09T20:12:29.150906Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 250,
+              "sha256": "7b5794692b73063327c9893b06143fb475ee0bf9f923cad32bac880ab622aa18",
+              "completed_at": "2026-09-09T20:12:30.335561Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flead_time%2Fc%2F0?alt=media&generation=1788979243682802",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 568,
+              "sha256": "46641c3bb159c9d175a052cee4820c5e72b1b25633a8b08c1acb7d60e5db4f1c",
+              "completed_at": "2026-09-09T20:12:31.538713Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 249,
+              "sha256": "f39af393ae3014b8174fc26d8f9e5b3e67b1072b023a59b8bd85b7fbde75ad15",
+              "completed_at": "2026-09-09T20:12:32.707770Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Flon_0p1%2Fc%2F0?alt=media&generation=1788979243913213",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 9944,
+              "sha256": "742fff3d2e3ba228aebb1845914c6807300690069ba91b99562f09c6fdcc8141",
+              "completed_at": "2026-09-09T20:12:33.893772Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_mean%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_mean%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 271,
+              "sha256": "ece25a52c4b68f0fa055807cdd4b1a0de93eb76a232d9add367d24b6c1f72fd8",
+              "completed_at": "2026-09-09T20:12:35.095874Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_mean%2Fc%2F8%2F0%2F0?alt=media&generation=1788980053560402",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_mean%2Fc%2F8%2F0%2F0?alt=media&generation=1788980053560402",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 23661480,
+              "sha256": "1bf659083317fb968f8063888345084bef73afb25c89fa8ab6c4b87693925720",
+              "completed_at": "2026-09-09T20:12:37.440278Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p10%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p10%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "86fcdc282c3e09d06d0c3b47ccfcc4ab10fd6b8787e94fd0de4c2616fa868760",
+              "completed_at": "2026-09-09T20:12:38.765779Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p10%2Fc%2F8%2F0%2F0?alt=media&generation=1788980072986807",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p10%2Fc%2F8%2F0%2F0?alt=media&generation=1788980072986807",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 10812243,
+              "sha256": "69c7937fbef1e935a3db9cceaac44b43558ef88a33f9dd7fd015c19354f936f0",
+              "completed_at": "2026-09-09T20:12:40.853575Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p25%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p25%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "d511d6d677bb41e91fd07cce7b67d8bc075f82e50e3c50843b792add8ce70d74",
+              "completed_at": "2026-09-09T20:12:42.088848Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p25%2Fc%2F8%2F0%2F0?alt=media&generation=1788980053954283",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p25%2Fc%2F8%2F0%2F0?alt=media&generation=1788980053954283",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 14567952,
+              "sha256": "f1aad854e42a6923e7feac73aa164fcbe1d2da5e7b0bee53d80f10a61ee0b9c9",
+              "completed_at": "2026-09-09T20:12:44.113589Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p50%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p50%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "2a4ab838e14b508eb4ef253918cc2236b55d2808eb9c37f1e84032bdae6ded7c",
+              "completed_at": "2026-09-09T20:12:45.363622Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p50%2Fc%2F8%2F0%2F0?alt=media&generation=1788980063769898",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p50%2Fc%2F8%2F0%2F0?alt=media&generation=1788980063769898",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 22258275,
+              "sha256": "19bcb17fd9a3b2715d14e37076205109b6875526c17d0511dffe9402e08cb03f",
+              "completed_at": "2026-09-09T20:12:47.677114Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p75%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p75%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "c8ce782f363fb29c354a1d058fdb9a5013b690a84b76652b34265a01816844c9",
+              "completed_at": "2026-09-09T20:12:49.016457Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p75%2Fc%2F8%2F0%2F0?alt=media&generation=1788980056204116",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p75%2Fc%2F8%2F0%2F0?alt=media&generation=1788980056204116",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 20743979,
+              "sha256": "1d7880c4b31aad41d0ab6e3da3685ec64bd40b3e2fe490c312b2ba451055d926",
+              "completed_at": "2026-09-09T20:12:51.415515Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p90%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p90%2Fc%2F8%2F0%2F0?fields=bucket%2Cname%2Cgeneration%2Cetag%2Csize",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 270,
+              "sha256": "ebd2b8f3ce310b0022fd5377cfad204f392ccf77c0ac59548e61ce1b795d4d44",
+              "completed_at": "2026-09-09T20:12:52.738580Z"
+            },
+            {
+              "url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p90%2Fc%2F8%2F0%2F0?alt=media&generation=1788980059572259",
+              "effective_url": "https://storage.googleapis.com/storage/v1/b/weathernext3_statistics_spatial/o/weathernext_3_0_0_statistics%2Fzarr%2F2026_to_present%2F20260909_12hr_01_preds%2Fpredictions.zarr%2Fhigh_cloud_cover_p90%2Fc%2F8%2F0%2F0?alt=media&generation=1788980059572259",
+              "http_status": 200,
+              "request_headers": {
+                "Accept-Encoding": "identity"
+              },
+              "response_headers": {},
+              "byte_size": 18153772,
+              "sha256": "22cb8783196ea135b94ace787bd22d39b37a062f71249d004778916d86a9ed2a",
+              "completed_at": "2026-09-09T20:12:54.921598Z"
+            }
+          ]
+        },
+        "native_variable": "high_cloud_cover_mean",
+        "sampled_latitude": 47.599998474121094,
+        "sampled_longitude": -52.79998779296875,
+        "sample_distance_km": null,
+        "sample_method": "rectilinear",
+        "contributing_evidence": [],
+        "contributors": [],
+        "last_valid_time": null,
+        "run_stale": null,
+        "run_stale_reason": "Pinned experimental run; freshness is not established",
+        "ensemble": {
+          "family": "google-weathernext-3",
+          "statistic": "ensemble_mean",
+          "computed_here": false,
+          "member_set": null,
+          "refusal": null,
+          "quantile": null,
+          "threshold": null,
+          "threshold_units": null,
+          "comparison": null,
+          "averaging_window_hours": null
+        },
+        "display_primary_eligible": false
+      }
+    }
+  ]
+}

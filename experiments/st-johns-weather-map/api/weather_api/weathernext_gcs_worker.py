@@ -32,12 +32,14 @@ def main():
             return base64.b64decode(self.call({'op':'read','identity':asdict(identity),'max_bytes':max_bytes})['body'],validate=True)
     try:
         request = receive()
+        from weather_api.weathernext_limits import MAX_ACQUISITION_BYTES, MAX_OBJECT_BYTES, MAX_FIELDS, operation_limit
         cap=request.get('max_received_bytes',16*1024**2)
-        if type(cap) is not int or not 0<cap<=64*1024**2: raise ValueError('worker byte cap')
+        if type(cap) is not int or not 0<cap<=MAX_ACQUISITION_BYTES: raise ValueError('worker byte cap')
         selection = WeatherNextSelection(datetime.fromisoformat(request['initialization']),datetime.fromisoformat(request['valid_time']),
                                          request['latitude'],request['longitude'],tuple(request['fields']))
+        if len(selection.fields)>MAX_FIELDS: raise ValueError('worker field cap')
         reader = NativeStatisticsReader(Transport(),limits=NativeLimits(metadata_bytes=256*1024,received_bytes=cap,
-                                         decoded_chunk_bytes=128*1024**2,operations=30,seconds=85))
+                                         decoded_chunk_bytes=128*1024**2,object_bytes=MAX_OBJECT_BYTES,operations=operation_limit(len(selection.fields),regional=request.get("regional",False),inventory=request.get("inventory",False)),seconds=85))
         result = (reader.read_grid if request.get("regional", False) else reader.read_point)(
                                          selection,now=datetime.fromisoformat(request['now']),
                                          acquisition_scope=request.get('acquisition_scope','historical'),

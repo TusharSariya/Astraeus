@@ -7,7 +7,7 @@ import type { View } from './focusUrl'
 
 function Harness() {
   const [view, setView] = useState<View>('Map'); const [dock, setDock] = useState<View | null>(null)
-  return <WorkbenchShell view={view} dock={dock} onView={setView} onDock={setDock} focus="47.5, -52.6 · 2026-09-07T12:00:00Z" status="Unavailable" statusLabel="Unavailable" timeline={<input aria-label="Shared timeline" type="range" />} views={{ Map: <p>Map content</p>, Series: <p>Series content</p>, Sources: <p>Source content</p>, Sky: <p>Sky content</p>, Activity: <p>Activity content</p> }} />
+  return <WorkbenchShell view={view} dock={dock} onView={setView} onDock={setDock} focus="47.5, -52.6 · 2026-09-07T12:00:00Z" status="Unavailable" statusLabel="Unavailable" timeline={<input aria-label="Shared timeline" type="range" />} views={{WeatherNext:"WeatherNext", Map: <p>Map content</p>, Series: <p>Series content</p>, Sources: <p>Source content</p>, Sky: <p>Sky content</p>, Activity: <p>Activity content</p> }} />
 }
 describe('Bench composition', () => {
   it('replaces a companion and moves a docked view to the stage without duplication', async () => {
@@ -34,7 +34,7 @@ describe('Bench composition', () => {
 
 it('keeps provenance available in fullscreen and returns expansion focus to its opener', async () => {
   const user = userEvent.setup()
-  render(<WorkbenchShell view="Map" dock={null} onView={() => {}} onDock={() => {}} focus="Focus" status="Status" timeline="Time" views={{Map:'Map',Sources:'Sources',Series:'Series',Sky:'Sky',Activity:'Activity'}} inspector={<aside aria-label="Evidence inspector"><h2>Inspected reading</h2><button>Close inspector</button></aside>} />)
+  render(<WorkbenchShell view="Map" dock={null} onView={() => {}} onDock={() => {}} focus="Focus" status="Status" timeline="Time" views={{WeatherNext:"WeatherNext",Map:'Map',Sources:'Sources',Series:'Series',Sky:'Sky',Activity:'Activity'}} inspector={<aside aria-label="Evidence inspector"><h2>Inspected reading</h2><button>Close inspector</button></aside>} />)
   await user.click(screen.getByText('View · Map'))
   await user.click(screen.getByRole('button', {name:'Expand Map'}))
   expect(screen.getByRole('complementary', {name:'Evidence inspector'})).toBeInTheDocument()
@@ -48,7 +48,7 @@ it('starts views on demand and retains their DOM and local state when switching 
   function StatefulMap() { const [camera, setCamera] = useState('original'); return <input aria-label="Map camera state" value={camera} onChange={event => setCamera(event.target.value)} /> }
   function RetainedHarness() {
     const [view, setView] = useState<View>('Series'); const [dock, setDock] = useState<View | null>(null)
-    return <WorkbenchShell view={view} dock={dock} onView={setView} onDock={setDock} focus="Focus" status="Status" timeline="Time" views={{Map:<StatefulMap />, Series:'Series', Sky:'Sky', Activity:'Activity', Sources:'Sources'}} />
+    return <WorkbenchShell view={view} dock={dock} onView={setView} onDock={setDock} focus="Focus" status="Status" timeline="Time" views={{WeatherNext:"WeatherNext",Map:<StatefulMap />, Series:'Series', Sky:'Sky', Activity:'Activity', Sources:'Sources'}} />
   }
   render(<RetainedHarness />)
   expect(screen.queryByLabelText('Map camera state')).not.toBeInTheDocument()
@@ -66,7 +66,7 @@ it('replaces provenance with Layers without losing its search or Escape return',
   const user = userEvent.setup()
   function OverlayHarness() {
     const [inspected, setInspected] = useState(false)
-    return <WorkbenchShell view="Map" dock={null} onView={() => {}} onDock={() => {}} focus="Focus" status="Status" timeline="Time" views={{Map:'Map',Series:'Series',Sky:'Sky',Activity:'Activity',Sources:'Sources'}} layers={<><input aria-label="Layer search" /><button onClick={() => setInspected(true)}>Inspect layer</button></>} inspector={inspected ? <aside aria-label="Evidence inspector">Provenance</aside> : undefined} onDismissInspector={() => setInspected(false)} />
+    return <WorkbenchShell view="Map" dock={null} onView={() => {}} onDock={() => {}} focus="Focus" status="Status" timeline="Time" views={{WeatherNext:"WeatherNext",Map:'Map',Series:'Series',Sky:'Sky',Activity:'Activity',Sources:'Sources'}} layers={<><input aria-label="Layer search" /><button onClick={() => setInspected(true)}>Inspect layer</button></>} inspector={inspected ? <aside aria-label="Evidence inspector">Provenance</aside> : undefined} onDismissInspector={() => setInspected(false)} />
   }
   render(<OverlayHarness />)
   const opener = screen.getByRole('button', {name:'Layers'})
