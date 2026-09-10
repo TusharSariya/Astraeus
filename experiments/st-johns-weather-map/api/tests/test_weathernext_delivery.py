@@ -142,9 +142,9 @@ def test_cache_cannot_bypass_historical_permission(payload):
     with pytest.raises(WeatherNextDeliveryUnavailable):reader.read_point(47.5,-52.7,VALID)
 
 
-def test_explicit_64mib_ceiling_keeps_lower_default():
+def test_explicit_1gib_ceiling_keeps_lower_default():
     from weather_api.weathernext_gcs_bridge import AccountedGCSTransport,CAP,MAX_CAP
-    assert CAP==16*1024**2 and MAX_CAP==64*1024**2
+    assert CAP==16*1024**2 and MAX_CAP==1024**3
     assert AccountedGCSTransport(token_provider=lambda **_:'fixture',max_received_bytes=MAX_CAP).max_received_bytes==MAX_CAP
     with pytest.raises(ValueError):AccountedGCSTransport(token_provider=lambda **_:'fixture',max_received_bytes=MAX_CAP+1)
 
@@ -202,3 +202,15 @@ def test_comparison_partial_batch_preserves_unread_metadata_receipt(payload):
     assert len(values)==1 and values[0].value==pytest.approx(6.85)
     assert failures=={BY_NATIVE[missing].key:'Source acquisition budget reached for this field'}
     assert len(values[0].provenance.source_acquisition.transport_receipts)==7
+
+
+def test_workspace_retention_deadline_is_fixed_and_other_consumers_keep_default(payload):
+    reader=service(payload)
+    until=NOW+timedelta(minutes=50)
+    retained=reader.read_batch(47.5,-52.7,VALID,fields=('temperature_2m',),retention_until=until)[0]
+    assert retained.provenance.source_acquisition.expires_at==until
+    assert retained.provenance.source_acquisition.retrieval_time==NOW
+    default=reader.read_batch(47.5,-52.7,VALID,fields=('temperature_2m',))[0]
+    assert default.provenance.source_acquisition.expires_at==NOW+timedelta(seconds=60)
+    capped=reader.read_batch(47.5,-52.7,VALID,fields=('temperature_2m',),retention_until=NOW+timedelta(days=1))[0]
+    assert capped.provenance.source_acquisition.expires_at==NOW+timedelta(hours=1)

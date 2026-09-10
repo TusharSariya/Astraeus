@@ -10,6 +10,8 @@ from .source_contract import ContractModel
 
 SOURCE = 'google-weathernext-3-statistics'
 FIELD = 'weathernext3_total_cloud_cover_mean'
+GridField = Literal['weathernext3_total_cloud_cover_mean','weathernext3_low_cloud_cover_mean','weathernext3_medium_cloud_cover_mean','weathernext3_high_cloud_cover_mean']
+FIELDS = tuple('weathernext3_'+level+'_cloud_cover_mean' for level in ('total','low','medium','high'))
 REGION = (-55.,46.5,-51.,48.5)
 REGIONS = {"avalon": REGION, "atlantic": (-70.,40.,-40.,55.)}
 ACQUISITIONS = threading.BoundedSemaphore(2)
@@ -17,7 +19,7 @@ ACQUISITIONS = threading.BoundedSemaphore(2)
 class SourceGridResponse(ContractModel):
     source_id: Literal['google-weathernext-3-statistics'] = SOURCE
     product: Literal['WeatherNext 3 local','WeatherNext 3 historical']
-    field: Literal['weathernext3_total_cloud_cover_mean'] = FIELD
+    field: GridField = FIELD
     selected_time: AwareDatetime
     native_time: AwareDatetime
     region: tuple[float,float,float,float] = REGION
@@ -51,6 +53,8 @@ class SourceGridResponse(ContractModel):
         if any(v is not None and (not math.isfinite(v) or not 0<=v<=100) for row in self.percentages for v in row):
             raise ValueError('cloud percent')
         p=self.provenance
+        if p.native_variable!=self.field.removeprefix('weathernext3_') or p.normalized_units!='percent' or not p.ensemble or p.ensemble.statistic!='ensemble_mean':
+            raise ValueError('grid native field identity')
         if p.valid_time!=self.native_time or p.source_id!=SOURCE or not p.source_acquisition or p.source_acquisition.valid_time!=self.native_time:
             raise ValueError('grid provenance')
         if len(self.model_dump_json().encode())>2*1024**2:
@@ -61,13 +65,14 @@ _lock=threading.Lock()
 _entries=OrderedDict()
 _inflight={}
 
-def key(service,native,region="avalon"):
-    return (service._scope_label,service.config.initialization,service.config.root_identity,native,FIELD,REGIONS[region])
+def key(service,native,region="avalon",field=FIELD):
+    return (service._scope_label,service.config.initialization,service.config.root_identity,native,field,REGIONS[region])
 
-def frame(service, selected, region="avalon"):
+def frame(service, selected, region="avalon", field=FIELD):
+    if field not in FIELDS: raise ValueError("unsupported cloud field")
     if region not in REGIONS: raise ValueError("unsupported grid region")
     native=service.resolve_point_time(selected)
-    identity=key(service,native,region)
+    identity=key(service,native,region,field)
     with _lock:
         entry=_entries.get(identity)
         if entry and entry[1] <= service._clock():
@@ -84,14 +89,14 @@ def frame(service, selected, region="avalon"):
         return future.result().model_copy(update={'selected_time':selected},deep=True)
     try:
         from .weathernext_query import WeatherNextSelection
-        selection=WeatherNextSelection(service.config.initialization,native,47.5,-53.,('total_cloud_cover_mean',))
+        selection=WeatherNextSelection(service.config.initialization,native,47.5,-53.,(field.removeprefix('weathernext3_'),))
         with ACQUISITIONS:
             payload=service._native_acquire(selection,regional=True if region=="avalon" else region)
         completed=service._utcnow()
         service._validate_time(selection,completed)
         evidence=service._point_evidence(payload,selection,completed,regional=True)
         grid=SourceGridResponse(product='WeatherNext 3 historical' if service._scope_label=='historical' else 'WeatherNext 3 local',
-            selected_time=selected,native_time=native,provenance=evidence.provenance,**{**payload['reading']['grid'], 'region':REGIONS[region]})
+            field=field,selected_time=selected,native_time=native,provenance=evidence.provenance,**{**payload['reading']['grid'], 'region':REGIONS[region]})
         size=len(grid.model_dump_json().encode())
         with _lock:
             _entries[identity]=(grid,service._clock()+60,size)
@@ -106,12 +111,14 @@ def frame(service, selected, region="avalon"):
         with _lock: _inflight.pop(identity,None)
 
 def cached_point(service,selection):
-    if selection.fields!=('total_cloud_cover_mean',): return None
+    if len(selection.fields)!=1: return None
+    field='weathernext3_'+selection.fields[0]
+    if field not in FIELDS: return None
     grid = None
     for region,(west,south,east,north) in REGIONS.items():
         if not (south<=selection.latitude<=north and west<=selection.longitude<=east): continue
         with _lock:
-            identity=key(service,selection.valid_time,region)
+            identity=key(service,selection.valid_time,region,field)
             entry=_entries.get(identity)
             future=_inflight.get(identity)
             grid=entry[0] if entry and entry[1]>service._clock() else None
@@ -127,7 +134,7 @@ def cached_point(service,selection):
         provenance.quality.flags=list(set(provenance.quality.flags+['native_fill_mask']))
     else:
         provenance.quality.flags=[f for f in provenance.quality.flags if f!='native_fill_mask']
-    return (EvidenceField(field=FIELD,key=FIELD,value=grid.percentages[yi][xi],storage='available-not-stored',provenance=provenance),)
+    return (EvidenceField(field=field,key=field,value=grid.percentages[yi][xi],storage='available-not-stored',provenance=provenance),)
 
 def selected_service(product,selected):
     import os

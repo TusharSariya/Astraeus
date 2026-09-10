@@ -3161,6 +3161,48 @@
         "title": "PointResponse",
         "type": "object"
       },
+      "ProbabilityBounds": {
+        "additionalProperties": false,
+        "properties": {
+          "approximate": {
+            "const": true,
+            "default": true,
+            "title": "Approximate",
+            "type": "boolean"
+          },
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "lower": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lower"
+          },
+          "upper": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upper"
+          }
+        },
+        "required": [
+          "basis"
+        ],
+        "title": "ProbabilityBounds",
+        "type": "object"
+      },
       "Provenance": {
         "additionalProperties": false,
         "properties": {
@@ -4852,8 +4894,13 @@
         "additionalProperties": false,
         "properties": {
           "field": {
-            "const": "weathernext3_total_cloud_cover_mean",
             "default": "weathernext3_total_cloud_cover_mean",
+            "enum": [
+              "weathernext3_total_cloud_cover_mean",
+              "weathernext3_low_cloud_cover_mean",
+              "weathernext3_medium_cloud_cover_mean",
+              "weathernext3_high_cloud_cover_mean"
+            ],
             "title": "Field",
             "type": "string"
           },
@@ -5545,6 +5592,41 @@
         "title": "SourceVariant",
         "type": "object"
       },
+      "Threshold": {
+        "additionalProperties": false,
+        "properties": {
+          "event": {
+            "default": "above",
+            "enum": [
+              "above",
+              "below"
+            ],
+            "title": "Event",
+            "type": "string"
+          },
+          "quantity": {
+            "maxLength": 100,
+            "title": "Quantity",
+            "type": "string"
+          },
+          "unit": {
+            "maxLength": 20,
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "quantity",
+          "unit",
+          "value"
+        ],
+        "title": "Threshold",
+        "type": "object"
+      },
       "TimeFrame": {
         "additionalProperties": false,
         "properties": {
@@ -5631,6 +5713,425 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WeatherNextEstimates": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "const": "retained_published_percentiles",
+            "default": "retained_published_percentiles",
+            "title": "Basis",
+            "type": "string"
+          },
+          "estimates": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProbabilityBounds"
+            },
+            "title": "Estimates",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "run_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Time"
+          },
+          "threshold": {
+            "$ref": "#/components/schemas/Threshold"
+          }
+        },
+        "required": [
+          "id",
+          "threshold",
+          "estimates",
+          "run_time"
+        ],
+        "title": "WeatherNextEstimates",
+        "type": "object"
+      },
+      "WeatherNextPage": {
+        "additionalProperties": false,
+        "properties": {
+          "completed_pages": {
+            "default": 0,
+            "title": "Completed Pages",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "native_times": {
+            "items": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "title": "Native Times",
+            "type": "array"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Offset"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "run_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Time"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/WeatherNextSample"
+            },
+            "title": "Samples",
+            "type": "array"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/WeatherNextSelectionRequest"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "unsupported",
+              "failed",
+              "credentials_required",
+              "missing"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "total_pages": {
+            "default": 0,
+            "title": "Total Pages",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "selection",
+          "run_time",
+          "run_id",
+          "native_times",
+          "samples",
+          "next_offset",
+          "expires_at",
+          "state"
+        ],
+        "title": "WeatherNextPage",
+        "type": "object"
+      },
+      "WeatherNextSample": {
+        "additionalProperties": false,
+        "properties": {
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summaries": {
+            "items": {
+              "$ref": "#/components/schemas/WeatherNextSummary"
+            },
+            "title": "Summaries",
+            "type": "array"
+          },
+          "time": {
+            "format": "date-time",
+            "title": "Time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time",
+          "summaries"
+        ],
+        "title": "WeatherNextSample",
+        "type": "object"
+      },
+      "WeatherNextSelectionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "latitude": {
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Longitude",
+            "type": "number"
+          },
+          "product": {
+            "default": "default",
+            "enum": [
+              "default",
+              "gridded",
+              "station",
+              "model",
+              "imerg",
+              "experimental"
+            ],
+            "title": "Product",
+            "type": "string"
+          },
+          "run_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Time"
+          },
+          "section": {
+            "default": "clouds",
+            "enum": [
+              "clouds",
+              "temperature",
+              "wind",
+              "precipitation",
+              "solar",
+              "pressure_sea"
+            ],
+            "title": "Section",
+            "type": "string"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude",
+          "start",
+          "end"
+        ],
+        "title": "WeatherNextSelectionRequest",
+        "type": "object"
+      },
+      "WeatherNextSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "conversion_offset": {
+            "title": "Conversion Offset",
+            "type": "number"
+          },
+          "conversion_scale": {
+            "title": "Conversion Scale",
+            "type": "number"
+          },
+          "grid": {
+            "title": "Grid",
+            "type": "string"
+          },
+          "interval_end": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval End"
+          },
+          "interval_start": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval Start"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "native_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Native Fields",
+            "type": "array"
+          },
+          "original_unit": {
+            "title": "Original Unit",
+            "type": "string"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "sampled_latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sampled Latitude"
+          },
+          "sampled_longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sampled Longitude"
+          },
+          "state": {
+            "enum": [
+              "available",
+              "missing",
+              "failed",
+              "expired"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "quantity",
+          "unit",
+          "values",
+          "state",
+          "native_fields",
+          "grid",
+          "original_unit",
+          "level",
+          "conversion_scale",
+          "conversion_offset"
+        ],
+        "title": "WeatherNextSummary",
         "type": "object"
       }
     }
@@ -6972,6 +7473,172 @@
           }
         },
         "summary": "Source Times"
+      }
+    },
+    "/api/experiments/weather/v0/weathernext/selection": {
+      "post": {
+        "operationId": "initial_api_experiments_weather_v0_weathernext_selection_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeatherNextSelectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherNextPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Initial"
+      }
+    },
+    "/api/experiments/weather/v0/weathernext/selection/{identity}": {
+      "delete": {
+        "operationId": "cancel_api_experiments_weather_v0_weathernext_selection__identity__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "title": "Identity",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel"
+      },
+      "get": {
+        "operationId": "page_api_experiments_weather_v0_weathernext_selection__identity__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "title": "Identity",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherNextPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Page"
+      }
+    },
+    "/api/experiments/weather/v0/weathernext/selection/{identity}/threshold": {
+      "post": {
+        "operationId": "estimate_api_experiments_weather_v0_weathernext_selection__identity__threshold_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identity",
+            "required": true,
+            "schema": {
+              "title": "Identity",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Threshold"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherNextEstimates"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Estimate"
       }
     }
   }

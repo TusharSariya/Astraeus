@@ -1,0 +1,20 @@
+{
+  "synthetic": true,
+  "providerRequests": 0,
+  "scienceApiRequests": 64,
+  "thresholdRequests": 21,
+  "errors": [],
+  "checks": [
+    "four aligned charts",
+    "shared timeline keyboard",
+    "keyboard details",
+    "no display science downloads",
+    "section cache reuse",
+    "three themes",
+    "390px narrow",
+    "actual browser 200% zoom",
+    "precipitation ties",
+    "pending pages",
+    "expiry"
+  ]
+}

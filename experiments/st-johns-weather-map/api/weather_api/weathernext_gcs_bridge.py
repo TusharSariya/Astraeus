@@ -21,7 +21,8 @@ from weather_api.weathernext_native import BUCKET, ObjectIdentity
 from weather_api.weathernext_query import WeatherNextSelection
 
 CAP = 16 * 1024**2
-MAX_CAP = 64 * 1024**2
+from .weathernext_limits import MAX_ACQUISITION_BYTES, MAX_OBJECT_BYTES, MAX_FIELDS, operation_limit
+MAX_CAP = MAX_ACQUISITION_BYTES
 ROOT = ObjectIdentity(BUCKET,'weathernext_3_0_0_statistics/zarr/2026_to_present/20260801_00hr_01_preds/predictions.zarr/zarr.json',
                       '1787792319369404','CLyhg7HNv5YDEAE=',182540)
 
@@ -32,17 +33,20 @@ class BridgeUnavailable(RuntimeError):
 
 class AccountedGCSTransport(WeatherNextGCSTransport):
     """Counts successful JSON metadata and payload response bodies together."""
-    def __init__(self, *, max_received_bytes=CAP, **kwargs):
+    def __init__(self, *, max_received_bytes=CAP, max_operations=30, **kwargs):
         if type(max_received_bytes) is not int or not 0 < max_received_bytes <= MAX_CAP:
             raise ValueError("WeatherNext received-byte cap")
+        if type(max_operations) is not int or not 0 < max_operations <= 270:
+            raise ValueError("WeatherNext operation cap")
+        self.max_operations = max_operations
         self.max_received_bytes = max_received_bytes
         super().__init__(**kwargs)
         self.received_bytes = 0
         self.operations = []
     def _get(self, name, params, *, cap, timeout, expected=None):
-        if len(self.operations) >= 30 or cap <= 0 or self.received_bytes >= self.max_received_bytes:
+        if len(self.operations) >= self.max_operations or cap <= 0 or self.received_bytes >= self.max_received_bytes:
             raise BridgeUnavailable('WeatherNext operation or byte budget')
-        effective = min(cap, self.max_received_bytes-self.received_bytes)
+        effective = min(cap, MAX_OBJECT_BYTES, self.max_received_bytes-self.received_bytes)
         if expected is not None and expected.size > effective:
             raise BridgeUnavailable('WeatherNext chunk exceeds remaining byte budget')
         operation={'name':name,'kind':'media' if expected else 'metadata','generation':expected.generation if expected else None}
@@ -120,9 +124,9 @@ def _read_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentit
     expected_prefix=f'weathernext_3_0_0_statistics/zarr/2026_to_present/{selection.initialization:%Y%m%d_%H}hr_01_preds/predictions.zarr/'
     if (root_identity.bucket != BUCKET or root_identity.name != expected_prefix+'zarr.json'
             or not root_identity.generation.isdecimal() or not root_identity.etag or not 0<root_identity.size<=256*1024
-            or not 1 <= len(selection.fields) <= 24 or not 0<timeout<=90):
+            or not 1 <= len(selection.fields) <= MAX_FIELDS or not 0<timeout<=90):
         raise BridgeUnavailable('WeatherNext explicit root or point bound')
-    transport=transport or AccountedGCSTransport(token_provider=GcloudProfileToken('astraeus'),max_received_bytes=max_received_bytes)
+    transport=transport or AccountedGCSTransport(token_provider=GcloudProfileToken('astraeus'),max_received_bytes=max_received_bytes,max_operations=operation_limit(len(selection.fields),regional=regional,inventory=inventory))
     started=time.monotonic()
     deadline=started+timeout
     process=None
@@ -175,7 +179,7 @@ def _read_point(selection: WeatherNextSelection, *, root_identity: ObjectIdentit
                         'elapsed_seconds':time.monotonic()-started,'worker_operations':calls,'payload_bytes':payload_bytes,
                         'http_response_bytes':getattr(transport,'received_bytes',None),'http_objects':getattr(transport,'operations',[])}}
             calls+=1
-            if calls>(10 if inventory else 30): raise BridgeUnavailable('WeatherNext worker operation cap')
+            if calls>operation_limit(len(selection.fields),regional=regional,inventory=inventory): raise BridgeUnavailable('WeatherNext worker operation cap')
             if op=='describe':
                 name=message['name']
                 if message['bucket']!=BUCKET or not name.startswith(expected_prefix): raise BridgeUnavailable('WeatherNext worker path')

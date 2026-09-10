@@ -29,7 +29,7 @@ FIELD='temperature_2m'
 TTL=60
 MAX_ENTRIES=8
 MAX_CACHE_BYTES=256*1024
-MAX_ACQUISITION_BYTES=64*1024**2
+from .weathernext_limits import MAX_ACQUISITION_BYTES, operation_limit
 
 
 class WeatherNextDeliveryUnavailable(RuntimeError):
@@ -70,7 +70,7 @@ def _time(value):
     return result.astimezone(UTC)
 
 
-def point_evidence(payload, selection, configuration, *, completed_at, data_mode='live', scope='historical', regional=False, selected_field=None):
+def point_evidence(payload, selection, configuration, *, completed_at, data_mode='live', scope='historical', regional=False, selected_field=None, retention_seconds=TTL):
     """Validate bridge identity before canonical K-to-degC representation."""
     if scope not in ('historical', 'internal_experimental_forecast'):
         raise ValueError('WeatherNext evidence scope')
@@ -131,7 +131,7 @@ def point_evidence(payload, selection, configuration, *, completed_at, data_mode
     digest=hashlib.sha256(json.dumps(raw,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
     acquisition=SourceAcquisition(source_id=SOURCE_ID,product_id=PRODUCT,provider_run_id=configuration.run_id,
         run_time=selection.initialization,valid_time=selection.valid_time,retrieval_time=completed_at,
-        expires_at=completed_at+timedelta(seconds=TTL),normalized_sha256=digest,transport_receipts=tuple(transfers))
+        expires_at=completed_at+timedelta(seconds=retention_seconds),normalized_sha256=digest,transport_receipts=tuple(transfers))
     flags=[('internal_experimental_forecast' if local else 'historical_forecast'),'provider_qc_not_supplied']+(['native_fill_mask'] if value is None else [])
     return EvidenceField(field=mapping.key,key=mapping.key,value=None if value is None else value*mapping.scale+mapping.offset,storage='available-not-stored',
         provenance=Provenance(data_mode=data_mode,evidence_class='retrieved',source_id=SOURCE_ID,provider='Google',
@@ -167,7 +167,7 @@ class WeatherNextHistoricalDelivery:
         self._failures=OrderedDict()
 
     def _native_acquire(self,selection, *, regional=False):
-        transport=AccountedGCSTransport(token_provider=runtime_token_provider(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES)
+        transport=AccountedGCSTransport(token_provider=runtime_token_provider(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES,max_operations=operation_limit(len(selection.fields),regional=regional))
         return read_historical_point(selection,root_identity=self.config.root_identity,now=self._utcnow(),transport=transport,
                                      max_received_bytes=MAX_ACQUISITION_BYTES,regional=regional)
 
@@ -194,7 +194,7 @@ class WeatherNextHistoricalDelivery:
     def _point_evidence(self, payload, selection, completed, *, regional=False):
         return point_evidence(payload,selection,self.config,completed_at=completed,data_mode=self._data_mode,regional=regional)
 
-    def read_batch(self, latitude, longitude, selected, *, fields, run='latest', report_failures=False):
+    def read_batch(self, latitude, longitude, selected, *, fields, run='latest', report_failures=False, retention_until=None):
         """One native acquisition shares coordinate metadata/chunks for all charts."""
         if run not in ('latest', self.config.run_id):
             raise WeatherNextDeliveryUnavailable('WeatherNext configured run only')
@@ -208,9 +208,10 @@ class WeatherNextHistoricalDelivery:
             payload=self._acquire(selection)
         completed=self._utcnow()
         self._validate_time(selection, completed)
+        retention_seconds=TTL if retention_until is None else min(3600,max(0,(retention_until-completed).total_seconds()))
         evidence = tuple(point_evidence(payload, selection, self.config, completed_at=completed,
             data_mode=self._data_mode, scope='historical' if self._scope_label=='historical' else 'internal_experimental_forecast',
-            selected_field=native['field']) for native in payload['reading']['values'])
+            selected_field=native['field'], retention_seconds=retention_seconds) for native in payload['reading']['values'])
         failures={BY_NATIVE[native].key:'Source acquisition budget reached for this field' for native in payload['reading'].get('unavailable_fields',[])}
         return (evidence, failures) if report_failures else evidence
 
@@ -297,7 +298,7 @@ class WeatherNextLocalExperimentalDelivery(WeatherNextHistoricalDelivery):
     def _native_acquire(self, selection, *, regional=False):
         # Lazy import leaves the historical path independent of this bridge.
         from .weathernext_gcs_bridge import read_local_experimental_point
-        transport=AccountedGCSTransport(token_provider=runtime_token_provider(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES)
+        transport=AccountedGCSTransport(token_provider=runtime_token_provider(self.config.gcloud_profile),max_received_bytes=MAX_ACQUISITION_BYTES,max_operations=operation_limit(len(selection.fields),regional=regional))
         return read_local_experimental_point(selection,root_identity=self.config.root_identity,
             now=self._utcnow(),transport=transport,max_received_bytes=MAX_ACQUISITION_BYTES,regional=regional)
 
@@ -315,7 +316,7 @@ class WeatherNextLocalExperimentalDelivery(WeatherNextHistoricalDelivery):
 def surface_descriptors(product):
     return tuple(SourceCapability(source_id=SOURCE_ID,product_id=PRODUCT,field=m.key,
         variants=[SourceVariant(kind='provider_statistic',statistic=m.statistic,quantile=m.quantile)],
-        levels=[m.level],point=True,grid=m.native=="total_cloud_cover_mean",point_product=product,native_series=False,
+        levels=[m.level],point=True,grid=m.native in tuple(level+"_cloud_cover_mean" for level in ("total","low","medium","high")),point_product=product,native_series=False,
         point_time_kind='forecast',directional_time_selection=True,run_selection='not_applicable',
         time_semantics='Exact native hourly lead, or next native hour under directional selection, within configured run',
         coverage_description='Bounded internal surface statistics point; native coordinate and mask verified on read; no latest-run freshness promise')

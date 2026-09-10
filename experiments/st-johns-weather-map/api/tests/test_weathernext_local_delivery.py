@@ -109,7 +109,7 @@ def test_default_acquisition_uses_only_local_bridge_and_existing_cap(local_paylo
     monkeypatch.setattr(bridge,'read_local_experimental_point',read,raising=False)
     reader=WeatherNextLocalExperimentalDelivery(configuration(local_payload),utcnow=lambda:NOW)
     assert reader.read_point(47.5,-52.7,VALID)[0].value == pytest.approx(6.85)
-    assert len(called)==1 and called[0][1]['max_received_bytes']==64*1024**2
+    assert len(called)==1 and called[0][1]['max_received_bytes']==1024**3
     assert called[0][1]['root_identity']==reader.config.root_identity
     assert called[0][1]['transport']._token_provider.profile=='astraeus'
 

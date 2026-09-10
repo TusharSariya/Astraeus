@@ -54,6 +54,7 @@ from .ephemeris import EPHEMERIS_ID, EPHEMERIS_SHA256
 from .registry_api import router as registry_router
 from .desktop_series import router as series_router
 from .forecast_comparison import router as comparison_router
+from .weathernext_workspace import router as weathernext_workspace_router
 from .activity import router as activity_router
 from .models import (
     CatalogResponse,
@@ -288,6 +289,7 @@ def require_core_coverage(latitude: float, longitude: float) -> None:
 app.include_router(registry_router, prefix=PREFIX)
 app.include_router(series_router, prefix=PREFIX)
 app.include_router(comparison_router, prefix=PREFIX)
+app.include_router(weathernext_workspace_router, prefix=PREFIX)
 from .ifs_selection import router as ifs_router
 app.include_router(ifs_router, prefix=PREFIX)
 app.include_router(activity_router, prefix=PREFIX)
@@ -3301,15 +3303,15 @@ from .source_grid import SourceGridResponse
 
 @app.get(f"{PREFIX}/sources/{{source_id}}/grid", response_model=SourceGridResponse)
 def source_grid(source_id: str, product: str, field: str, selected_time: datetime, region: Literal["avalon", "atlantic"] = "avalon"):
-    from .source_grid import SOURCE, FIELD, frame, selected_service
-    if source_id != SOURCE or field != FIELD or product not in ('WeatherNext 3 historical','WeatherNext 3 local'):
+    from .source_grid import SOURCE, FIELDS, frame, selected_service
+    if source_id != SOURCE or field not in FIELDS or product not in ('WeatherNext 3 historical','WeatherNext 3 local'):
         raise HTTPException(status_code=422,detail='This source/product/field does not support native grid delivery')
     if selected_time.tzinfo is None:
         raise HTTPException(status_code=422,detail='Selected time requires an explicit UTC offset')
     if configured_mode()!=LIVE_MODE:
         raise HTTPException(status_code=503,detail='WeatherNext grid requires the configured live internal experiment')
     try:
-        return frame(selected_service(product,selected_time),selected_time,region)
+        return frame(selected_service(product,selected_time),selected_time,region,field)
     except Exception as error:
         status=403 if getattr(error,'http_status',None) in (401,403) else 503
         raise HTTPException(status_code=status,detail='WeatherNext credentials required' if status==403 else 'WeatherNext grid unavailable for selected native time') from None

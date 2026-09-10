@@ -1,0 +1,9 @@
+{
+  "source": "actual retained live API responses; replayed for browser rendering",
+  "run_id": "20260909_12hr_01_preds",
+  "pages": 8,
+  "cloudChartsWithMedianAndBothBands": 4,
+  "probabilityIntervals": 8,
+  "displayTriggeredPageRequests": 0,
+  "errors": []
+}

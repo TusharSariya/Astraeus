@@ -206,3 +206,39 @@ def test_actual_batch_byte_limit_retains_completed_fields(transport):
     assert result['reading']['unavailable_fields']==[original]
     assert result['reading']['received_bytes']==cap
     assert not any(op=='read' and path.startswith(original+'/c/') for op,path in transport.calls)
+
+
+def test_one_gib_accounting_crosses_old_cap_without_relaxing_object_bound(monkeypatch):
+    from weather_api.weathernext_gcs import WeatherNextGCSTransport
+    from weather_api.weathernext_limits import MAX_ACQUISITION_BYTES, MAX_OBJECT_BYTES
+    received=[]
+    monkeypatch.setattr(WeatherNextGCSTransport,'_get',lambda *args,**kwargs:(received.append(kwargs),b'{}')[1])
+    transport=AccountedGCSTransport(token_provider=lambda **_: 'fixture',max_received_bytes=MAX_ACQUISITION_BYTES,max_operations=106)
+    transport.received_bytes=64*1024**2
+    assert transport._get(ROOT.name,{},cap=2,timeout=1)==b'{}'
+    assert transport.received_bytes==64*1024**2+2
+    transport.received_bytes=MAX_ACQUISITION_BYTES
+    with pytest.raises(BridgeUnavailable):transport._get(ROOT.name,{},cap=2,timeout=1)
+    transport.received_bytes=0
+    oversized=ObjectIdentity(BUCKET,ROOT.name,'42','etag',MAX_OBJECT_BYTES+1)
+    with pytest.raises(BridgeUnavailable):transport._get(ROOT.name,{},cap=MAX_ACQUISITION_BYTES,timeout=1,expected=oversized)
+    assert len(received)==1
+
+
+def test_actual_cloud_batch_one_gib_cap_and_field_operation_allowance(transport):
+    if sys.platform!='linux':pytest.skip('Linux resource-limited worker')
+    from copy import deepcopy
+    from dataclasses import replace
+    from weather_api.weathernext_limits import MAX_ACQUISITION_BYTES, operation_limit
+    original='total_cloud_cover_p90'
+    fields=tuple(f'{level}_cloud_cover_{stat}' for level in ('total','low','medium','high') for stat in ('mean','p10','p25','p50','p75','p90'))
+    for field in fields:
+        transport.nodes[field]=deepcopy(transport.nodes[original])
+        for path,body in list(transport.bodies.items()):
+            if path.startswith(original+'/'):transport.bodies[path.replace(original,field,1)]=body
+    selected=replace(selection(),fields=fields)
+    result=read_historical_point(selected,root_identity=root(transport),now=NOW,transport=transport,max_received_bytes=MAX_ACQUISITION_BYTES)
+    assert len(result['reading']['values'])==24
+    assert not result['reading']['unavailable_fields']
+    assert 30<result['receipt']['worker_operations']<=operation_limit(24)
+    assert len([p for op,p in transport.calls if op=='read' and any(p.startswith(f+'/c/') for f in fields)])==24

@@ -1,7 +1,7 @@
 import { parseSelection } from './pointSelections'
 import type { LayerSelection, LocationPoint } from '../types'
 
-export const VIEWS = ['Map', 'Series', 'Sky', 'Activity', 'Sources'] as const
+export const VIEWS = ['Map', 'Series', 'WeatherNext', 'Sky', 'Activity', 'Sources'] as const
 export type View = typeof VIEWS[number]
 export interface BenchState {
   location: LocationPoint
