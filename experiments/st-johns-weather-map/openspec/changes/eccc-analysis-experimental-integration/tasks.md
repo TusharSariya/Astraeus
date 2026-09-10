@@ -36,3 +36,24 @@
 - [x] Prove every selected raw grid against normalized storage and test-harness HTTP serialization; prove source-scoped raw fields remain absent from the normal point route.
 - [ ] Owner accepts canonical PM10-column, gas mole-fraction, smoke-attribution, time-average, and RDAQA analysis-phase field contracts before a full RunManifest can publish.
 - [ ] Only after acceptance: add the canonical mappings, validate the complete product with `validate_run`, and consider registration separately.
+
+## Issue #134 HRDPA/HREPA precipitation analyses
+
+- [x] Reuse the exact GeoMet WCS coverage ids, grid contracts, bounded numeric
+      transport and retained HRDPA receipt already present in this change.
+- [x] Define the proposed exact-time HRDPA six-hour accumulation behavior,
+      including no rate conversion, neighbour substitution, run or lead.
+- [x] Record PCT25/PCT75 as unproven HREPA candidate identifiers, require a
+      bounded provider receipt before serving them, and prohibit inferred
+      distribution/member/probability claims.
+- [x] Specify the finite canonical demand cache, zero-request fresh hit,
+      coalescing, expiry withholding and bounded metadata-only failure state.
+- [ ] Retain one bounded HREPA provider receipt and fixed fixture that prove the
+      two advertised identities, percentile ranks, literal intervals, units,
+      geometry, masks and shared selected time; metadata declarations alone are
+      insufficient.
+- [ ] Identify exact provider contracts for HREPA precipitation analysis,
+      uncertainty, confidence, probabilities, and 24 perturbed members plus
+      control; keep each residual explicit until then.
+- [ ] Owner accepts the #134 source/time/field/cache requirements before any
+      public API mapping, production registration or implementation begins.

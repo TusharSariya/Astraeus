@@ -15,6 +15,9 @@ lead times and quality semantics.
   own grid identity, cadence, time meaning, and unknown quality state.
 - Retain upstream TIFF bytes beside deterministic Zarr output and record both
   digests plus finite/null counts.
+- Define the owner decision needed for HRDPA and HREPA selected-timestamp
+  demand reads: exact advertised analysis times, finite request-local caches,
+  typed transport receipts, and no stale or neighbouring-time fallback.
 - Record hotspots, integrated nowcasting, CAP alerts, thunderstorm outlooks,
   hurricane products, and retired standalone FireWork as unavailable through
   this adapter until separate typed contracts are selected.
@@ -39,6 +42,31 @@ CWFIS/FIRMS and wildfire hotspots remain owned by the existing fire-source
 ticket, not duplicated by the public-hazard child. Standalone FireWork stays
 superseded. An unsupported path in this scaffold is not proof that the
 producer has no public data.
+
+For [issue #134](https://github.com/TusharSariya/Astraeus/issues/134), the
+reviewable initial demand scope is deliberately exact:
+
+- HRDPA may expose only `HRDPA_2.5km_Precip-Accum6h` as the provider's final
+  six-hour precipitation accumulation ending at the selected advertised time.
+  It has no forecast lead or invented model run and is never divided into a
+  rate.
+- The scaffold's `HREPA.6P_2.5km_PCT25` and
+  `HREPA.6P_2.5km_PCT75` identifiers are candidate coverages only. They remain
+  unavailable until a bounded provider receipt proves that they are advertised
+  percentile fields and records their literal interval, units, geometry, masks,
+  and shared time. If proven, they remain distinct retrieved fields and are
+  never locally recomputed into percentiles, member values, probabilities,
+  uncertainty, or confidence.
+- The wider HREPA source remains in scope. Public precipitation-analysis,
+  uncertainty, confidence-index, probability, and 24-perturbed-member-plus-
+  control claims remain unavailable until their exact coverage ids, units,
+  statistic definitions, time identity, masks, and quality semantics have
+  provider evidence and owner acceptance.
+
+Acceptance of this proposal would authorize a bounded demand implementation;
+it does not activate one. Until then, the current experimental WCS reader and
+its source declarations remain non-operational and absent from the public point
+response.
 
 Spec-Impact: experiment. Accepted governance authority: GOV-SPEC-001,
 GOV-SPEC-002, GOV-SPEC-004, GOV-SPEC-005, GOV-SPEC-006.
